@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/byblix/go-micro/storage"
+	"github.com/byblix/gopro/storage"
 )
 
 func createCSV(record []string, index int, info interface{}) {

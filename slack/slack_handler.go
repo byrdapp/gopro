@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/byblix/go-micro/models"
+	"github.com/byblix/gopro/models"
 )
 
 var (
