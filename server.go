@@ -18,7 +18,7 @@ func NewServer() error {
 	// sendgrid mail
 	r.HandleFunc("/v1/mail/send", mailtips.MailHandler).Methods("POST")
 	// slack
-	r.HandleFunc("/v1/slack/tip", slack.NotificationTip).Methods("POST")
+	r.HandleFunc("/v1/slack/tip", slack.NewSlackAttMessage).Methods("POST")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "Nothing to see here, pal!")

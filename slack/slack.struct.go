@@ -1,11 +1,5 @@
 package slack
 
-// Colors for slack msg
-var Colors = map[string]string{
-	"success": "#36a64f",
-	"fail":    "#5f1213",
-}
-
 type (
 	// Message .
 	Message struct {
