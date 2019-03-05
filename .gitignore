@@ -1,0 +1,9 @@
+.vscode
+config
+assets
+csv-files
+*.csv
+go-micro
+vendor
+.DS_Store
+.env
