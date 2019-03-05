@@ -3,7 +3,6 @@ package slack
 import (
 	"log"
 	"os"
-	"strings"
 
 	"github.com/nlopes/slack"
 )
@@ -44,9 +43,4 @@ func NewTipNotification(s *TipSlackMsg) error {
 		return err
 	}
 	return nil
-}
-
-// JoinStrings join strings
-func JoinStrings(list []string) string {
-	return strings.Join(list, ", ")
 }
