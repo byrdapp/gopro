@@ -18,17 +18,17 @@ type TipRequest struct {
 	Profile    *models.ProfileProps `json:"profile"`
 }
 
-// HandleSlackMessage receives slack msg in body
-func HandleSlackMessage(w http.ResponseWriter, r *http.Request) {
+// PostSlackMsg receives slack msg in body
+func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 	tip := &TipRequest{}
 	err := json.NewDecoder(r.Body).Decode(tip)
 	if err != nil {
-		fmt.Fprint(w, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	err = postTip(tip)
 	if err != nil {
-		fmt.Fprint(w, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(201)
