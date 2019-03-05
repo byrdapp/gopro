@@ -4,38 +4,44 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/byblix/gopro/models"
+	"github.com/nlopes/slack"
 )
 
 var (
 	logger *log.Logger
 )
 
-// NotificationTip /slack/tip to slack
-func NotificationTip(w http.ResponseWriter, r *http.Request) {
-	// Get storyprops as JSON from CLIENT
-	storyProps, err := decodeStoryProps(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Fatalf("Fatal decoding!: %s", err)
+// MsgBuilder msg builder for slack msgs
+type MsgBuilder struct {
+	TitleLink, Period, Text, Color, Footer, Pretext string
+}
+
+// NewTipNotification notifies people when theres a newly generated PDF
+func NewTipNotification(s *MsgBuilder) error {
+	att := []slack.Attachment{}
+	a := slack.Attachment{
+		Pretext:   s.Pretext,
+		Title:     s.Period,
+		TitleLink: s.TitleLink,
+		Color:     s.Color,
+		Fallback:  s.Text,
+		Footer:    s.Footer,
 	}
-	// Create slack struct
-	slackMsg := &Message{}
-	// Decode struct to []struct from storyProps JSON
-	slackMsg.Attachments = createAttachmentSlice(slackMsg, storyProps)
-	res, err := NewSlackAttMessage(slackMsg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		logger.Fatalf("Error with slack endpoint: %s", err)
+	att = append(att, a)
+	msg := &slack.WebhookMessage{
+		Text:        s.Text,
+		Attachments: att,
 	}
-	w.Header().Set("Content-type", "application/json")
-	w.WriteHeader(res.StatusCode)
-	b, _ := json.Marshal(res.StatusCode)
-	w.Write(b)
+
+	if err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), msg); err != nil {
+		return err
+	}
+	return nil
 }
 
 func decodeStoryProps(reader io.Reader) (*models.StoryProps, error) {
