@@ -3,7 +3,7 @@ config
 assets
 csv-files
 *.csv
-go-micro
+gopro
 vendor
 .DS_Store
 .env

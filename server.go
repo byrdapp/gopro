@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/byblix/go-micro/mailtips"
-	"github.com/byblix/go-micro/slack"
+	"github.com/byblix/gopro/mailtips"
+	"github.com/byblix/gopro/slack"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )

@@ -12,8 +12,8 @@ var (
 	logger *log.Logger
 )
 
-// to run this locally with dev: $ go build && ./go-micro -env="local"
-// to run this locally with prod: $ go build && ./go-micro -env="local-production"
+// to run this locally with dev: $ go build && ./gopro -env="local"
+// to run this locally with prod: $ go build && ./gopro -env="local-production"
 func main() {
 
 	logger := log.New(os.Stdout, "micro-out: ", log.LstdFlags|log.Lshortfile)
