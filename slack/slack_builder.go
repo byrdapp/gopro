@@ -22,7 +22,7 @@ var colors = map[string]string{
 	"fail":    "#5f1213",
 }
 
-// NewTipNotification notifies people when theres a newly generated PDF
+// NewTipNotification notifies byrd when a pro guy has tipped
 func NewTipNotification(s *TipSlackMsg) error {
 	att := []slack.Attachment{}
 	a := slack.Attachment{
