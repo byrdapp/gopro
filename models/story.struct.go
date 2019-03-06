@@ -15,5 +15,6 @@ type (
 	ProfileProps struct {
 		DisplayName string `json:"displayName"`
 		UserID      string `json:"userId"`
+		Email       string `json:"email"`
 	}
 )
