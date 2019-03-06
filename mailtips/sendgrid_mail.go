@@ -26,6 +26,7 @@ func SendMail(client *sendgrid.Client, mailReq *MailReq, ch chan<- *rest.Respons
 			ch <- resp
 		}
 		wg.Done()
+		close(ch)
 		return nil
 	}()
 	wg.Wait()
