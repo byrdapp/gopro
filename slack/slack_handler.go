@@ -2,75 +2,49 @@ package slack
 
 import (
 	"encoding/json"
-	"io"
-	"log"
+	"fmt"
 	"net/http"
-	"strings"
-	"time"
+
+	"github.com/byblix/gopro/utils"
 
 	"github.com/byblix/gopro/models"
 )
 
-var (
-	logger *log.Logger
-)
+// TipRequest from FE JSON req.
+type TipRequest struct {
+	Story      *models.StoryProps   `json:"story,omitempty"`
+	Medias     []string             `json:"medias"`
+	Assignment *models.Assignment   `json:"assignment"`
+	Profile    *models.ProfileProps `json:"profile"`
+}
 
-// NotificationTip /slack/tip to slack
-func NotificationTip(w http.ResponseWriter, r *http.Request) {
-	// Get storyprops as JSON from CLIENT
-	storyProps, err := decodeStoryProps(r.Body)
+// PostSlackMsg receives slack msg in body
+func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
+	tip := &TipRequest{}
+	err := json.NewDecoder(r.Body).Decode(tip)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Fatalf("Fatal decoding!: %s", err)
 	}
-	// Create slack struct
-	slackMsg := &Message{}
-	// Decode struct to []struct from storyProps JSON
-	slackMsg.Attachments = createAttachmentSlice(slackMsg, storyProps)
-	res, err := NewSlackAttMessage(slackMsg)
+
+	err = postTip(tip)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		logger.Fatalf("Error with slack endpoint: %s", err)
 	}
-	w.Header().Set("Content-type", "application/json")
-	w.WriteHeader(res.StatusCode)
-	b, _ := json.Marshal(res.StatusCode)
-	w.Write(b)
+
+	w.WriteHeader(201)
+	fmt.Fprint(w, "Notified!")
 }
 
-func decodeStoryProps(reader io.Reader) (*models.StoryProps, error) {
-	storyProps := &models.StoryProps{}
-	d := json.NewDecoder(reader)
-	if err := d.Decode(storyProps); err != nil {
-		return nil, err
+func postTip(tip *TipRequest) error {
+	slackMsg := &TipSlackMsg{
+		Text: "A new pro-tip has been made from: " + tip.Profile.DisplayName +
+			"\nThe following medias has been tipped: " + utils.JoinStrings(tip.Medias),
+		Title:     "Story: " + tip.Story.StoryHeadline,
+		TitleLink: "https://app.byrd.news/" + tip.Story.StoryID,
 	}
-	return storyProps, nil
-}
-
-// Creating the body for message attachment
-func createAttachmentSlice(msg *Message, storyProps *models.StoryProps) []Attachments {
-	attMsg := &Attachments{
-		Fallback:   "Some pro tipped a Media about their story!",
-		Color:      Colors["success"],
-		Timestamp:  time.Now().Unix(),
-		Authoricon: storyProps.ProfileProps.ProfilePicture,
-		Title:      "Some pro photographer just tipped a media!",
-		Text:       storyProps.ProfileProps.DisplayName + " tipped the medias: " + fullMediaList(storyProps.Assignment.Medias) + " with a story!",
-		Fields:     createFieldsSlice(storyProps),
+	err := NewTipNotification(slackMsg)
+	if err != nil {
+		return err
 	}
-	return append(msg.Attachments, *attMsg)
-}
-
-func createFieldsSlice(values *models.StoryProps) []*Fields {
-	var output []*Fields
-	fields := &Fields{
-		Title: values.Headline,
-		Value: "https://app.byrd.news/" + values.StoryID,
-		Short: false,
-	}
-	return append(output, fields)
-}
-
-func fullMediaList(list []string) string {
-	return strings.Join(list, ", ")
+	return nil
 }
