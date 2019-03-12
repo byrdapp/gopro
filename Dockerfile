@@ -6,6 +6,6 @@ ADD . ${SRC_DIR}
 WORKDIR ${SRC_DIR}
 
 RUN go get -d ./...
-RUN go build -o main .
-CMD [ "./main", "-env=local" ]
+RUN go build -o gopro .
+ENTRYPOINT [ "./gopro", "-env=local" ]
 EXPOSE 8085
