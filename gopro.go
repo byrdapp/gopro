@@ -2,29 +2,26 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
-var (
-	logger *log.Logger
-)
-
 // to run this locally with dev: $ go build && ./gopro -env="local"
 // to run this locally with prod: $ go build && ./gopro -env="local-production"
 func main() {
 
-	logger := log.New(os.Stdout, "micro-out: ", log.LstdFlags|log.Lshortfile)
 	if err := InitEnvironment(); err != nil {
-		logger.Fatalln(err)
+		log.Fatalln(err)
 	}
 
-	err := NewServer()
-	if err != nil {
-		logger.Fatalln(err)
+	if err := NewServer(); err != nil {
+		log.Fatalln(err)
 	}
+
+	// initScripts()
 }
 
 // InitEnvironment : set the cli flag -env=local if must be run locally
@@ -37,13 +34,19 @@ func InitEnvironment() error {
 			return err
 		}
 	}
+	fmt.Println(os.Getenv("ENV") + " " + "is running")
 	return nil
 }
 
 // only needed when certain scripts must be run
 func initScripts() {
-	// Init DB:
-	// db, err := storage.InitFirebaseDB()
+
+	// if err := scripts.DeleteUnusedAuthProfiles(); err != nil {
+	// 	log.Fatalf("Error in mail: %s", err)
+	// }
+	// if err := scripts.ChangeProfileUserPicture(); err != nil {
+	// 	log.Fatalf("Error in main: %s", err)
+	// }
 	// scripts.WithdrawalsToCSV(db)
 	// scripts.ProfilesToCSV(db)
 }

@@ -1,0 +1,7 @@
+.vscode
+config
+assets
+csv-files
+*.csv
+vendor
+.DS_Store
