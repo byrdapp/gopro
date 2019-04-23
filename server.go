@@ -17,8 +17,8 @@ import (
 // NewServer init routes
 func NewServer() error {
 	r := mux.NewRouter()
-	r.HandleFunc("/v1/mail/send", mailtips.MailHandler).Methods("POST")
-	r.HandleFunc("/v1/slack/tip", slack.PostSlackMsg).Methods("POST")
+	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
+	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "Nothing to see here :-)")
@@ -40,14 +40,16 @@ func NewServer() error {
 		},
 	}
 
+	_ = server
+
 	headersOk := handlers.AllowedHeaders([]string{"Content-Type"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 	handler := handlers.CORS(headersOk, originsOk, methodsOk)(r)
-	if err := http.ListenAndServe(":80", certManager.HTTPHandler(handler)); err != nil {
+	err := http.ListenAndServe(":80", certManager.HTTPHandler(handler))
+	if err != nil {
 		return err
 	}
-	server.ListenAndServeTLS("", "")
 
 	return nil
 }

@@ -39,7 +39,8 @@ func NewTipNotification(s *TipSlackMsg) error {
 		Attachments: att,
 	}
 
-	if err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), msg); err != nil {
+	err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), msg)
+	if err != nil {
 		return err
 	}
 	return nil

@@ -8,8 +8,7 @@ WORKDIR ${SRC_DIR}
 
 RUN ls -a
 RUN apk update && apk upgrade && apk add --no-cache bash git openssh
-RUN go mod verify
-RUN go mod download
+RUN go mod download && go mod tidy
 RUN go build -o gopro .
 ENTRYPOINT [ "./gopro", "-env=local" ]
 EXPOSE 8085
