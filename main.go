@@ -2,20 +2,36 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
-	"golang.org/x/crypto/acme/autocert"
-
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
+	psql "github.com/byblix/gopro/storage/postgres"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/acme/autocert"
 )
 
-// NewServer init routes
-func NewServer() error {
+// to run this locally with dev: $ go build && ./gopro -env="local"
+// to run this locally with prod: $ go build && ./gopro -env="local-production"
+func main() {
+
+	if err := InitEnvironment(); err != nil {
+		logrus.Fatalln(err)
+	}
+
+	storage, err := psql.NewPQ()
+	if err != nil {
+		logrus.Fatalf("POSTGRESQL err: %s", err)
+	}
+	defer storage.Close()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
 	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
@@ -40,16 +56,27 @@ func NewServer() error {
 		},
 	}
 
-	_ = server
-
 	headersOk := handlers.AllowedHeaders([]string{"Content-Type"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 	handler := handlers.CORS(headersOk, originsOk, methodsOk)(r)
-	err := http.ListenAndServe(":80", certManager.HTTPHandler(handler))
+	_ = handler
+	err = server.ListenAndServe()
 	if err != nil {
-		return err
+		logrus.Fatal(err)
 	}
+}
 
+// InitEnvironment : set the cli flag -env=local if must be run locally
+func InitEnvironment() error {
+	env := os.Getenv("ENV")
+	flag.StringVar(&env, "env", env, "Environment used")
+	flag.Parse()
+	if env == "local" {
+		if err := godotenv.Load(); err != nil {
+			return err
+		}
+	}
+	fmt.Println(os.Getenv("ENV") + " " + "CFG is loaded")
 	return nil
 }

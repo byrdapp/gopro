@@ -1,6 +1,7 @@
 .vscode
 config
 assets
+certs
 csv-files
 *.csv
 gopro

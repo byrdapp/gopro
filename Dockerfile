@@ -1,14 +1,14 @@
-FROM golang:1.12.0-alpine3.9 as golang
-LABEL version="1.0"
-ENV SRC_DIR=/go/src/github.com/byblix/gopro
-ENV GO111MODULE=on
+ARG GO_VERSION=1.12.4
+FROM golang:${GO_VERSION}-alpine3.9 as golang
 
-ADD . ${SRC_DIR}
+ENV SRC_DIR=/go/src
 WORKDIR ${SRC_DIR}
+COPY ./ ./
 
-RUN ls -a
-RUN apk update && apk upgrade && apk add --no-cache bash git openssh
-RUN go mod download && go mod tidy
+RUN go mod download
+RUN go mod verify
+RUN go mod tidy
 RUN go build -o gopro .
 ENTRYPOINT [ "./gopro", "-env=local" ]
 EXPOSE 8085
+EXPOSE 80
