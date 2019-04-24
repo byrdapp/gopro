@@ -19,22 +19,23 @@ import (
 )
 
 // to run this locally with dev: $ go build && ./gopro -env="local"
-// to run this locally with prod: $ go build && ./gopro -env="local-production"
-func main() {
 
+var db *psql.Postgres
+
+func main() {
 	if err := InitEnvironment(); err != nil {
 		logrus.Fatalln(err)
 	}
-
-	storage, err := psql.NewPQ()
+	dbsrv, err := psql.NewPQ()
 	if err != nil {
 		logrus.Fatalf("POSTGRESQL err: %s", err)
 	}
-	defer storage.Close()
+	defer dbsrv.Close()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
 	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
+	r.HandleFunc("/media/{id}", getMediaByID).Methods("POST")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "Nothing to see here :-)")
@@ -79,4 +80,9 @@ func InitEnvironment() error {
 	}
 	fmt.Println(os.Getenv("ENV") + " " + "CFG is loaded")
 	return nil
+}
+
+func getMediaByID(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	db.GetMediaByID(params["id"])
 }

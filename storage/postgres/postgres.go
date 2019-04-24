@@ -1,8 +1,8 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -13,14 +13,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type postgres struct {
+type Postgres struct {
 	DB *sql.DB
 }
 
+var ctx, cancel = context.WithCancel(context.Background())
+
 // NewPQ Starts ORM
 func NewPQ() (storage.Service, error) {
-	fmt.Println("Starting the PGSQL DB")
-
 	connStr := os.Getenv("POSTGRES_CONNSTR")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -30,15 +30,24 @@ func NewPQ() (storage.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Infoln("Starting postgres DB")
-	return &postgres{db}, nil
+	logrus.Infoln("Started psql DB")
+	return &Postgres{db}, nil
 }
 
-func (p *postgres) Save(str string) (string, error) {
+func (p *Postgres) Save(str string) (string, error) {
 	return "", nil
 }
 
-func (p *postgres) Close() error {
+func (p *Postgres) AddMedia() {
+	p.DB.QueryContext(ctx, `INSERT INTO media()`)
+}
+
+func (p *Postgres) GetMediaByID(id string) {
+
+	p.DB.QueryContext(ctx, `INSERT INTO media()`)
+}
+
+func (p *Postgres) Close() error {
 	err := p.DB.Close()
 	if err != nil {
 		return err
