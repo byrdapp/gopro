@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/byblix/gopro/storage"
+	aws "github.com/byblix/gopro/storage/aws"
+
 	"google.golang.org/api/iterator"
 
 	"firebase.google.com/go/auth"
@@ -29,7 +32,7 @@ func InitFirebaseDB() (*DBInstance, error) {
 		DatabaseURL: os.Getenv("FB_DATABASE_URL"),
 	}
 	jsonPath := "fb-" + os.Getenv("ENV") + ".json"
-	opt := option.WithCredentialsJSON(GetAWSSecrets(jsonPath))
+	opt := option.WithCredentialsJSON(aws.GetAWSSecrets(jsonPath))
 	app, err := firebase.NewApp(ctx, config, opt)
 	if err != nil {
 		return nil, err
@@ -51,9 +54,9 @@ func InitFirebaseDB() (*DBInstance, error) {
 }
 
 // GetTransactions - this guy
-func (db *DBInstance) GetTransactions() ([]*Transaction, error) {
+func (db *DBInstance) GetTransactions() ([]*storage.Transaction, error) {
 	p := os.Getenv("ENV") + "/transactions"
-	transaction := []*Transaction{}
+	transaction := []*storage.Transaction{}
 	fmt.Printf("Path: %s\n", p)
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, transaction); err != nil {
@@ -63,9 +66,9 @@ func (db *DBInstance) GetTransactions() ([]*Transaction, error) {
 }
 
 // GetWithdrawals - this guy
-func (db *DBInstance) GetWithdrawals() ([]*Withdrawals, error) {
+func (db *DBInstance) GetWithdrawals() ([]*storage.Withdrawals, error) {
 	p := os.Getenv("ENV") + "/transactions"
-	wd := []*Withdrawals{}
+	wd := []*storage.Withdrawals{}
 	fmt.Printf("Path: %s\n", p)
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, wd); err != nil {
@@ -75,9 +78,9 @@ func (db *DBInstance) GetWithdrawals() ([]*Withdrawals, error) {
 }
 
 // GetProfile get a single profile instance
-func (db *DBInstance) GetProfile(uid string) (*Profile, error) {
+func (db *DBInstance) GetProfile(uid string) (*storage.Profile, error) {
 	path := os.Getenv("ENV") + "/profiles/" + uid
-	prf := Profile{}
+	prf := storage.Profile{}
 	fmt.Printf("Path: %s\n", path)
 	ref := db.Client.NewRef(path)
 	if err := ref.Get(db.Context, &prf); err != nil {
@@ -87,8 +90,8 @@ func (db *DBInstance) GetProfile(uid string) (*Profile, error) {
 }
 
 // GetProfiles get multiple profile instances
-func (db *DBInstance) GetProfiles() ([]*Profile, error) {
-	var prfs []*Profile
+func (db *DBInstance) GetProfiles() ([]*storage.Profile, error) {
+	var prfs []*storage.Profile
 	path := os.Getenv("ENV") + "/profiles"
 	ref := db.Client.NewRef(path)
 	res, err := ref.OrderByKey().GetOrdered(db.Context)
@@ -97,7 +100,7 @@ func (db *DBInstance) GetProfiles() ([]*Profile, error) {
 	}
 	fmt.Printf("Path: %s\n", ref.Path)
 	for _, r := range res {
-		var p *Profile
+		var p *storage.Profile
 		if err := r.Unmarshal(&p); err != nil {
 			return nil, err
 		}

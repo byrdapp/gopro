@@ -4,10 +4,10 @@ package storage
 type Service interface {
 	Save(string) (string, error)
 	// Load(string) (string, error)
-	AddMedia()
+	AddMedia(*Media) error
 	// Delete(string) (string, error)
 	Close() error
-	GetMediaByID(string) error
+	GetMediaByID(string) (*Media, error)
 	Ping() error
 }
 
@@ -31,7 +31,9 @@ type Profile struct {
 
 // Media struct
 type Media struct {
+	ID                  string `sql:"id"`
 	ProfileData         *Profile
+	UserID              string `json:"userId"`
 	Country             string `json:"country,omitempty"`
 	City                string `json:"city,omitempty"`
 	GoCredits           byte   `json:"goCredits,omitempty"`

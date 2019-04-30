@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/byblix/gopro/scripts"
 	"net/http"
 	"os"
 
@@ -37,7 +36,6 @@ func main() {
 	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
 	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
 	r.HandleFunc("/media/{id}", getMediaByID).Methods("GET")
-	r.HandleFunc("/scripts/copy", scripts.ExportToPostgres).Methods("GET")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "Nothing to see here :-)")
@@ -86,9 +84,9 @@ func InitEnvironment() error {
 
 func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	fmt.Println(params)
-	err := db.GetMediaByID(params["id"])
+	val, err := db.GetMediaByID(params["id"])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	fmt.Println(val)
 }
