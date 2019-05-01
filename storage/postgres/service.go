@@ -2,9 +2,9 @@ package storage
 
 // Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type Service interface {
-	Save(string) (string, error)
+	UpdateMedia(id string) (*Media, error)
 	// Load(string) (string, error)
-	AddMedia(*Media) error
+	CreateMedia(*Media) (string, error)
 	// Delete(string) (string, error)
 	Close() error
 	GetMediaByID(string) (*Media, error)
@@ -16,7 +16,9 @@ type Service interface {
 // Media is for SQL media queries
 type Media struct {
 	ID          int    `json:"id"`
-	ProfileID   string `json:"profile_id"`
-	DisplayName string `json:"display_name"`
-	Address     string `json:"address"`
+	Name        string `json:"name"`
+	UserID      string `json:"userId"`
+	DisplayName string `json:"displayName"`
+	Email       string `json:"email"`
+	// CreatedDate time.Time `json:"createdDate"`
 }

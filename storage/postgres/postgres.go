@@ -35,26 +35,35 @@ func NewPQ() (Service, error) {
 	return &Postgres{db}, nil
 }
 
-// Save -
-func (p *Postgres) Save(str string) (string, error) {
-	return "", nil
+// UpdateMedia -
+func (p *Postgres) UpdateMedia(id string) (*Media, error) {
+	// todo: also alters the departments or new prototype?
+	var media Media
+	return &media, nil
 }
 
-// AddMedia -
-func (p *Postgres) AddMedia(media *Media) error {
+// CreateMedia -
+func (p *Postgres) CreateMedia(media *Media) (string, error) {
 	defer cancel()
-	p.DB.QueryRowContext(ctx, "INSERT INTO media ").Scan(media)
-	// p.DB.ExecContext()
-	return nil
+	var id int64
+	err := p.DB.QueryRowContext(ctx, "INSERT INTO media(name, user_id, display_name) VALUES($1, $2, $3) RETURNING id;", media.Name, media.UserID, media.DisplayName).Scan(&id)
+	if err != nil {
+		p.HandleError(err)
+		return "", err
+	}
+	logrus.Infof("Inserted new media with id: %v", id)
+	return strconv.Itoa(int(id)), nil
 }
 
 // GetMediaByID -
 func (p *Postgres) GetMediaByID(id string) (*Media, error) {
-	sqlid, _ := strconv.Atoi(id)
-	logrus.Infof("ID is = %v", sqlid)
 	var media Media
-	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = ?`, sqlid)
-	err := row.Scan(&media.ID, &media.ProfileID, &media.DisplayName, &media.Address)
+	sqlid, _ := strconv.Atoi(id)
+	ctx, cancel = context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	row := p.DB.QueryRow(`SELECT * FROM media WHERE id = $1`, sqlid)
+	err := row.Scan(&media.ID, &media.Name, &media.UserID, &media.DisplayName)
 	if err != nil {
 		p.HandleError(err)
 		return nil, err
@@ -70,7 +79,7 @@ func (p *Postgres) GetMedias() ([]*Media, error) {
 
 // Ping to see if theres connection
 func (p *Postgres) Ping() error {
-	return p.Ping()
+	return p.DB.Ping()
 }
 
 // Close -
@@ -90,6 +99,6 @@ func (p *Postgres) HandleError(err error) {
 	case nil:
 		logrus.Errorf("Error with query: %v\n", err)
 	default:
-		logrus.Panicf("Some error: %v\n", err)
+		logrus.Panicf("Default error: %v\n", err)
 	}
 }
