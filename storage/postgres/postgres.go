@@ -4,17 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"github.com/byblix/gopro/storage"
 
 	// Postgres driver
 	_ "github.com/lib/pq"
 )
 
-// Service.Postgres is the database
+// Postgres is the database
 type Postgres struct {
 	DB *sql.DB
 }
@@ -22,7 +21,7 @@ type Postgres struct {
 var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 
 // NewPQ Starts ORM
-func NewPQ() (storage.Service, error) {
+func NewPQ() (Service, error) {
 	connStr := os.Getenv("POSTGRES_CONNSTR")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -42,7 +41,7 @@ func (p *Postgres) Save(str string) (string, error) {
 }
 
 // AddMedia -
-func (p *Postgres) AddMedia(media *storage.Media) error {
+func (p *Postgres) AddMedia(media *Media) error {
 	defer cancel()
 	p.DB.QueryRowContext(ctx, "INSERT INTO media ").Scan(media)
 	// p.DB.ExecContext()
@@ -50,17 +49,23 @@ func (p *Postgres) AddMedia(media *storage.Media) error {
 }
 
 // GetMediaByID -
-func (p *Postgres) GetMediaByID(id string) (*storage.Media, error) {
-	logrus.Info(id)
-	var media storage.Media
-	// sqlStatement := `SELECT id, display_name FROM media WHERE id = $1`
-	row := p.DB.QueryRow("SELECT * FROM media")
-	err := row.Scan(&media.UserID, &media.ProfileData.DisplayName, &media.ID)
+func (p *Postgres) GetMediaByID(id string) (*Media, error) {
+	sqlid, _ := strconv.Atoi(id)
+	logrus.Infof("ID is = %v", sqlid)
+	var media Media
+	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = ?`, sqlid)
+	err := row.Scan(&media.ID, &media.ProfileID, &media.DisplayName, &media.Address)
 	if err != nil {
-		handleError(err, row)
+		p.HandleError(err)
 		return nil, err
 	}
 	return &media, nil
+}
+
+// GetMedias -
+func (p *Postgres) GetMedias() ([]*Media, error) {
+	// var medias []*media
+	return nil, nil
 }
 
 // Ping to see if theres connection
@@ -77,12 +82,13 @@ func (p *Postgres) Close() error {
 	return nil
 }
 
-func handleError(err error, data interface{}) {
+// HandleError to handle errors from sql requests
+func (p *Postgres) HandleError(err error) {
 	switch err {
 	case sql.ErrNoRows:
-		logrus.Println("No rows were returned")
+		logrus.Errorf("No rows were returned: %s\n", err)
 	case nil:
-		logrus.Printf("query error: %v\n", err)
+		logrus.Errorf("Error with query: %v\n", err)
 	default:
 		logrus.Panicf("Some error: %v\n", err)
 	}

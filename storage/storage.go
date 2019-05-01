@@ -1,16 +1,5 @@
 package storage
 
-// Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
-type Service interface {
-	Save(string) (string, error)
-	// Load(string) (string, error)
-	AddMedia(*Media) error
-	// Delete(string) (string, error)
-	Close() error
-	GetMediaByID(string) (*Media, error)
-	Ping() error
-}
-
 // Profile for all types of profiles
 type Profile struct {
 	UserID         string `json:"userId,omitempty"`

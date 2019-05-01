@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
-	psql "github.com/byblix/gopro/storage/postgres"
+	postgres "github.com/byblix/gopro/storage/postgres"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -20,13 +21,13 @@ import (
 
 // to run this locally with dev: $ go build && ./gopro -env="local"
 
-var db *psql.Postgres
+var db *postgres.Postgres
 
 func main() {
 	if err := InitEnvironment(); err != nil {
 		logrus.Fatalln(err)
 	}
-	db, err := psql.NewPQ()
+	db, err := postgres.NewPQ()
 	if err != nil {
 		logrus.Fatalf("POSTGRESQL err: %s", err)
 	}
@@ -35,6 +36,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
 	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
+	// r.HandleFunc("/medias", getMediaByID).Methods("GET")
 	r.HandleFunc("/media/{id}", getMediaByID).Methods("GET")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -88,5 +90,7 @@ func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	fmt.Println(val)
+	if err := json.NewEncoder(w).Encode(val); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
