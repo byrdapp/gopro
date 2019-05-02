@@ -38,7 +38,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/mail/send", mailtips.MailHandler).Methods("POST")
 	r.HandleFunc("/slack/tip", slack.PostSlackMsg).Methods("POST")
-	// r.HandleFunc("/medias", getMediaByID).Methods("GET")
+	r.HandleFunc("/media", getMedias).Methods("GET")
 	r.HandleFunc("/media/{id}", getMediaByID).Methods("GET")
 	r.HandleFunc("/media", createMedia).Methods("POST")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +118,18 @@ func createMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.NewEncoder(w).Encode(id)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func getMedias(w http.ResponseWriter, r *http.Request) {
+	r.Header.Set("content-type", "application/json")
+	// todo: params
+	medias, err := db.GetMedias()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	if err := json.NewEncoder(w).Encode(medias); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

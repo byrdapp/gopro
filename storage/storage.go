@@ -8,7 +8,7 @@ type Profile struct {
 	LastName       string `json:"lastName,omitempty"`
 	Address        string `json:"address,omitempty"`
 	Email          string `json:"email,omitempty"`
-	IsMedia        bool   `json:"isMeadia,omitempty"`
+	IsMedia        bool   `json:"isMedia,omitempty"`
 	IsProfessional bool   `json:"isProfessional,omitempty"`
 	IsPress        bool   `json:"isPress,omitempty"`
 	// CreateDate         *time.Time `json:"createDate"`

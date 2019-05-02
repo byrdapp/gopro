@@ -1,5 +1,7 @@
 package storage
 
+import "database/sql"
+
 // Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type Service interface {
 	UpdateMedia(id string) (*Media, error)
@@ -8,9 +10,10 @@ type Service interface {
 	// Delete(string) (string, error)
 	Close() error
 	GetMediaByID(string) (*Media, error)
-	GetMedias() ([]*Media, error)
+	GetMedias(...[]string) ([]*Media, error)
 	Ping() error
-	HandleError(error)
+	HandleRowError(error)
+	CancelRowsError(*sql.Rows) error
 }
 
 // Media is for SQL media queries

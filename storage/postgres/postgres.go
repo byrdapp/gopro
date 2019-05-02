@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -17,8 +16,6 @@ import (
 type Postgres struct {
 	DB *sql.DB
 }
-
-var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 
 // NewPQ Starts ORM
 func NewPQ() (Service, error) {
@@ -44,11 +41,11 @@ func (p *Postgres) UpdateMedia(id string) (*Media, error) {
 
 // CreateMedia -
 func (p *Postgres) CreateMedia(media *Media) (string, error) {
-	defer cancel()
 	var id int64
+	ctx := context.Background()
 	err := p.DB.QueryRowContext(ctx, "INSERT INTO media(name, user_id, display_name) VALUES($1, $2, $3) RETURNING id;", media.Name, media.UserID, media.DisplayName).Scan(&id)
 	if err != nil {
-		p.HandleError(err)
+		p.HandleRowError(err)
 		return "", err
 	}
 	logrus.Infof("Inserted new media with id: %v", id)
@@ -59,22 +56,40 @@ func (p *Postgres) CreateMedia(media *Media) (string, error) {
 func (p *Postgres) GetMediaByID(id string) (*Media, error) {
 	var media Media
 	sqlid, _ := strconv.Atoi(id)
-	ctx, cancel = context.WithTimeout(ctx, time.Second*3)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	row := p.DB.QueryRow(`SELECT * FROM media WHERE id = $1`, sqlid)
+	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = $1`, sqlid)
 	err := row.Scan(&media.ID, &media.Name, &media.UserID, &media.DisplayName)
 	if err != nil {
-		p.HandleError(err)
+		p.HandleRowError(err)
 		return nil, err
 	}
 	return &media, nil
 }
 
 // GetMedias -
-func (p *Postgres) GetMedias() ([]*Media, error) {
-	// var medias []*media
-	return nil, nil
+func (p *Postgres) GetMedias(params ...[]string) ([]*Media, error) {
+	medias := make([]*Media, 0)
+	ctx := context.Background()
+	rows, err := p.DB.QueryContext(ctx, "SELECT * FROM media;", params)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var media *Media
+		if err := rows.Scan(&media); err != nil {
+			return nil, err
+		}
+		medias = append(medias, media)
+	}
+
+	if err := p.CancelRowsError(rows); err != nil {
+		return nil, err
+	}
+
+	return medias, nil
 }
 
 // Ping to see if theres connection
@@ -91,14 +106,22 @@ func (p *Postgres) Close() error {
 	return nil
 }
 
-// HandleError to handle errors from sql requests
-func (p *Postgres) HandleError(err error) {
-	switch err {
-	case sql.ErrNoRows:
+// HandleRowError to handle errors from sql requests
+func (p *Postgres) HandleRowError(err error) {
+	switch {
+	case err == sql.ErrNoRows:
 		logrus.Errorf("No rows were returned: %s\n", err)
-	case nil:
+	case err != nil:
 		logrus.Errorf("Error with query: %v\n", err)
 	default:
 		logrus.Panicf("Default error: %v\n", err)
 	}
+}
+
+// CancelRowsError to handle errors from sql requests
+func (p *Postgres) CancelRowsError(rows *sql.Rows) error {
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	return rows.Err()
 }

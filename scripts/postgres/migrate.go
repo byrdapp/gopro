@@ -60,17 +60,23 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for _, val := range profiles[:1] {
-			media := postgres.Media{
-				Name:        val.FirstName,
-				DisplayName: val.DisplayName,
-				UserID:      val.UserID,
-				Email:       val.Email,
+		for _, val := range profiles {
+			if val.IsMedia {
+				media := postgres.Media{
+					Name:        fmt.Sprintf("%s %s", val.FirstName, val.LastName),
+					DisplayName: val.DisplayName,
+					UserID:      val.UserID,
+					Email:       val.Email,
+				}
+
+				str, err := sqldb.CreateMedia(&media)
+				if err != nil {
+					logrus.Errorf("Didnt create row: %s", err)
+				}
+				fmt.Printf("Inserted this fellow: %s and created id in SQL: %v\n", media.DisplayName, str)
+			} else {
+				fmt.Printf("Skipping this guy %s\n", val.DisplayName)
 			}
-
-			sqldb.CreateMedia(&media)
-
-			fmt.Println("Inserted this guy: " + media.DisplayName)
 		}
 	}()
 	wg.Wait()
