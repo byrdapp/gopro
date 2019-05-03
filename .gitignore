@@ -8,3 +8,4 @@ gopro
 vendor
 .DS_Store
 .env
+.env-prod

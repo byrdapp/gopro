@@ -42,7 +42,7 @@ func main() {
 	r.HandleFunc("/media/{id}", getMediaByID).Methods("GET")
 	r.HandleFunc("/media", createMedia).Methods("POST")
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusTooEarly)
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	})
 	fmt.Printf("Now listening to env: %s on port: %s\n", os.Getenv("ENV"), os.Getenv("PORT"))
@@ -51,7 +51,7 @@ func main() {
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		Cache:      autocert.DirCache("cert-cache"),
-		HostPolicy: autocert.HostWhitelist("go-api.byrd.news"),
+		HostPolicy: autocert.HostWhitelist("gopro.byrd.news"),
 	}
 
 	server := &http.Server{
@@ -62,9 +62,9 @@ func main() {
 		},
 	}
 
-	headersOk := handlers.AllowedHeaders([]string{"Content-Type"})
+	headersOk := handlers.AllowedHeaders([]string{"content-type"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"})
 	handler := handlers.CORS(headersOk, originsOk, methodsOk)(r)
 	_ = handler
 	err = server.ListenAndServe()
@@ -86,7 +86,7 @@ func InitEnvironment() error {
 		}
 	} else {
 		if !ok {
-			return errors.New("Didn't fetch the environment")
+			return errors.New("No environment provided")
 		}
 		fmt.Println("Server CFG is being used")
 	}
