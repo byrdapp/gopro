@@ -5,7 +5,7 @@ ENV SRC_DIR=/go/src
 WORKDIR ${SRC_DIR}
 COPY ./ ./
 
-RUN go mod download
+RUN go get ./
 RUN go mod verify
 RUN go mod tidy
 RUN go build -o gopro .
