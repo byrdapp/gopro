@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
@@ -94,9 +97,12 @@ func InitEnvironment() error {
 	fmt.Printf("%s environment is used as config\n", env)
 	return nil
 }
+
 func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	val, err := db.GetMediaByID(params["id"])
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+	defer cancel()
+	val, err := db.GetMediaByID(ctx, params["id"])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -107,12 +113,14 @@ func getMediaByID(w http.ResponseWriter, r *http.Request) {
 
 func createMedia(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+	defer cancel()
 	var media postgres.Media
 	if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	id, err := db.CreateMedia(&media)
+	id, err := db.CreateMedia(ctx, &media)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -122,10 +130,13 @@ func createMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getMedias endpoint: /medias
 func getMedias(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
+	defer cancel()
 	// todo: params
-	medias, err := db.GetMedias()
+	medias, err := db.GetMedias(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -137,4 +148,5 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 /**
  * * What is the relationship between media and department?
  * * What should be shown to the user of these ^?
+ * ! implement context in all server>db calls
  */

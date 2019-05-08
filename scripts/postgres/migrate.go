@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -56,6 +57,7 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 	if err := sqldb.Ping(); err != nil {
 		logrus.Fatal(err)
 	}
+	ctx := context.Background()
 
 	wg.Add(1)
 	go func() {
@@ -69,7 +71,7 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 					Email:       val.Email,
 				}
 
-				str, err := sqldb.CreateMedia(&media)
+				str, err := sqldb.CreateMedia(ctx, &media)
 				if err != nil {
 					logrus.Errorf("Didnt create row: %s", err)
 				}
