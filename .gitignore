@@ -9,3 +9,6 @@ vendor
 .DS_Store
 .env
 .env-prod
+.dockerignore
+docker-compose.yml
+scripts/setenv.go
