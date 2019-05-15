@@ -2,7 +2,6 @@
 config
 assets
 certs
-csv-files
 *.csv
 gopro
 vendor
@@ -11,5 +10,4 @@ vendor
 .env-prod
 .dockerignore
 docker-compose.yml
-scripts/setenv.go
 docker-compose.yml

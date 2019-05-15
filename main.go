@@ -2,31 +2,72 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"net/http"
 	"time"
 
 	postgres "github.com/byblix/gopro/storage/postgres"
-	"github.com/byblix/gopro/utils"
-	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
 var db postgres.Service
 
-func main() {
-	if err := utils.InitEnvironment(); err != nil {
-		logrus.Fatalln(err)
+var (
+	local = flag.Bool("local", false, "Do you want to run go run *.go?")
+	host  = flag.String("host", "", "What host are you using?")
+	// ? not yet in use
+	production = flag.Bool("production", false, "Is it production?")
+)
+
+func init() {
+	// type go run *.go -local
+	flag.Parse()
+	if *local {
+		log.Info("Running locally")
+		if err := godotenv.Load(); err != nil {
+			log.Fatalln(err)
+		}
 	}
+}
+
+func main() {
 	svc, err := postgres.NewPQ()
 	if err != nil {
-		logrus.Fatalf("POSTGRESQL err: %s", err)
+		log.Fatalf("POSTGRESQL err: %s", err)
 	}
 	db = svc
 	defer svc.Close()
 
-	if err := newServer(); err != nil {
-		logrus.Fatalf("Error starting server:%s", err)
+	s, err := newServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Serve on localhost with localhost certs if no host provided
+	if *host == "" {
+		s.httpsSrv.Addr = "localhost:8085"
+		logrus.Info("Serving on http://localhost:8085")
+		// log.Fatal(httpsSrv.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"))
+		if err := s.httpsSrv.ListenAndServe(); err != nil {
+			s.log.Fatal(err)
+		}
+	}
+
+	// Start a reg. HTTP on a new thread
+	go func() {
+		if err := s.httpSrv.ListenAndServe(); err != nil {
+			logrus.Fatal(err)
+		}
+	}()
+
+	// Set TLS cert
+	s.httpsSrv.TLSConfig.GetCertificate = s.certm.GetCertificate
+	log.Info("Serving on https, authenticating for https://", *host)
+	if err := s.httpsSrv.ListenAndServeTLS("", ""); err != nil {
+		s.log.Fatal(err)
 	}
 
 	// headersOk := handlers.AllowedHeaders([]string{"content-type"})
@@ -37,34 +78,38 @@ func main() {
 }
 
 func getMediaByID(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
-	defer cancel()
-	val, err := db.GetMediaByID(ctx, params["id"])
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	if err := json.NewEncoder(w).Encode(val); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if r.Method == http.MethodGet {
+		id := "40"
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+		defer cancel()
+		val, err := db.GetMediaByID(ctx, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		if err := json.NewEncoder(w).Encode(val); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
 func createMedia(w http.ResponseWriter, r *http.Request) {
-	r.Header.Set("content-type", "application/json")
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
-	defer cancel()
-	var media postgres.Media
-	if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
+	if r.Method == http.MethodPost {
+		r.Header.Set("content-type", "application/json")
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+		defer cancel()
+		var media postgres.Media
+		if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 
-	id, err := db.CreateMedia(ctx, &media)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	err = json.NewEncoder(w).Encode(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		id, err := db.CreateMedia(ctx, &media)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		err = json.NewEncoder(w).Encode(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

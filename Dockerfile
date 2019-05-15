@@ -15,4 +15,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 VOLUME ["/certs"]
 
+EXPOSE 443
+EXPOSE 80
+
 ENTRYPOINT [ "/app/main" ]
