@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bd72195... Importing basic server logic for https and jwt
 FROM golang:1.12.5 as builder
 
 WORKDIR /go/app/
@@ -16,6 +19,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 VOLUME ["/certs"]
 
+<<<<<<< HEAD
 ENTRYPOINT [ "/app/main" ]
 =======
 ARG GO_VERSION=1.12.4
@@ -33,3 +37,6 @@ ENTRYPOINT [ "./gopro", "-env=local" ]
 EXPOSE 8085
 EXPOSE 80
 >>>>>>> e38123e... go mod verify
+=======
+ENTRYPOINT [ "/app/main" ]
+>>>>>>> bd72195... Importing basic server logic for https and jwt
