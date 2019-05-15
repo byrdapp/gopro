@@ -50,7 +50,6 @@ func main() {
 	if *host == "" {
 		s.httpsSrv.Addr = "localhost:8085"
 		logrus.Info("Serving on http://localhost:8085")
-		// log.Fatal(httpsSrv.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"))
 		if err := s.httpsSrv.ListenAndServe(); err != nil {
 			s.log.Fatal(err)
 		}
@@ -79,7 +78,6 @@ func main() {
 
 func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		id := "40"
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
 		val, err := db.GetMediaByID(ctx, id)
