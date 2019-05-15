@@ -7,6 +7,7 @@ import (
 	"time"
 
 	postgres "github.com/byblix/gopro/storage/postgres"
+	mux "github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -40,7 +41,6 @@ func main() {
 	}
 	db = svc
 	defer svc.Close()
-
 	s, err := newServer()
 	if err != nil {
 		log.Fatal(err)
@@ -55,16 +55,20 @@ func main() {
 		}
 	}
 
+	if err := s.useHTTP2(); err != nil {
+		s.log.Warnf("Error with HTTP2 %s", err)
+	}
+
 	// Start a reg. HTTP on a new thread
 	go func() {
 		if err := s.httpSrv.ListenAndServe(); err != nil {
-			logrus.Fatal(err)
+			s.log.Fatal(err)
 		}
 	}()
 
 	// Set TLS cert
 	s.httpsSrv.TLSConfig.GetCertificate = s.certm.GetCertificate
-	log.Info("Serving on https, authenticating for https://", *host)
+	s.log.Info("Serving on https, authenticating for https://", *host)
 	if err := s.httpsSrv.ListenAndServeTLS("", ""); err != nil {
 		s.log.Fatal(err)
 	}
@@ -78,11 +82,12 @@ func main() {
 
 func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
+		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
-		val, err := db.GetMediaByID(ctx, id)
+		val, err := db.GetMediaByID(ctx, params["id"])
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 		if err := json.NewEncoder(w).Encode(val); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

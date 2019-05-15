@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	mux "github.com/gorilla/mux"
+
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
 	"github.com/dgrijalva/jwt-go"
@@ -21,38 +23,28 @@ type Server struct {
 	httpSrv  *http.Server
 	certm    *autocert.Manager
 	log      *logrus.Logger
+	mux      *mux.Router
 }
 
 var jwtKey = []byte("thiskeyiswhat")
 
-func newLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:    true,
-		FullTimestamp:  true,
-		DisableSorting: true,
-	})
-	return logger
-}
-
 // Creates a new server with H2 & HTTPS
 func newServer() (*Server, error) {
-	mux := http.NewServeMux()
+	mux := mux.NewRouter()
 	// ? Public endpoints
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooEarly)
 		fmt.Fprintln(w, "Nothing to see here :-)")
-	})
-	mux.HandleFunc("/authenticate", generateJWT)
+	}).Methods("GET")
+	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
 
 	// * Private endpoints
-	mux.HandleFunc("/secure", isJWTAuth(secureMessage))
-	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler))
-	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg))
-	mux.HandleFunc("/medias", isJWTAuth(getMedias))
-	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID))
-	mux.HandleFunc("/media", isJWTAuth(createMedia))
+	mux.HandleFunc("/secure", isJWTAuth(secureMessage)).Methods("GET")
+	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
+	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
+	mux.HandleFunc("/media", isJWTAuth(getMedias)).Methods("GET")
+	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
+	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
 	m := autocert.Manager{
@@ -86,16 +78,23 @@ func newServer() (*Server, error) {
 		Handler:      m.HTTPHandler(nil),
 	}
 
-	if err := useHTTP2(httpsSrv); err != nil {
-		logrus.Warnf("Error with HTTP2 %s", err)
-	}
-
 	return &Server{
 		httpsSrv: httpsSrv,
 		httpSrv:  httpSrv,
 		log:      newLogger(),
 		certm:    &m,
 	}, nil
+}
+
+func newLogger() *logrus.Logger {
+	logger := logrus.StandardLogger()
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:    true,
+		FullTimestamp:  true,
+		DisableSorting: true,
+	})
+	return logger
 }
 
 func generateJWT(w http.ResponseWriter, r *http.Request) {
@@ -135,9 +134,9 @@ func secureMessage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Secret hello from go-pro!"))
 }
 
-func useHTTP2(httpsSrv *http.Server) error {
+func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(httpsSrv, &http2Srv)
+	err := http2.ConfigureServer(s.httpsSrv, &http2Srv)
 	if err != nil {
 		return err
 	}
