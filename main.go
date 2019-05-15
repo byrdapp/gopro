@@ -12,8 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// to run this locally with dev: $ go build && ./gopro -env="local"
-
 var db postgres.Service
 
 func main() {
