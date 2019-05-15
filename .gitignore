@@ -10,6 +10,9 @@ vendor
 .env
 .env-prod
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a9db944... Update .gitignore
 .dockerignore
 docker-compose.yml
 scripts/setenv.go
