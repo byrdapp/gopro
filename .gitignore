@@ -9,17 +9,6 @@ vendor
 .DS_Store
 .env
 .env-prod
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a9db944... Update .gitignore
 .dockerignore
 docker-compose.yml
 scripts/setenv.go
-<<<<<<< HEAD
-=======
-docker-compose.yml
->>>>>>> bd72195... Importing basic server logic for https and jwt
-scripts/setenv.go
-=======
->>>>>>> 0e9cab0... ignored
