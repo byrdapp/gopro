@@ -13,6 +13,4 @@ vendor
 .dockerignore
 docker-compose.yml
 scripts/setenv.go
-=======
 docker-compose.yml
->>>>>>> bd72195... Importing basic server logic for https and jwt
