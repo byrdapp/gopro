@@ -5,9 +5,15 @@ go 1.12
 require (
 	firebase.google.com/go v3.7.0+incompatible
 	github.com/aws/aws-sdk-go v1.19.27
+<<<<<<< HEAD
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/google/martian v2.1.0+incompatible // indirect
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
+=======
+	github.com/google/martian v2.1.0+incompatible // indirect
+	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
+	github.com/gorilla/handlers v1.4.0
+>>>>>>> e38123e... go mod verify
 	github.com/gorilla/mux v1.7.1
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/joho/godotenv v1.3.0

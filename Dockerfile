@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 FROM golang:1.12.5 as builder
 
 WORKDIR /go/app/
@@ -16,3 +17,19 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 VOLUME ["/certs"]
 
 ENTRYPOINT [ "/app/main" ]
+=======
+ARG GO_VERSION=1.12.4
+FROM golang:${GO_VERSION}-alpine3.9 as golang
+
+ENV SRC_DIR=/go/src
+WORKDIR ${SRC_DIR}
+COPY ./ ./
+
+# RUN go get all
+# RUN go mod verify
+# RUN go mod tidy
+RUN go build -o gopro .
+ENTRYPOINT [ "./gopro", "-env=local" ]
+EXPOSE 8085
+EXPOSE 80
+>>>>>>> e38123e... go mod verify
