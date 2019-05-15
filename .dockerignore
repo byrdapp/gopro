@@ -1,4 +1,5 @@
 .vscode
+.env
 config
 assets
 csv-files

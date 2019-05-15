@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -19,6 +20,7 @@ type Postgres struct {
 
 // NewPQ Starts ORM
 func NewPQ() (Service, error) {
+	logrus.Info("Starting postgres...")
 	connStr := os.Getenv("POSTGRES_CONNSTR")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -40,9 +42,9 @@ func (p *Postgres) UpdateMedia(id string) (*Media, error) {
 }
 
 // CreateMedia -
-func (p *Postgres) CreateMedia(media *Media) (string, error) {
+func (p *Postgres) CreateMedia(ctx context.Context, media *Media) (string, error) {
 	var id int64
-	ctx := context.Background()
+	time.Sleep(time.Second * 5)
 	err := p.DB.QueryRowContext(ctx, "INSERT INTO media(name, user_id, display_name) VALUES($1, $2, $3) RETURNING id;", media.Name, media.UserID, media.DisplayName).Scan(&id)
 	if err != nil {
 		p.HandleRowError(err)
@@ -53,13 +55,14 @@ func (p *Postgres) CreateMedia(media *Media) (string, error) {
 }
 
 // GetMediaByID -
-func (p *Postgres) GetMediaByID(id string) (*Media, error) {
+func (p *Postgres) GetMediaByID(ctx context.Context, id string) (*Media, error) {
 	var media Media
-	sqlid, _ := strconv.Atoi(id)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	sqlid, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
 	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = $1`, sqlid)
-	err := row.Scan(&media.ID, &media.Name, &media.UserID, &media.DisplayName)
+	err = row.Scan(&media.ID, &media.Name, &media.UserID, &media.DisplayName)
 	if err != nil {
 		p.HandleRowError(err)
 		return nil, err
@@ -68,24 +71,24 @@ func (p *Postgres) GetMediaByID(id string) (*Media, error) {
 }
 
 // GetMedias -
-func (p *Postgres) GetMedias(params ...[]string) ([]*Media, error) {
-	medias := make([]*Media, 0)
-	ctx := context.Background()
-	rows, err := p.DB.QueryContext(ctx, "SELECT * FROM media;", params)
+func (p *Postgres) GetMedias(ctx context.Context, params ...[]string) ([]*Media, error) {
+	var medias []*Media
+	rows, err := p.DB.QueryContext(ctx, "SELECT * FROM media LIMIT 10;")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var media *Media
-		if err := rows.Scan(&media); err != nil {
+		var media Media
+		if err := rows.Scan(&media.ID, &media.Name, &media.UserID, &media.DisplayName); err != nil {
 			return nil, err
 		}
-		medias = append(medias, media)
+		medias = append(medias, &media)
 	}
 
 	if err := p.CancelRowsError(rows); err != nil {
+		logrus.Errorf("Error getting rows: %s", err)
 		return nil, err
 	}
 
