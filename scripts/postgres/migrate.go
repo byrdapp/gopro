@@ -63,21 +63,19 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 	go func() {
 		defer wg.Done()
 		for _, val := range profiles {
-			if val.IsMedia {
-				media := postgres.Media{
+			if val.IsProfessional {
+				pro := postgres.Professional{
 					Name:        fmt.Sprintf("%s %s", val.FirstName, val.LastName),
 					DisplayName: val.DisplayName,
 					UserID:      val.UserID,
 					Email:       val.Email,
 				}
-
-				str, err := sqldb.CreateMedia(ctx, &media)
+				id, err := sqldb.CreateProfessional(ctx, &pro)
 				if err != nil {
 					logrus.Errorf("Didnt create row: %s", err)
+					return
 				}
-				fmt.Printf("Inserted this fellow: %s and created id in SQL: %v\n", media.DisplayName, str)
-			} else {
-				fmt.Printf("Skipping this guy %s\n", val.DisplayName)
+				fmt.Printf("Inserted this fellow: %s and created id in SQL: %v\n", pro.DisplayName, id)
 			}
 		}
 	}()
@@ -85,6 +83,9 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 
 	return nil
 }
+
+// todo:
+// func importProfessionals(){}
 
 // todo:
 // func createMediatableDepartments(){}

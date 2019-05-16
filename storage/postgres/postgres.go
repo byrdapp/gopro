@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -44,7 +43,6 @@ func (p *Postgres) UpdateMedia(id string) (*Media, error) {
 // CreateMedia -
 func (p *Postgres) CreateMedia(ctx context.Context, media *Media) (string, error) {
 	var id int64
-	time.Sleep(time.Second * 5)
 	err := p.DB.QueryRowContext(ctx, "INSERT INTO media(name, user_id, display_name) VALUES($1, $2, $3) RETURNING id;", media.Name, media.UserID, media.DisplayName).Scan(&id)
 	if err != nil {
 		p.HandleRowError(err)
@@ -93,6 +91,34 @@ func (p *Postgres) GetMedias(ctx context.Context, params ...[]string) ([]*Media,
 	}
 
 	return medias, nil
+}
+
+// CreateProfessional -
+func (p *Postgres) CreateProfessional(ctx context.Context, pro *Professional) (string, error) {
+	var id int64
+	err := p.DB.QueryRowContext(ctx, "INSERT INTO professional(name, user_id, display_name, email) VALUES($1, $2, $3, $4) RETURNING id;", pro.Name, pro.UserID, pro.DisplayName, pro.Email).Scan(&id)
+	if err != nil {
+		p.HandleRowError(err)
+		return "", err
+	}
+	logrus.Infof("Inserted new pro with id: %v", id)
+	return strconv.Itoa(int(id)), nil
+}
+
+// GetProByID -
+func (p *Postgres) GetProByID(ctx context.Context, id string) (*Professional, error) {
+	var pro Professional
+	sqlid, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = $1`, sqlid)
+	err = row.Scan(&pro.ID, &pro.Name, &pro.UserID, &pro.DisplayName)
+	if err != nil {
+		p.HandleRowError(err)
+		return nil, err
+	}
+	return &pro, nil
 }
 
 // Ping to see if theres connection

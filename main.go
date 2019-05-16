@@ -41,10 +41,7 @@ func main() {
 	}
 	db = svc
 	defer svc.Close()
-	s, err := newServer()
-	if err != nil {
-		log.Fatal(err)
-	}
+	s := newServer()
 
 	// Serve on localhost with localhost certs if no host provided
 	if *host == "" {
@@ -72,12 +69,6 @@ func main() {
 	if err := s.httpsSrv.ListenAndServeTLS("", ""); err != nil {
 		s.log.Fatal(err)
 	}
-
-	// headersOk := handlers.AllowedHeaders([]string{"content-type"})
-	// originsOk := handlers.AllowedOrigins([]string{"*"})
-	// methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"})
-	// handler := handlers.CORS(headersOk, originsOk, methodsOk)(r)
-
 }
 
 func getMediaByID(w http.ResponseWriter, r *http.Request) {

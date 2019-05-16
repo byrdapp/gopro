@@ -14,6 +14,7 @@ type Service interface {
 	Close() error
 	GetMediaByID(context.Context, string) (*Media, error)
 	GetMedias(context.Context, ...[]string) ([]*Media, error)
+	CreateProfessional(context.Context, *Professional) (string, error)
 	Ping() error
 	HandleRowError(error)
 	CancelRowsError(*sql.Rows) error
@@ -27,4 +28,12 @@ type Media struct {
 	DisplayName string `json:"displayName"`
 	Email       string `json:"email"`
 	// CreatedDate time.Time `json:"createdDate"`
+}
+
+type Professional struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	UserID      string `json:"userId,sql:user_id"`
+	DisplayName string `json:"displayName,sql:display_name"`
+	Email       string `json:"email"`
 }

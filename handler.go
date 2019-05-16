@@ -29,7 +29,7 @@ type Server struct {
 var jwtKey = []byte("thiskeyiswhat")
 
 // Creates a new server with H2 & HTTPS
-func newServer() (*Server, error) {
+func newServer() *Server {
 	mux := mux.NewRouter()
 	// ? Public endpoints
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -37,9 +37,13 @@ func newServer() (*Server, error) {
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
 	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
+	mux.HandleFunc("/reauthenticate", isJWTAuth(generateJWT)).Methods("GET")
 
 	// * Private endpoints
-	mux.HandleFunc("/secure", isJWTAuth(secureMessage)).Methods("GET")
+	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Secure msg from gopro service"))
+	})).Methods("GET")
+
 	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
 	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
 	mux.HandleFunc("/media", isJWTAuth(getMedias)).Methods("GET")
@@ -83,18 +87,7 @@ func newServer() (*Server, error) {
 		httpSrv:  httpSrv,
 		log:      newLogger(),
 		certm:    &m,
-	}, nil
-}
-
-func newLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:    true,
-		FullTimestamp:  true,
-		DisableSorting: true,
-	})
-	return logger
+	}
 }
 
 func generateJWT(w http.ResponseWriter, r *http.Request) {
@@ -103,11 +96,11 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 		if err := decodeJSON(r.Body, creds); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		expirationTime := time.Now().Add(5 * time.Minute)
+		tokenExpirationTime := time.Now().Add(time.Second * 20)
 		claims := &Claims{
 			Username: creds.Username,
 			Claims: jwt.StandardClaims{
-				ExpiresAt: expirationTime.Unix(),
+				ExpiresAt: tokenExpirationTime.Unix(),
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
@@ -119,7 +112,7 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 
 		http.SetCookie(w, &http.Cookie{
 			Name:    "token",
-			Expires: expirationTime,
+			Expires: time.Now().Add(time.Minute * 1),
 			Value:   signedToken,
 		})
 
@@ -130,8 +123,15 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func secureMessage(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Secret hello from go-pro!"))
+func newLogger() *logrus.Logger {
+	logger := logrus.StandardLogger()
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:    true,
+		FullTimestamp:  true,
+		DisableSorting: true,
+	})
+	return logger
 }
 
 func (s *Server) useHTTP2() error {
