@@ -14,6 +14,13 @@ type Claims struct {
 	Claims   jwt.StandardClaims
 }
 
+const (
+	// Time current token must be below until a refresh happens
+	TOKEN_REFRESH_TROTTLE = 10 * time.Second
+	// How much time will the token be extended for
+	TOKEN_EXPIRATION_TIME = 30 * time.Second
+)
+
 // isJWTAuth middleware requires routes to possess a JWToken
 func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +54,7 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Token is not valid", http.StatusUnauthorized)
 			return
 		}
-		// TODO Make the token refresh
+		// TODO The token claims will be error caught if it has expired (<0 secoonds) before refresh occours
 		if err := claims.refreshToken(w); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -57,21 +64,18 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-func (c *Claims) isRefreshToken() {
-	// c.Claims.ExpiresAt
-}
-
 func (c *Claims) refreshToken(w http.ResponseWriter) error {
-	tokenRefreshThrottle := time.Now().Add(10 * time.Second).Unix()
+	tokenRefreshThrottle := time.Now().Add(TOKEN_REFRESH_TROTTLE).Unix()
+	fmt.Println(c.Claims.ExpiresAt)
+	fmt.Println(tokenRefreshThrottle)
 	if tokenRefreshThrottle > c.Claims.ExpiresAt {
-		expirationTime := time.Now().Add(10 * time.Second)
+		expirationTime := time.Now().Add(TOKEN_EXPIRATION_TIME)
 		c.Claims.ExpiresAt = expirationTime.Unix()
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
 		signedToken, err := token.SignedString(jwtKey)
 		if err != nil {
 			return err
 		}
-		// TODO Token is not refreshed
 		http.SetCookie(w, &http.Cookie{
 			Name:  "token",
 			Value: signedToken,
