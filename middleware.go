@@ -55,6 +55,7 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		// TODO The token claims will be error caught if it has expired (<0 secoonds) before refresh occours
+		// ! Token does not refresh if already expired
 		if err := claims.refreshToken(w); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
