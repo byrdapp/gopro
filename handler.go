@@ -112,13 +112,14 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 
 		http.SetCookie(w, &http.Cookie{
 			Name:    "token",
-			Expires: time.Now().Add(time.Minute * 1),
+			Expires: time.Now().Add(time.Second * 20),
 			Value:   signedToken,
 		})
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
 			logrus.Warn(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 }

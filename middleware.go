@@ -25,7 +25,7 @@ const (
 func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
-		fmt.Printf("Token: %s\n", c.Value)
+		claims := Claims{}
 		if err != nil {
 			if err == http.ErrNoCookie {
 				http.Error(w, http.ErrNoCookie.Error(), http.StatusUnauthorized)
@@ -34,8 +34,8 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		fmt.Printf("Token: %s\n", c.Value)
 
-		claims := Claims{}
 		token, err := jwt.ParseWithClaims(c.Value, &claims.Claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				http.Error(w, "Invalid signing algorithm", 401)
@@ -47,17 +47,15 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusForbidden)
+		}
+		// * refresh if the token is expired but value still in cookie
+		if err := claims.refreshToken(w); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if !token.Valid {
 			http.Error(w, "Token is not valid", http.StatusUnauthorized)
-			return
-		}
-		// TODO The token claims will be error caught if it has expired (<0 secoonds) before refresh occours
-		// ! Token does not refresh if already expired
-		if err := claims.refreshToken(w); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -69,7 +67,7 @@ func (c *Claims) refreshToken(w http.ResponseWriter) error {
 	tokenRefreshThrottle := time.Now().Add(TOKEN_REFRESH_TROTTLE).Unix()
 	fmt.Println(c.Claims.ExpiresAt)
 	fmt.Println(tokenRefreshThrottle)
-	if tokenRefreshThrottle > c.Claims.ExpiresAt {
+	if c.Claims.ExpiresAt < tokenRefreshThrottle {
 		expirationTime := time.Now().Add(TOKEN_EXPIRATION_TIME)
 		c.Claims.ExpiresAt = expirationTime.Unix()
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
