@@ -20,7 +20,10 @@ type Postgres struct {
 // NewPQ Starts ORM
 func NewPQ() (Service, error) {
 	logrus.Info("Starting postgres...")
-	connStr := os.Getenv("POSTGRES_CONNSTR")
+	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
+	if !ok {
+		logrus.Fatal("Error opening postgress connstr")
+	}
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err

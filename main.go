@@ -9,7 +9,6 @@ import (
 	postgres "github.com/byblix/gopro/storage/postgres"
 	mux "github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -46,7 +45,7 @@ func main() {
 	// Serve on localhost with localhost certs if no host provided
 	if *host == "" {
 		s.httpsSrv.Addr = "localhost:8085"
-		logrus.Info("Serving on http://localhost:8085")
+		s.log.Info("Serving on http://localhost:8085")
 		if err := s.httpsSrv.ListenAndServe(); err != nil {
 			s.log.Fatal(err)
 		}
@@ -58,6 +57,7 @@ func main() {
 
 	// Start a reg. HTTP on a new thread
 	go func() {
+		s.log.Info("Running http server")
 		if err := s.httpSrv.ListenAndServe(); err != nil {
 			s.log.Fatal(err)
 		}
