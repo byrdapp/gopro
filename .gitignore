@@ -1,9 +1,13 @@
 .vscode
 config
 assets
-csv-files
+certs
 *.csv
 gopro
 vendor
 .DS_Store
 .env
+.env-prod
+.dockerignore
+docker-compose.yml
+docker-compose.yml

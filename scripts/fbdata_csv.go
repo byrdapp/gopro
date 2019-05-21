@@ -7,7 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/byblix/gopro/storage"
+	storage "github.com/byblix/gopro/storage"
+	firebase "github.com/byblix/gopro/storage/firebase"
 )
 
 func createCSV(record []string, index int, info interface{}) {
@@ -19,8 +20,8 @@ func createCSV(record []string, index int, info interface{}) {
 }
 
 // WithdrawalsToCSV asdasd
-func WithdrawalsToCSV(db *storage.DBInstance) {
-	withdrawals, err := storage.GetWithdrawals(db)
+func WithdrawalsToCSV(db *firebase.DBInstance) {
+	withdrawals, err := db.GetWithdrawals()
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)
 	}
@@ -33,9 +34,9 @@ func WithdrawalsToCSV(db *storage.DBInstance) {
 }
 
 // WriteWithdrawalsToCSV Does everything inside the loop above
-func writeWithdrawalsToCSV(db *storage.DBInstance, w *csv.Writer, index int, val *storage.Withdrawals) {
+func writeWithdrawalsToCSV(db *firebase.DBInstance, w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
-	profile, err := storage.GetProfile(db, val.RequestUserID)
+	profile, err := db.GetProfile(val.RequestUserID)
 	var record []string
 	record = append(record, strconv.FormatInt(int64(index), 10))
 	record = append(record, ParseUnixAsDate(val.RequestDate))
@@ -52,8 +53,8 @@ func writeWithdrawalsToCSV(db *storage.DBInstance, w *csv.Writer, index int, val
 }
 
 // ProfilesToCSV initiates data and loops the write process
-func ProfilesToCSV(db *storage.DBInstance) {
-	prfs, err := storage.GetProfiles(db)
+func ProfilesToCSV(db *firebase.DBInstance) {
+	prfs, err := db.GetProfiles()
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)
 	}
@@ -81,7 +82,7 @@ func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.Pro
 	record = append(record, profile.FirstName+" "+profile.LastName)
 	record = append(record, profile.Email)
 	record = append(record, strconv.FormatBool(profile.IsProfessional))
-	record = append(record, ParseUnixAsDate(profile.CreateDate))
+	// record = append(record, ParseFloatUnixDate(profile.CreateDate))
 	record = append(record, strconv.FormatInt(profile.SalesQuantity, 10))
 	record = append(record, strconv.FormatInt(profile.WithdrawableAmount, 10))
 	record = append(record, strconv.FormatInt(alreadyCashedAmount, 10))

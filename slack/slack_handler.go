@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/byblix/gopro/utils"
+	"strings"
 
 	"github.com/byblix/gopro/models"
 )
@@ -38,7 +37,7 @@ func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 func postTip(tip *TipRequest) error {
 	slackMsg := &TipSlackMsg{
 		Text: "A new pro-tip has been made from: " + tip.Profile.DisplayName +
-			"\nThe following medias has been tipped: " + utils.JoinStrings(tip.Medias),
+			"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
 		Title:     "Story: " + tip.Story.StoryHeadline,
 		TitleLink: "https://app.byrd.news/" + tip.Story.StoryID,
 	}

@@ -1,34 +1,32 @@
 package mailtips
 
 import (
+	"fmt"
+	"log"
 	"sync"
 
-	"github.com/sendgrid/rest"
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 // SendMail via. sendgrid
-func SendMail(client *sendgrid.Client, mailReq *MailReq, ch chan<- *rest.Response, wg *sync.WaitGroup) error {
-	go func() error {
-		for _, reciever := range mailReq.Receivers {
-			wg.Add(1)
+func SendMail(client *sendgrid.Client, mailReq *MailReq, wg *sync.WaitGroup) {
+	for _, reciever := range mailReq.Receivers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			from := sgmail.NewEmail(mailReq.From.DisplayName, mailReq.From.Email)
 			subject := mailReq.Subject
-			to := sgmail.NewEmail(reciever.Email, reciever.Email)
+			to := sgmail.NewEmail(reciever.DisplayName, reciever.Email)
 			content := mailReq.Content
 			htmlContent := "<h3> A tip for you!" + mailReq.Content + "</h3>"
 			message := sgmail.NewSingleEmail(from, subject, to, content, htmlContent)
 			resp, err := client.Send(message)
 			if err != nil {
-				return err
+				log.Panicf("Error sending mail: %s", err)
 			}
-			ch <- resp
-		}
-		wg.Done()
-		close(ch)
-		return nil
-	}()
-	wg.Wait()
-	return nil
+			fmt.Printf("%s", resp.Body)
+		}()
+		wg.Wait()
+	}
 }

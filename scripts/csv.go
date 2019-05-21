@@ -41,5 +41,10 @@ func ParseUnixAsDate(val int64) string {
 	}
 	date := time.Unix((val / 1000), 0)
 	fmt.Println(date)
-	return date.String()
+	return date.UTC().String()
+}
+
+// ParseFloatUnixDate float64 instead of int64
+func ParseFloatUnixDate(t *time.Time) string {
+	return t.UTC().String()
 }

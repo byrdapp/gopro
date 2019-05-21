@@ -58,17 +58,20 @@ func uploader(s *session.Session, file []byte, dateStamp string) (string, error)
 // GetAWSSecrets -
 func GetAWSSecrets(fileName string) []byte {
 	buf := &aws.WriteAtBuffer{}
-	sess, _ := session.NewSession(&aws.Config{
+	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(s3Region),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
+	if err != nil {
+		log.Fatal("Didnt get aws CC's: ", err)
+	}
 	dl := s3manager.NewDownloader(sess)
-	_, err := dl.Download(buf, &s3.GetObjectInput{
+	_, err = dl.Download(buf, &s3.GetObjectInput{
 		Bucket: aws.String(s3SecretBucket),
 		Key:    aws.String(fileName),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Didnt get aws DL: ", err)
 	}
 	return buf.Bytes()
 }
