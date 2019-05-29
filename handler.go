@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rs/cors"
+
 	mux "github.com/gorilla/mux"
 
 	"github.com/byblix/gopro/mailtips"
@@ -18,12 +20,13 @@ import (
 	"golang.org/x/net/http2"
 )
 
+// Server -
 type Server struct {
 	httpsSrv *http.Server
 	httpSrv  *http.Server
 	certm    *autocert.Manager
 	log      *logrus.Logger
-	mux      *mux.Router
+	// handlermux http.Handler
 }
 
 var jwtKey = []byte("thiskeyiswhat")
@@ -50,6 +53,12 @@ func newServer() *Server {
 	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
 	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
 
+	c := cors.New(cors.Options{
+		AllowedHeaders: []string{"X-Requested-With", "Content-Type", "Authorization"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "HEAD", "OPTIONS"},
+		AllowedOrigins: []string{"*"},
+	})
+
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
@@ -62,6 +71,7 @@ func newServer() *Server {
 		WriteTimeout:      10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 		Addr:              ":https",
 		TLSConfig: &tls.Config{
 			PreferServerCipherSuites: true,
@@ -70,7 +80,7 @@ func newServer() *Server {
 				tls.X25519,
 			},
 		},
-		Handler: mux,
+		Handler: c.Handler(mux),
 	}
 
 	// Create server for redirecting HTTP to HTTPS
@@ -87,6 +97,7 @@ func newServer() *Server {
 		httpSrv:  httpSrv,
 		log:      newLogger(),
 		certm:    &m,
+		// handlermux: AllowCORS(mux),
 	}
 }
 

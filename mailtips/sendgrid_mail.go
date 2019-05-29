@@ -10,16 +10,16 @@ import (
 )
 
 // SendMail via. sendgrid
-func SendMail(client *sendgrid.Client, mailReq *MailReq, wg *sync.WaitGroup) {
-	for _, reciever := range mailReq.Receivers {
+func SendMail(client *sendgrid.Client, body *MailReq, wg *sync.WaitGroup) {
+	for _, reciever := range body.Receivers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			from := sgmail.NewEmail(mailReq.From.DisplayName, mailReq.From.Email)
-			subject := mailReq.Subject
+			from := sgmail.NewEmail(body.From.DisplayName, body.From.Email)
+			subject := body.Subject
 			to := sgmail.NewEmail(reciever.DisplayName, reciever.Email)
-			content := mailReq.Content
-			htmlContent := "<h3> A tip for you!" + mailReq.Content + "</h3>"
+			content := body.Content
+			htmlContent := "<h3> A tip for you!" + body.Content + "</h3>"
 			message := sgmail.NewSingleEmail(from, subject, to, content, htmlContent)
 			resp, err := client.Send(message)
 			if err != nil {
