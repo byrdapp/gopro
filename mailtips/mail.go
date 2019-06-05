@@ -21,7 +21,7 @@ type MailReq struct {
 	From      *models.ProfileProps   `json:"from"`
 	Subject   string                 `json:"subject"`
 	Content   string                 `json:"content"`
-	StoryIDS  []string               `json:"storyId"`
+	StoryIDS  []string               `json:"storyIds"`
 }
 
 // MailHandler handles mail requests
@@ -73,21 +73,20 @@ func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
 		}
 		fmt.Println("Tipped media :" + reciever.DisplayName)
 		response := &MailResponse{req.StoryIDS[idx], resp.StatusCode}
-		responses = append(responses, response)
+		if response != nil {
+			responses = append(responses, response)
+			fmt.Println(response)
+		}
 	}
 	return responses, nil
 }
 
 func (req *MailReq) linkStoryIDS() string {
-
 	var links = make([]string, len(req.StoryIDS))
 	for i := range links {
 		links = append(links, "https://app.byrd.news/story/"+req.StoryIDS[i])
 	}
-	var msg string
-	msg = strings.Trim(msg, " ")
-	msg = strings.Join(links, " ")
-	return msg
+	return strings.Join(links, " ")
 }
 
 func (req *MailReq) createSlackMsg() *slack.TipSlackMsg {
@@ -108,25 +107,22 @@ func (req *MailReq) unwrapMediaNames() string {
 }
 
 func (req *MailReq) createMailContent(mediaCountry string, idx int) string {
-	var msg string
 	receiverName := req.Receivers[idx].DisplayName
 	mediaCountry = strings.ToLower(mediaCountry)
 	countries := []string{"denmark", "sweden"}
-	for i := 0; i < len(countries); i++ {
+	for i := range countries {
 		if mediaCountry == countries[i] {
-			fmt.Println("country: " + mediaCountry)
 			mediaCountry = countries[i]
 		}
 	}
 	switch mediaCountry {
 	case "denmark":
-		msg = fmt.Sprintf(`Hej %s, <br>
+		return fmt.Sprintf(`Hej %s, <br>
 		Jeg har for nylig delt nogle stories, som kan være relevant for jer. <br>
 		Klik her for at se indholdet: %s <br>
 		Sig endelig til, hvis der er noget, vi kan hjælpe med på hello@byrd.news. <br>
 		De bedste hilsner, <br>
 		%s fra Byrd`, receiverName, req.linkStoryIDS(), req.From.DisplayName)
-		return msg
 	case "sweden":
 		return fmt.Sprintf(`Hej %s, <br>
     	Jag har precis delat innehåll som jag tror kan vara relevant för er.<br>
