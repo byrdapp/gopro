@@ -59,7 +59,7 @@ type MailResponse struct {
 
 // SendMail via. sendgrid
 func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
-	var responses = make([]*MailResponse, len(req.Receivers))
+	var responses []*MailResponse
 	for idx, reciever := range req.Receivers {
 		from := sgmail.NewEmail(req.From.DisplayName, req.From.Email)
 		subject := req.Subject
@@ -73,10 +73,11 @@ func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
 		}
 		fmt.Println("Tipped media :" + reciever.DisplayName)
 		response := &MailResponse{req.StoryIDS[idx], resp.StatusCode}
-		if response != nil {
-			responses = append(responses, response)
-			fmt.Println(response)
-		}
+		responses = append(responses, response)
+		fmt.Println(response)
+	}
+	for _, v := range responses {
+		fmt.Println(v)
 	}
 	return responses, nil
 }
