@@ -45,8 +45,8 @@ func main() {
 	// Serve on localhost with localhost certs if no host provided
 	if *host == "" {
 		s.httpsSrv.Addr = "localhost:8085"
-		log.Println(s.httpsSrv.Handler)
 		s.log.Info("Serving on http://localhost:8085")
+		// if err := s.httpsSrv.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
 		if err := s.httpsSrv.ListenAndServe(); err != nil {
 			s.log.Fatal(err)
 		}

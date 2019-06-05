@@ -41,7 +41,7 @@ func postTip(tip *TipRequest) error {
 		Title:     "Story: " + tip.Story.StoryHeadline,
 		TitleLink: "https://app.byrd.news/" + tip.Story.StoryID,
 	}
-	err := NewTipNotification(slackMsg)
+	err := slackMsg.Success()
 	if err != nil {
 		return err
 	}

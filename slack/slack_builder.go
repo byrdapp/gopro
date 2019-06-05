@@ -19,11 +19,11 @@ type TipSlackMsg struct {
 // Colors for slack msg
 var colors = map[string]string{
 	"success": "#36a64f",
-	"fail":    "#5f1213",
+	"error":   "#5f1213",
 }
 
-// NewTipNotification notifies byrd when a pro guy has tipped
-func NewTipNotification(s *TipSlackMsg) error {
+// Success notifies byrd when a pro guy has tipped
+func (s *TipSlackMsg) Success() error {
 	att := []slack.Attachment{}
 	a := slack.Attachment{
 		Pretext:   s.Pretext,

@@ -1,0 +1,30 @@
+POST http://localhost:8085/mail/send HTTP/1.1
+Content-Type: application/json
+
+{
+    "receivers": [
+        {
+    	"displayName": "MEDIA1",
+    	"userId": "asdafa",
+    	"email": "simon@byrd.news",
+    	"country": "denmark"
+        },
+        {
+    	"displayName": "MEDIA2",
+    	"userId": "asdafa",
+    	"email": "sblixenkrone@me.com",
+    	"country": "sweden"
+        }
+    ],
+    "from": {
+    	"displayName": "Blixeeen",
+    	"email": "test@example.com"
+    },
+    "subject": "You have been tipped from a Byrd Professional!",
+    "storyId": ["STORY1", "STORY2"]
+}
+
+###
+
+GET http://localhost:8085/secure HTTP/1.1
+Content-Type: application/json

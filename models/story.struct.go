@@ -16,5 +16,6 @@ type (
 		DisplayName string `json:"displayName"`
 		UserID      string `json:"userId"`
 		Email       string `json:"email"`
+		Country     string `json:"country"`
 	}
 )

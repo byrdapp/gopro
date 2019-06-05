@@ -54,9 +54,10 @@ func newServer() *Server {
 	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
 
 	c := cors.New(cors.Options{
-		AllowedHeaders: []string{"X-Requested-With", "Content-Type", "Authorization"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "HEAD", "OPTIONS"},
-		AllowedOrigins: []string{"*"},
+		AllowedOrigins:   []string{"http://localhost:4200"},
+		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
+		AllowCredentials: true,
 	})
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
@@ -97,21 +98,21 @@ func newServer() *Server {
 		httpSrv:  httpSrv,
 		log:      newLogger(),
 		certm:    &m,
-		// handlermux: AllowCORS(mux),
 	}
 }
 
 func generateJWT(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Set("Content-Type", "text/html")
 	if r.Method == "POST" {
 		var creds JWTCreds
 		if err := decodeJSON(r.Body, creds); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		tokenExpirationTime := time.Now().Add(time.Second * 20)
+		exp := time.Now().Add(tokenExpirationTime)
 		claims := &Claims{
 			Username: creds.Username,
 			Claims: jwt.StandardClaims{
-				ExpiresAt: tokenExpirationTime.Unix(),
+				ExpiresAt: exp.Unix(),
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
@@ -122,9 +123,12 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 		}
 
 		http.SetCookie(w, &http.Cookie{
-			Name:    "token",
-			Expires: time.Now().Add(time.Second * 20),
+			Name:    "pro_token",
+			Expires: time.Now().Add(tokenExpirationTime),
 			Value:   signedToken,
+			Path:    "/",
+			// HttpOnly: true,
+			Secure: false,
 		})
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {

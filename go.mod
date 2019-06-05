@@ -11,7 +11,7 @@ require (
 	github.com/codegangsta/gin v0.0.0-20171026143024-cafe2ce98974 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/google/go-cmp v0.3.0 // indirect
-	github.com/gorilla/handlers v1.4.0
+	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/gorilla/mux v1.7.1
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
@@ -23,8 +23,8 @@ require (
 	github.com/mattn/go-shellwords v1.0.5 // indirect
 	github.com/nlopes/slack v0.5.0
 	github.com/pkg/errors v0.8.1 // indirect
-	github.com/rs/cors v1.6.0 // indirect
-	github.com/sendgrid/rest v2.4.1+incompatible // indirect
+	github.com/rs/cors v1.6.0
+	github.com/sendgrid/rest v2.4.1+incompatible
 	github.com/sendgrid/sendgrid-go v3.4.1+incompatible
 	github.com/sirupsen/logrus v1.4.1
 	github.com/stretchr/testify v1.3.0 // indirect
