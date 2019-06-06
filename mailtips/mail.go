@@ -17,7 +17,7 @@ import (
 
 // MailReq is the received Client req for mail
 type MailReq struct {
-	Receivers []*models.ProfileProps `json:"receivers"`
+	Recievers []*models.ProfileProps `json:"recievers"`
 	From      *models.ProfileProps   `json:"from"`
 	Subject   string                 `json:"subject"`
 	Content   string                 `json:"content"`
@@ -53,14 +53,14 @@ func MailHandler(w http.ResponseWriter, r *http.Request) {
 
 // MailResponse returns json for each story
 type MailResponse struct {
-	StoryID    string `json:"storyId"`
+	Receiver   string `json:"receiver"`
 	StatusCode int    `json:"statusCode"`
 }
 
 // SendMail via. sendgrid
 func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
 	var responses []*MailResponse
-	for idx, reciever := range req.Receivers {
+	for idx, reciever := range req.Recievers {
 		from := sgmail.NewEmail(req.From.DisplayName, req.From.Email)
 		subject := req.Subject
 		to := sgmail.NewEmail(reciever.DisplayName, reciever.Email)
@@ -71,10 +71,9 @@ func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("Tipped media :" + reciever.DisplayName)
-		response := &MailResponse{req.StoryIDS[idx], resp.StatusCode}
+		response := &MailResponse{reciever.DisplayName, resp.StatusCode}
 		responses = append(responses, response)
-		fmt.Println(response)
+		fmt.Printf("%s tipped media %s", req.From.DisplayName, response.Receiver)
 	}
 	for _, v := range responses {
 		fmt.Println(v)
@@ -100,15 +99,15 @@ func (req *MailReq) createSlackMsg() *slack.TipSlackMsg {
 }
 
 func (req *MailReq) unwrapMediaNames() string {
-	output := make([]string, len(req.Receivers))
-	for idx, val := range req.Receivers {
+	output := make([]string, len(req.Recievers))
+	for idx, val := range req.Recievers {
 		output[idx] = val.DisplayName
 	}
 	return utils.JoinStrings(output)
 }
 
 func (req *MailReq) createMailContent(mediaCountry string, idx int) string {
-	receiverName := req.Receivers[idx].DisplayName
+	receiverName := req.Recievers[idx].DisplayName
 	mediaCountry = strings.ToLower(mediaCountry)
 	countries := []string{"denmark", "sweden"}
 	for i := range countries {

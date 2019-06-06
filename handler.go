@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/rs/cors"
@@ -14,9 +15,12 @@ import (
 
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
+	postgres "github.com/byblix/gopro/storage/postgres"
+	"github.com/byblix/gopro/upload/exif"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 )
 
@@ -25,7 +29,6 @@ type Server struct {
 	httpsSrv *http.Server
 	httpSrv  *http.Server
 	certm    *autocert.Manager
-	log      *logrus.Logger
 	// handlermux http.Handler
 }
 
@@ -49,6 +52,7 @@ func newServer() *Server {
 
 	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
 	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
+	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
 	mux.HandleFunc("/media", isJWTAuth(getMedias)).Methods("GET")
 	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
 	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
@@ -96,9 +100,13 @@ func newServer() *Server {
 	return &Server{
 		httpsSrv: httpsSrv,
 		httpSrv:  httpSrv,
-		log:      newLogger(),
 		certm:    &m,
 	}
+}
+
+// JWTCreds for at user to get JWT
+type JWTCreds struct {
+	Username string `json:"username"`
 }
 
 func generateJWT(w http.ResponseWriter, r *http.Request) {
@@ -139,16 +147,85 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:    true,
-		FullTimestamp:  true,
-		DisableSorting: true,
-	})
-	return logger
+func getMediaByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		params := mux.Vars(r)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+		defer cancel()
+		val, err := db.GetMediaByID(ctx, params["id"])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		if err := json.NewEncoder(w).Encode(val); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
 }
+
+func createMedia(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		r.Header.Set("content-type", "application/json")
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+		defer cancel()
+		var media postgres.Media
+		if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		id, err := db.CreateMedia(ctx, &media)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		err = json.NewEncoder(w).Encode(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+// getMedias endpoint: /medias
+func getMedias(w http.ResponseWriter, r *http.Request) {
+	r.Header.Set("content-type", "application/json")
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
+	defer cancel()
+	// todo: params
+	medias, err := db.GetMedias(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	if err := json.NewEncoder(w).Encode(medias); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// HandleImage recieves body
+func getExif(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/*")
+	defer r.Body.Close()
+	ch := make(chan []byte)
+	var wg sync.WaitGroup
+	_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
+	defer cancel()
+
+	exif, err := exif.NewExif(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	go func() {
+		wg.Add(1)
+		exif.TagExif(&wg, ch)
+		wg.Wait()
+	}()
+	jsonVAL := <-ch
+	w.Write(jsonVAL)
+}
+
+/**
+ * * What is the relationship between media and department?
+ * * What should be shown to the user of these ^?
+ * ! implement context in all server>db calls
+ */
 
 func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}
@@ -157,11 +234,6 @@ func (s *Server) useHTTP2() error {
 		return err
 	}
 	return nil
-}
-
-// JWTCreds for at user to get JWT
-type JWTCreds struct {
-	Username string `json:"username"`
 }
 
 func decodeJSON(r io.Reader, val JWTCreds) error {

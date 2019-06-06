@@ -8,7 +8,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
-// JWTClaims -
+// Claims -
 type Claims struct {
 	Username string `json:"username"`
 	Claims   jwt.StandardClaims
