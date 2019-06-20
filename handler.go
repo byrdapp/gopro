@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/byblix/gopro/utils/errors"
+
 	"github.com/rs/cors"
 
 	mux "github.com/gorilla/mux"
@@ -18,7 +20,6 @@ import (
 	postgres "github.com/byblix/gopro/storage/postgres"
 	"github.com/byblix/gopro/upload/exif"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
@@ -60,7 +61,7 @@ func newServer() *Server {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},
 		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
+		AllowedHeaders:   []string{"Content-Type", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
 		AllowCredentials: true,
 	})
 
@@ -140,7 +141,6 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			logrus.Warn(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -200,25 +200,28 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 
 // HandleImage recieves body
 func getExif(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "image/*")
-	defer r.Body.Close()
-	ch := make(chan []byte)
-	var wg sync.WaitGroup
-	_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
-	defer cancel()
+	if r.Method == "POST" {
+		// w.Header().Set("Content-Type", "*")
+		defer r.Body.Close()
+		ch := make(chan []byte)
+		var wg sync.WaitGroup
+		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
+		defer cancel()
 
-	exif, err := exif.NewExif(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		exif, err := exif.NewExif(r.Body)
+		if err != nil {
+			rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+			rErr.ErrResponseLogger(err, w)
+			return
+		}
+		go func() {
+			wg.Add(1)
+			exif.TagExif(&wg, ch)
+			wg.Wait()
+		}()
+		jsonVAL := <-ch
+		w.Write(jsonVAL)
 	}
-	go func() {
-		wg.Add(1)
-		exif.TagExif(&wg, ch)
-		wg.Wait()
-	}()
-	jsonVAL := <-ch
-	w.Write(jsonVAL)
 }
 
 /**

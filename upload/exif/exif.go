@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"image"
 
+	"github.com/byblix/gopro/utils/logger"
+
 	// Keep this import so the compiler knows the format
 	_ "image/jpeg"
+	_ "image/png"
 	"io"
-	"log"
 	"os/exec"
 	"sync"
 
@@ -32,6 +34,8 @@ type ImageReader struct {
 type Service interface {
 	TagExif(*sync.WaitGroup, chan<- []byte)
 }
+
+var log = logger.NewLogger()
 
 // NewExif request exif data for image
 func NewExif(r io.Reader) (Service, error) {
@@ -67,7 +71,7 @@ func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- []byte) {
 		}
 		log.Printf("exif.Decode, warning: %v", err)
 	}
-	log.Println("Tagged exif")
+	log.Printf("Tagged exif: %s", img.Name)
 	val, err := out.MarshalJSON()
 	if err != nil {
 		log.Fatalf("Error marshalling JSON: %s", err)

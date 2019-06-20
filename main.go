@@ -3,25 +3,14 @@ package main
 import (
 	"flag"
 
+	logger "github.com/byblix/gopro/utils/logger"
+
 	postgres "github.com/byblix/gopro/storage/postgres"
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 )
 
 var db postgres.Service
-
-var log = newLogger()
-
-func newLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:    true,
-		FullTimestamp:  true,
-		DisableSorting: true,
-	})
-	return logger
-}
+var log = logger.NewLogger()
 
 var (
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
