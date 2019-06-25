@@ -204,31 +204,23 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 
 // HandleImage recieves body
 func getExif(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == "POST" {
 		// TODO: Handle image / video content-type
 		w.Header().Set("Content-Type", "image/*")
 		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
-
 		var exifs []*exif.Exif
-		// byt, err := ioutil.ReadAll(r.Body)
-		// if err != nil {
-		// 	rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not read body content"}
-		// 	rErr.ErrResponseLogger(err, w)
-		// 	return
-		// }
-
-		for i := 0; i < 2; i++ {
-			log.Infof("Parsing image %d out of %d", i, 1)
-
+		//TODO:  file, header, err := r.FormFile("key")
+		for {
+			log.Infof("Parsing image")
 			imageReq, err := exifsrv.NewExifReq(r.Body)
 			if err != nil {
 				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
 				rErr.ErrResponseLogger(err, w)
 				return
 			}
-
 			ch := make(chan *exif.Exif)
 			wg.Add(1)
 			go imageReq.TagExif(&wg, ch)
