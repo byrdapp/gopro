@@ -206,14 +206,13 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 func getExif(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
-		// TODO: Handle image / video content-type
-		w.Header().Set("Content-Type", "image/*")
+		w.Header().Set("Content-Type", "multipart/formdata")
 		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
 		var exifs []*exif.Exif
 		//TODO:  file, header, err := r.FormFile("key")
-		for {
+		for i := 0; i < 0 {
 			log.Infof("Parsing image")
 			imageReq, err := exifsrv.NewExifReq(r.Body)
 			if err != nil {
