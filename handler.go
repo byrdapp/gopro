@@ -9,6 +9,10 @@ import (
 	"sync"
 	"time"
 
+	exifsrv "github.com/blixenkrone/gopro/upload/exif"
+
+	"github.com/rwcarlsen/goexif/exif"
+
 	"github.com/byblix/gopro/utils/errors"
 
 	"github.com/rs/cors"
@@ -18,7 +22,6 @@ import (
 	"github.com/byblix/gopro/mailtips"
 	"github.com/byblix/gopro/slack"
 	postgres "github.com/byblix/gopro/storage/postgres"
-	"github.com/byblix/gopro/upload/exif"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/context"
@@ -34,6 +37,7 @@ type Server struct {
 }
 
 var jwtKey = []byte("thiskeyiswhat")
+var wg = sync.WaitGroup{}
 
 // Creates a new server with H2 & HTTPS
 func newServer() *Server {
@@ -201,26 +205,44 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 // HandleImage recieves body
 func getExif(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		// w.Header().Set("Content-Type", "*")
+		// TODO: Handle image / video content-type
+		w.Header().Set("Content-Type", "image/*")
 		defer r.Body.Close()
-		ch := make(chan []byte)
-		var wg sync.WaitGroup
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
 
-		exif, err := exif.NewExif(r.Body)
-		if err != nil {
-			rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+		var exifs []*exif.Exif
+		// byt, err := ioutil.ReadAll(r.Body)
+		// if err != nil {
+		// 	rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not read body content"}
+		// 	rErr.ErrResponseLogger(err, w)
+		// 	return
+		// }
+
+		for i := 0; i < 2; i++ {
+			log.Infof("Parsing image %d out of %d", i, 1)
+
+			imageReq, err := exifsrv.NewExifReq(r.Body)
+			if err != nil {
+				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+				rErr.ErrResponseLogger(err, w)
+				return
+			}
+
+			ch := make(chan *exif.Exif)
+			wg.Add(1)
+			go imageReq.TagExif(&wg, ch)
+			exif := <-ch
+			exifs = append(exifs, exif)
+		}
+		wg.Wait()
+
+		if err := json.NewEncoder(w).Encode(exifs); err != nil {
+			rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
 			rErr.ErrResponseLogger(err, w)
 			return
 		}
-		go func() {
-			wg.Add(1)
-			exif.TagExif(&wg, ch)
-			wg.Wait()
-		}()
-		jsonVAL := <-ch
-		w.Write(jsonVAL)
+		// w.Write(exifJSON)
 	}
 }
 
