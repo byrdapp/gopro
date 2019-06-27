@@ -17,30 +17,28 @@ import (
 	"github.com/rwcarlsen/goexif/exif"
 )
 
-/**
- * ! Only takes JPEG as image format atm
- */
-
 // ImageReader contains image info
 type ImageReader struct {
-	Image   image.Image
-	Name    string
-	Format  string
-	ByteVal []byte
-	Reader  io.Reader
+	Image        image.Image
+	Name         string
+	Format       string
+	ByteVal      []byte
+	Buffer       *bytes.Buffer
+	BufferReader *bytes.Reader
 }
 
-// Service contains methods
-type Service interface {
-	TagExif(*sync.WaitGroup, chan<- []byte)
+// ImgService contains methods for imgs
+type ImgService interface {
+	TagExif(*sync.WaitGroup, chan<- *exif.Exif)
+	TagExifSync() *exif.Exif // For tests no goroutines
 }
 
 var log = logger.NewLogger()
 
-// NewExif request exif data for image
-func NewExif(r io.Reader) (Service, error) {
-	var buf bytes.Buffer
-	teeRead := io.TeeReader(r, &buf)
+// NewExifReq request exif data for image
+func NewExifReq(r io.Reader) (ImgService, error) {
+	var buf = new(bytes.Buffer)
+	teeRead := io.TeeReader(r, buf)
 	src, format, err := image.Decode(teeRead)
 	if err != nil {
 		return nil, err
@@ -51,20 +49,18 @@ func NewExif(r io.Reader) (Service, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &ImageReader{
-		Image:   src,
-		Format:  format,
-		Name:    string(uuid)[:13] + "." + format,
-		ByteVal: buf.Bytes(),
-		Reader:  &buf,
+		Image:  src,
+		Format: format,
+		Name:   string(uuid)[:13] + "." + format,
+		Buffer: buf,
 	}, nil
 }
 
 // TagExif returns the bytes of the image/tiff in ch
-func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- []byte) {
+func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif) {
 	defer wg.Done()
-	out, err := exif.Decode(img.Reader)
+	out, err := exif.Decode(img.Buffer)
 	if err != nil {
 		if exif.IsCriticalError(err) {
 			log.Fatalf("exif.Decode, critical error: %v", err)
@@ -72,10 +68,20 @@ func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- []byte) {
 		log.Printf("exif.Decode, warning: %v", err)
 	}
 	log.Printf("Tagged exif: %s", img.Name)
-	val, err := out.MarshalJSON()
-	if err != nil {
-		log.Fatalf("Error marshalling JSON: %s", err)
-	}
-	ch <- val
+	ch <- out
 	close(ch)
+}
+
+// TagExifSync returns the bytes of the image/tiff in ch - dont use in production
+func (img *ImageReader) TagExifSync() *exif.Exif {
+	out, err := exif.Decode(img.Buffer)
+	if err != nil {
+		if exif.IsCriticalError(err) {
+			log.Fatalf("exif.Decode, critical error: %v", err)
+		}
+		log.Printf("exif.Decode, warning: %v", err)
+	}
+	log.Printf("Tagged exif: %s", img.Name)
+
+	return out
 }
