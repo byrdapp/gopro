@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
-	exifsrv "github.com/blixenkrone/gopro/upload/exif"
+	goexif "github.com/rwcarlsen/goexif/exif"
 
-	"github.com/rwcarlsen/goexif/exif"
+	exif "github.com/blixenkrone/gopro/upload/exif"
 
-	"github.com/byblix/gopro/utils/errors"
-
+	"github.com/blixenkrone/gopro/utils/errors"
 	"github.com/rs/cors"
 
 	mux "github.com/gorilla/mux"
@@ -27,6 +29,12 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 )
+
+/**
+ * * What is the relationship between media and department?
+ * * What should be shown to the user of these ^?
+ * ! implement context in all server>db calls
+ */
 
 // Server -
 type Server struct {
@@ -65,7 +73,7 @@ func newServer() *Server {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},
 		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
+		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
 		AllowCredentials: true,
 	})
 
@@ -204,44 +212,59 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 
 // HandleImage recieves body
 func getExif(w http.ResponseWriter, r *http.Request) {
-
+	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/formdata")
 		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
-		var exifs []*exif.Exif
-		//TODO:  file, header, err := r.FormFile("key")
-		for i := 0; i < 0 {
-			log.Infof("Parsing image")
-			imageReq, err := exifsrv.NewExifReq(r.Body)
-			if err != nil {
-				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+
+		// Parse media type to get type of media
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not parse request body"}
+			resErr.ErrResponseLogger(err, w)
+			return
+		}
+
+		if strings.HasPrefix(mediaType, "multipart/") {
+			mr := multipart.NewReader(r.Body, params["boundary"])
+
+			var exifs []*goexif.Exif
+
+			for {
+				part, err := mr.NextPart()
+				if err == io.EOF {
+					log.Infoln("No more files to read")
+					break
+				}
+				if err != nil {
+
+				}
+				imgsrv, err := exif.NewExifReq(part)
+				if err != nil {
+					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+					rErr.ErrResponseLogger(err, w)
+					return
+				}
+
+				ch := make(chan *goexif.Exif)
+				wg.Add(1)
+				go imgsrv.TagExif(&wg, ch)
+				exif := <-ch
+				exifs = append(exifs, exif)
+			}
+			wg.Wait()
+
+			if err := json.NewEncoder(w).Encode(exifs); err != nil {
+				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
 				rErr.ErrResponseLogger(err, w)
 				return
 			}
-			ch := make(chan *exif.Exif)
-			wg.Add(1)
-			go imageReq.TagExif(&wg, ch)
-			exif := <-ch
-			exifs = append(exifs, exif)
 		}
-		wg.Wait()
-
-		if err := json.NewEncoder(w).Encode(exifs); err != nil {
-			rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
-			rErr.ErrResponseLogger(err, w)
-			return
-		}
-		// w.Write(exifJSON)
 	}
-}
 
-/**
- * * What is the relationship between media and department?
- * * What should be shown to the user of these ^?
- * ! implement context in all server>db calls
- */
+}
 
 func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}
