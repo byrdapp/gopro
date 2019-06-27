@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"io/ioutil"
 
 	"github.com/byblix/gopro/utils/logger"
 
@@ -17,23 +18,20 @@ import (
 	"github.com/rwcarlsen/goexif/exif"
 )
 
-/**
- * ! Only takes JPEG as image format atm
- */
-
 // ImageReader contains image info
 type ImageReader struct {
-	Image   image.Image
-	Name    string
-	Format  string
-	ByteVal []byte
-	Buffer  *bytes.Buffer
+	Image        image.Image
+	Name         string
+	Format       string
+	ByteVal      []byte
+	Buffer       *bytes.Buffer
+	BufferReader *bytes.Reader
 }
 
 // ImgService contains methods for imgs
 type ImgService interface {
 	TagExif(*sync.WaitGroup, chan<- *exif.Exif)
-	TagExifSync() *exif.Exif
+	TagExifSync() *exif.Exif // For tests no goroutines
 }
 
 var log = logger.NewLogger()
@@ -61,6 +59,55 @@ func NewExifReq(r io.Reader) (ImgService, error) {
 		Name:    string(uuid)[:13] + "." + format,
 		ByteVal: buf.Bytes(),
 		Buffer:  buf,
+	}, nil
+}
+
+// // NewExifFromByte request exif data for image
+// func NewExifFromByte(buf []byte) (ImgService, error) {
+// 	rw.Lock()
+// 	// teeRead := io.TeeReader(r, buf)
+// 	src, format, err := image.Decode(buf)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	fmt.Printf("Image format is: %s\n", format)
+// 	rw.Unlock()
+
+// 	uuid, err := exec.Command("uuidgen").Output()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &ImageReader{
+// 		Image:   src,
+// 		Format:  format,
+// 		Name:    string(uuid)[:13] + "." + format,
+// 		ByteVal: buf.Bytes(),
+// 		Buffer:  buf,
+// 	}, nil
+// }
+
+// NewExifFromFile request exif data for image
+func NewExifFromFile(fileName string) (ImgService, error) {
+	/**
+	 * ? Se om ikke det kan lade sig gøre uden at mutex lock
+	 */
+	rw.Lock()
+	buf, err := ioutil.ReadFile(fileName)
+	reader := bytes.NewReader(buf)
+	if err != nil {
+		return nil, err
+	}
+	src, format, err := image.Decode(reader)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Image format is: %s\n", format)
+	rw.Unlock()
+
+	return &ImageReader{
+		Image:        src,
+		Format:       format,
+		BufferReader: reader,
 	}, nil
 }
 
