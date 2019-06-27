@@ -219,15 +219,12 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
 
-		err := r.ParseForm()
-		if err != nil {
-			log.Infof("Error parsing form %s", err)
-			return
-		}
-
+		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			log.Fatal(err)
+			resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not parse request body"}
+			resErr.ErrResponseLogger(err, w)
+			return
 		}
 
 		if strings.HasPrefix(mediaType, "multipart/") {
@@ -242,10 +239,8 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-					// ? Error might happen if the r.body is too large?
-					log.Infoln(err)
-				}
 
+				}
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
 					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
@@ -268,6 +263,7 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
 }
 
 func (s *Server) useHTTP2() error {
