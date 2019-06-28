@@ -239,8 +239,11 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-
+					resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not read file" + part.FileName()}
+					resErr.ErrResponseLogger(err, w)
+					return
 				}
+
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
 					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
