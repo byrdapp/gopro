@@ -34,7 +34,7 @@ func TestMultipleImageReader(t *testing.T) {
 
 		r := bytes.NewReader(fbytes)
 
-		imgsrv, err := exifsrv.NewExifReq(r)
+		_, err = exifsrv.NewExifReq(r)
 		if err != nil {
 			t.Errorf("Error getting exif: %s\n", err)
 		}
@@ -42,7 +42,7 @@ func TestMultipleImageReader(t *testing.T) {
 		ch := make(chan *exif.Exif)
 		wg.Add(1)
 		go func() {
-			imgsrv.TagExif(&wg, ch)
+			// imgsrv.TagExif(&wg, ch)
 		}()
 		exif := <-ch
 		exifs = append(exifs, exif)
