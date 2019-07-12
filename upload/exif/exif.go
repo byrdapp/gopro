@@ -29,7 +29,7 @@ type ImageReader struct {
 // ImgService contains methods for imgs
 type ImgService interface {
 	TagExif(*sync.WaitGroup, chan<- *exif.Exif, chan<- error)
-	TagExifSync() *exif.Exif // For tests no goroutines
+	TagExifSync() (*exif.Exif, error) // For tests no goroutines
 }
 
 var log = logger.NewLogger()
@@ -89,15 +89,21 @@ func (img *ImageReader) requiredExifData(out *exif.Exif) error {
 }
 
 // TagExifSync returns the bytes of the image/tiff in ch - dont use in production
-func (img *ImageReader) TagExifSync() *exif.Exif {
+func (img *ImageReader) TagExifSync() (out *exif.Exif, _ error) {
 	out, err := exif.Decode(img.Buffer)
 	if err != nil {
 		if exif.IsCriticalError(err) {
 			log.Errorf("exif.Decode, critical error: %v", err)
+			return nil, errors.New("exif.Decode, critical error: " + err.Error())
 		}
-		log.Printf("exif.Decode, warning: %v", err)
+		log.Printf("exif.Decode, warning: " + err.Error())
 	}
 	log.Printf("Tagged exif: %s", img.Name)
 
-	return out
+	if err := img.requiredExifData(out); err != nil {
+		log.Info(err)
+		return nil, err
+	}
+
+	return out, nil
 }

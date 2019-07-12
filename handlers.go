@@ -212,8 +212,8 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 
 // TagResult struct for exif handler to return either result or err
 type TagResult struct {
-	Out *goexif.Exif `json:"out"`
-	Err error        `json:"err"`
+	Out *goexif.Exif `json:"out,omitempty"`
+	Err error        `json:"err,omitempty"`
 }
 
 // getExif recieves body with img files
@@ -236,9 +236,6 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			var exifRes []*TagResult
-			ch := make(chan *goexif.Exif)
-			cherr := make(chan error)
-
 			for {
 				part, err := mr.NextPart()
 				// read length of files
@@ -260,15 +257,14 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				wg.Add(1)
-				go imgsrv.TagExif(&wg, ch, cherr)
 				var res TagResult
-				select {
-				case out := <-ch:
-					res.Out = out
-
-				case err := <-cherr:
+				out, err := imgsrv.TagExifSync()
+				if err != nil {
 					res.Err = err
+					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
+					rErr.ErrResponseLogger(err, w)
+				} else {
+					res.Out = out
 				}
 				exifRes = append(exifRes, &res)
 			}
