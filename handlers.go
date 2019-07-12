@@ -210,7 +210,13 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleImage recieves body
+// TagResult struct for exif handler to return either result or err
+type TagResult struct {
+	Out *goexif.Exif `json:"out"`
+	Err error        `json:"err"`
+}
+
+// getExif recieves body with img files
 func getExif(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -229,7 +235,9 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
-			var exifs []*goexif.Exif
+			var exifRes []*TagResult
+			ch := make(chan *goexif.Exif)
+			cherr := make(chan error)
 
 			for {
 				part, err := mr.NextPart()
@@ -252,19 +260,23 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				ch := make(chan *goexif.Exif)
 				wg.Add(1)
-				go imgsrv.TagExif(&wg, ch)
-				exif, ok := <-ch
-				if !ok {
-					// something error
-					return
+				go imgsrv.TagExif(&wg, ch, cherr)
+				var res TagResult
+				select {
+				case out := <-ch:
+					res.Out = out
+
+				case err := <-cherr:
+					res.Err = err
 				}
-				exifs = append(exifs, exif)
+				exifRes = append(exifRes, &res)
 			}
+			// close(ch)
+			// close(cherr)
 			wg.Wait()
 
-			if err := json.NewEncoder(w).Encode(exifs); err != nil {
+			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
 				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
 				rErr.ErrResponseLogger(err, w)
 				return
