@@ -19,18 +19,17 @@ import (
 
 // ImageReader contains image info
 type ImageReader struct {
-	Image        image.Image
-	Name         string
-	Format       string
-	ByteVal      []byte
-	Buffer       *bytes.Buffer
-	BufferReader *bytes.Reader
+	Image  image.Image
+	Name   string
+	Format string
+	Buffer *bytes.Buffer
 }
 
 // ImgService contains methods for imgs
 type ImgService interface {
 	TagExif(*sync.WaitGroup, chan<- *exif.Exif)
-	TagExifSync() *exif.Exif // For tests no goroutines
+	TagExifSync() *exif.Exif                         // For tests no goroutines
+	TagExifError(*sync.WaitGroup, chan<- *TagResult) // Tests
 }
 
 var log = logger.NewLogger()
@@ -57,6 +56,12 @@ func NewExifReq(r io.Reader) (ImgService, error) {
 	}, nil
 }
 
+// TagResult struct for exif channel to return either result or err
+type TagResult struct {
+	res *exif.Exif
+	err error
+}
+
 // TagExif returns the bytes of the image/tiff in ch
 func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif) {
 	defer wg.Done()
@@ -72,12 +77,37 @@ func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif) {
 	close(ch)
 }
 
+// TagExifError - testing with ch errors
+func (img *ImageReader) TagExifError(wg *sync.WaitGroup, ch chan<- *TagResult) {
+	defer wg.Done()
+	requiredExifData := [3]exif.FieldName{"DateTime", "GPSLatitude", "GPSLongitude"}
+	var tag TagResult
+	out, err := exif.Decode(img.Buffer)
+	if err != nil {
+		if exif.IsCriticalError(err) {
+			log.Fatalf("exif.Decode, critical error: %v", err)
+		}
+		log.Printf("exif.Decode, warning: %v", err)
+		tag.err = err
+	}
+	log.Printf("Tagged exif: %s", img.Name)
+	for _, rq := range requiredExifData {
+		_, err := out.Get(rq)
+		if err != nil {
+			tag.err = err
+		}
+	}
+	tag.res = out
+	ch <- &tag
+	close(ch)
+}
+
 // TagExifSync returns the bytes of the image/tiff in ch - dont use in production
 func (img *ImageReader) TagExifSync() *exif.Exif {
 	out, err := exif.Decode(img.Buffer)
 	if err != nil {
 		if exif.IsCriticalError(err) {
-			log.Fatalf("exif.Decode, critical error: %v", err)
+			log.Errorf("exif.Decode, critical error: %v", err)
 		}
 		log.Printf("exif.Decode, warning: %v", err)
 	}

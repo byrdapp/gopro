@@ -214,7 +214,7 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 func getExif(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
-		w.Header().Set("Content-Type", "multipart/formdata")
+		w.Header().Set("Content-Type", "multipart/form-data")
 		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
@@ -229,18 +229,22 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
-
 			var exifs []*goexif.Exif
 
 			for {
 				part, err := mr.NextPart()
+				// read length of files
 				if err == io.EOF {
 					log.Infoln("No more files to read")
 					break
 				}
 				if err != nil {
-
+					log.Errorf("Error with something: %s", err)
+					resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not read file" + part.FileName()}
+					resErr.ErrResponseLogger(err, w)
+					return
 				}
+
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
 					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
@@ -251,7 +255,11 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 				ch := make(chan *goexif.Exif)
 				wg.Add(1)
 				go imgsrv.TagExif(&wg, ch)
-				exif := <-ch
+				exif, ok := <-ch
+				if !ok {
+					// something error
+					return
+				}
 				exifs = append(exifs, exif)
 			}
 			wg.Wait()
@@ -263,8 +271,9 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
 }
+
+func determineLength() {}
 
 func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}
