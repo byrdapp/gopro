@@ -99,6 +99,13 @@ func (img *ImageReader) TagExifSync() (out *exif.Exif, _ error) {
 	}
 	log.Printf("Tagged exif: %s", img.Name)
 
+	lat, lng, err := out.LatLong()
+	if err != nil {
+		log.Errorf("Something with latlng", err)
+	}
+
+	log.Infof("Lat: %v, lng: %v", lat, lng)
+
 	if err := img.requiredExifData(out); err != nil {
 		log.Info(err)
 		return nil, err
