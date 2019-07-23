@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	logger "github.com/byblix/gopro/utils/logger"
+	logger "github.com/blixenkrone/gopro/utils/logger"
 )
 
 // ErrorBuilder builds custom errors

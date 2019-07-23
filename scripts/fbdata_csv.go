@@ -7,8 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	storage "github.com/byblix/gopro/storage"
-	firebase "github.com/byblix/gopro/storage/firebase"
+	storage "github.com/blixenkrone/gopro/storage"
+	firebase "github.com/blixenkrone/gopro/storage/firebase"
 )
 
 func createCSV(record []string, index int, info interface{}) {

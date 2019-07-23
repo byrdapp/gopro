@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/byblix/gopro/storage"
-	aws "github.com/byblix/gopro/storage/aws"
+	"github.com/blixenkrone/gopro/storage"
+	aws "github.com/blixenkrone/gopro/storage/aws"
 
 	"google.golang.org/api/iterator"
 

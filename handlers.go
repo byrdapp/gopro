@@ -21,9 +21,9 @@ import (
 
 	mux "github.com/gorilla/mux"
 
-	"github.com/byblix/gopro/mailtips"
-	"github.com/byblix/gopro/slack"
-	postgres "github.com/byblix/gopro/storage/postgres"
+	"github.com/blixenkrone/gopro/mailtips"
+	"github.com/blixenkrone/gopro/slack"
+	postgres "github.com/blixenkrone/gopro/storage/postgres"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/context"
@@ -236,6 +236,7 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			var exifRes []*TagResult
+			var res TagResult
 			for {
 				part, err := mr.NextPart()
 				// read length of files
@@ -247,18 +248,18 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					log.Errorf("Error with something: %s", err)
 					resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not read file" + part.FileName()}
 					resErr.ErrResponseLogger(err, w)
-					return
+					break
 				}
 
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
 					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
 					rErr.ErrResponseLogger(err, w)
-					return
+					break
 				}
 
-				var res TagResult
 				out, err := imgsrv.TagExifSync()
+
 				if err != nil {
 					res.Err = err.Error()
 				} else {
@@ -266,10 +267,6 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 				}
 				exifRes = append(exifRes, &res)
 			}
-			// close(ch)
-			// close(cherr)
-			wg.Wait()
-
 			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
 				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
 				rErr.ErrResponseLogger(err, w)
@@ -278,8 +275,6 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-func determineLength() {}
 
 func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}

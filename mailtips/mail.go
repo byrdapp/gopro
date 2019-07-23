@@ -10,9 +10,9 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
-	"github.com/byblix/gopro/models"
-	"github.com/byblix/gopro/slack"
-	"github.com/byblix/gopro/utils"
+	"github.com/blixenkrone/gopro/models"
+	"github.com/blixenkrone/gopro/slack"
+	"github.com/blixenkrone/gopro/utils"
 )
 
 // MailReq is the received Client req for mail

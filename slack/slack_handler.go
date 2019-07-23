@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/byblix/gopro/models"
+	"github.com/blixenkrone/gopro/models"
 )
 
 // TipRequest from FE JSON req.

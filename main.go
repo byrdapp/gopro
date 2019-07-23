@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
-	logger "github.com/byblix/gopro/utils/logger"
+	logger "github.com/blixenkrone/gopro/utils/logger"
 
-	postgres "github.com/byblix/gopro/storage/postgres"
+	postgres "github.com/blixenkrone/gopro/storage/postgres"
 	"github.com/joho/godotenv"
 )
 

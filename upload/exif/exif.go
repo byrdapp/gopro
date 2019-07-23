@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/byblix/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/utils/logger"
 
 	// Keep this import so the compiler knows the format
 	_ "image/jpeg"
@@ -73,7 +73,6 @@ func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif, cherr 
 	} else {
 		ch <- out
 	}
-	log.Info(out.Get("DateTime"))
 }
 
 // RequiredExifData - testing with ch errors

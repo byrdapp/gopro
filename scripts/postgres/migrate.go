@@ -8,9 +8,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 
-	"github.com/byblix/gopro/storage"
-	firebase "github.com/byblix/gopro/storage/firebase"
-	postgres "github.com/byblix/gopro/storage/postgres"
+	"github.com/blixenkrone/gopro/storage"
+	firebase "github.com/blixenkrone/gopro/storage/firebase"
+	postgres "github.com/blixenkrone/gopro/storage/postgres"
 )
 
 func main() {

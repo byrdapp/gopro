@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/byblix/gopro/storage"
-	firebase "github.com/byblix/gopro/storage/firebase"
+	"github.com/blixenkrone/gopro/storage"
+	firebase "github.com/blixenkrone/gopro/storage/firebase"
 )
 
 const noSSLstring = "http://res.cloudinary.com"
