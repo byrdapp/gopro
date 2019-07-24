@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -56,6 +57,7 @@ func newServer() *Server {
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
 	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
+	mux.HandleFunc("/securion/test", securionTest).Methods("POST")
 	mux.HandleFunc("/reauthenticate", isJWTAuth(generateJWT)).Methods("GET")
 
 	// * Private endpoints
@@ -216,6 +218,15 @@ type TagResult struct {
 	Lng float64      `json:"lng,omitempty"`
 	Lat float64      `json:"lat,omitempty"`
 	Err string       `json:"err,omitempty"`
+}
+
+func securionTest(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Errorf("Error: %s", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }
 
 // getExif recieves body with img files
