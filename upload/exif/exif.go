@@ -88,7 +88,7 @@ func (img *ImageReader) requiredExifData(out *exif.Exif) error {
 }
 
 // TagExifSync returns the bytes of the image/tiff in ch - dont use in production
-func (img *ImageReader) TagExifSync() (out *exif.Exif, _ error) {
+func (img *ImageReader) TagExifSync() (*exif.Exif, error) {
 	out, err := exif.Decode(img.Buffer)
 	if err != nil {
 		if exif.IsCriticalError(err) {
@@ -96,12 +96,14 @@ func (img *ImageReader) TagExifSync() (out *exif.Exif, _ error) {
 			return nil, errors.New("exif.Decode, critical error: " + err.Error())
 		}
 		log.Printf("exif.Decode, warning: " + err.Error())
+		return nil, err
 	}
 	log.Printf("Tagged exif: %s", img.Name)
 
 	lat, lng, err := out.LatLong()
 	if err != nil {
-		log.Errorf("Something with latlng", err)
+		log.Errorf("Something with latlng: %s", err)
+		return nil, err
 	}
 
 	log.Infof("Lat: %v, lng: %v", lat, lng)
@@ -110,6 +112,5 @@ func (img *ImageReader) TagExifSync() (out *exif.Exif, _ error) {
 		log.Info(err)
 		return nil, err
 	}
-
 	return out, nil
 }
