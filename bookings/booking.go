@@ -26,6 +26,7 @@ type Booking struct {
 	log     *logrus.Logger
 }
 
+// BookingService -
 type BookingService interface {
 	CreateBooking() error
 	DeleteBooking() error

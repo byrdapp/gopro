@@ -1,12 +1,10 @@
-module github.com/blixenkrone
+module github.com/blixenkrone/gopro
 
 go 1.12
 
 require (
 	firebase.google.com/go v3.8.1+incompatible
 	github.com/aws/aws-sdk-go v1.21.3
-	github.com/blixenkrone/gopro v0.0.0-20190712112009-dc09bb7071f9
-	github.com/byblix/gopro v0.0.0-20190712112009-dc09bb7071f9 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0 // indirect

@@ -10,8 +10,8 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
-	"github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/slack"
+	models "github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/utils"
 )
 
@@ -19,9 +19,9 @@ import (
 type MailReq struct {
 	Recievers []*models.ProfileProps `json:"recievers"`
 	From      *models.ProfileProps   `json:"from"`
-	Subject   string                 `json:"subject"`
-	Content   string                 `json:"content"`
-	StoryIDS  []string               `json:"storyIds"`
+	Subject   string                  `json:"subject"`
+	Content   string                  `json:"content"`
+	StoryIDS  []string                `json:"storyIds"`
 }
 
 // MailHandler handles mail requests

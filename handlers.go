@@ -249,8 +249,8 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			var exifRes []*TagResult
-			var res TagResult
 			for {
+				var res TagResult
 				part, err := mr.NextPart()
 				// read length of files
 				if err == io.EOF {
