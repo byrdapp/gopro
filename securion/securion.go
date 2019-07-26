@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/blixenkrone/gopro/utils/logger"
 
@@ -62,7 +61,7 @@ func (c *Client) GetPlans(limit string) ([]*Plan, error) {
 	return plans, nil
 }
 
-var stdPlans = []string{
+var StdPlans = []string{
 	"plan_FX5jZjA8Orp2tVtqpl9YZAmk",
 	"plan_AKtiNI1BNweN1PB1XefWdBd0",
 	"plan_3dMlYjLKsLEArHP0aFCuXfmz",
@@ -77,28 +76,11 @@ func (c *Client) GetPlansJSON(limit, period string) ([]*Plan, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-
 	err = json.NewDecoder(res.Body).Decode(&plans)
 	if err != nil {
 		return nil, err
 	}
-
-	for idx, p := range plans.List {
-		if p.Interval == period {
-			if strings.HasPrefix(p.ID, stdPlans[idx]) {
-				plans.List = append(plans.List, p)
-				log.Info(p.ID)
-			}
-		}
-	}
 	return plans.List, nil
-}
-
-func filterPlansByPeriod(plan *Plan, period string) (res []*Plan) {
-	if plan.Interval == period {
-		res = append(res, plan)
-	}
-	return res
 }
 
 func (c *Client) doRequest(url string) (*http.Response, error) {

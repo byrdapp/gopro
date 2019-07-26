@@ -222,18 +222,34 @@ type TagResult struct {
 }
 
 func securionPlans(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
+	var res []*securion.Plan
+	params := mux.Vars(r)
+	query := r.URL.Query()
+
 	secClient := securion.NewClient()
-	plans, err := secClient.GetPlansJSON("3", params["interval"])
+	plans, err := secClient.GetPlansJSON("10", params["interval"])
 	if err != nil {
 		errRes := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
 		errRes.ErrResponseLogger(err, w)
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(plans); err != nil {
+	interval := query.Get("interval")
+	log.Info(interval)
+	for _, p := range plans {
+		if p.Interval == interval {
+			for _, std := range securion.StdPlans {
+				if c := strings.Compare(p.ID, std); c == 0 {
+					log.Info(p.ID)
+					res = append(res, p)
+				}
+			}
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(res); err != nil {
 		resErr := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
 		resErr.ErrResponseLogger(err, w)
 		return
