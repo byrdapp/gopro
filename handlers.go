@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/blixenkrone/gopro/securion"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 
@@ -57,7 +58,7 @@ func newServer() *Server {
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
 	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
-	mux.HandleFunc("/securion/test", securionTest).Methods("POST")
+	mux.HandleFunc("/securion/plans", securionPlans).Methods("GET")
 	mux.HandleFunc("/reauthenticate", isJWTAuth(generateJWT)).Methods("GET")
 
 	// * Private endpoints
@@ -220,13 +221,23 @@ type TagResult struct {
 	Err string       `json:"err,omitempty"`
 }
 
-func securionTest(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-	}
+func securionPlans(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	defer r.Body.Close()
+	secClient := securion.NewClient()
+	plans, err := secClient.GetPlansJSON("3", params["interval"])
+	if err != nil {
+		errRes := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
+		errRes.ErrResponseLogger(err, w)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(plans); err != nil {
+		resErr := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
+		resErr.ErrResponseLogger(err, w)
+		return
+	}
 }
 
 // getExif recieves body with img files
