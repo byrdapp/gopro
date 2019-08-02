@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -69,9 +70,12 @@ func newServer() *Server {
 	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
 	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
 	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/media", isJWTAuth(getMedias)).Methods("GET")
+	mux.HandleFunc("/medias", isJWTAuth(getMedias)).Methods("GET")
 	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
 	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
+
+	mux.HandleFunc("/pro/{id}", isJWTAuth(getProProfile)).Methods("GET")
+	mux.HandleFunc("/stats/{id}", isJWTAuth(getProStats)).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},
@@ -225,18 +229,14 @@ func securionPlans(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 	var res []*securion.Plan
-	params := mux.Vars(r)
-	query := r.URL.Query()
+	interval := r.FormValue("interval")
 
 	secClient := securion.NewClient()
-	plans, err := secClient.GetPlansJSON("10", params["interval"])
+	plans, err := secClient.GetPlansJSON("10", interval)
 	if err != nil {
-		errRes := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
-		errRes.ErrResponseLogger(err, w)
+		errors.NewResErr(err, err.Error(), 503, w)
 		return
 	}
-
-	interval := query.Get("interval")
 	log.Info(interval)
 	for _, p := range plans {
 		if p.Interval == interval {
@@ -250,8 +250,7 @@ func securionPlans(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		resErr := &errors.ErrorBuilder{Code: 503, ClientMsg: err.Error()}
-		resErr.ErrResponseLogger(err, w)
+		errors.NewResErr(err, err.Error(), 503, w)
 		return
 	}
 }
@@ -268,8 +267,7 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not parse request body"}
-			resErr.ErrResponseLogger(err, w)
+			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
 			return
 		}
 
@@ -285,15 +283,13 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-					resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not read file" + part.FileName()}
-					resErr.ErrResponseLogger(err, w)
+					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
 
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
-					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
-					rErr.ErrResponseLogger(err, w)
+					errors.NewResErr(err, err.Error(), 503, w)
 					break
 				}
 
@@ -308,11 +304,60 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 				exifRes = append(exifRes, &res)
 			}
 			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
-				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
-				rErr.ErrResponseLogger(err, w)
+				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
 				return
 			}
 		}
+	}
+}
+
+/**
+ * Professional PQ handlers
+ */
+
+func getProProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method now allowed.", 403)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	pro, err := db.GetProProfile(ctx, params["id"])
+	if err != nil {
+		if err == sql.ErrNoRows {
+			errors.NewResErr(err, "No result for this proID", http.StatusNoContent, w)
+			return
+		}
+		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(pro); err != nil {
+		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		return
+	}
+}
+
+func getProStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method now allowed.", 403)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	stats, err := db.GetProStats(ctx, params["id"])
+	if err != nil {
+		errors.NewResErr(err, "Error getting pro stats", 503, w)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		return
 	}
 }
 

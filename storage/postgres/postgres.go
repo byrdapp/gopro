@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/sirupsen/logrus"
+	"github.com/blixenkrone/gopro/utils/logger"
 
 	// Postgres driver
 	_ "github.com/lib/pq"
@@ -17,12 +17,14 @@ type Postgres struct {
 	DB *sql.DB
 }
 
+var log = logger.NewLogger()
+
 // NewPQ Starts ORM
 func NewPQ() (Service, error) {
-	logrus.Info("Starting postgres...")
+	log.Info("Starting postgres...")
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
-		logrus.Fatal("Error opening postgress connstr")
+		log.Fatal("Error opening postgress connstr")
 	}
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -32,13 +34,13 @@ func NewPQ() (Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Infoln("Started psql DB")
+	log.Infoln("Started psql DB")
 	return &Postgres{db}, nil
 }
 
 // UpdateMedia -
 func (p *Postgres) UpdateMedia(id string) (*Media, error) {
-	// todo: also alters the departments or new prototype?
+	// todo: also alters the departments or new method?
 	var media Media
 	return &media, nil
 }
@@ -51,7 +53,7 @@ func (p *Postgres) CreateMedia(ctx context.Context, media *Media) (string, error
 		p.HandleRowError(err)
 		return "", err
 	}
-	logrus.Infof("Inserted new media with id: %v", id)
+	log.Infof("Inserted new media with id: %v", id)
 	return strconv.Itoa(int(id)), nil
 }
 
@@ -89,7 +91,7 @@ func (p *Postgres) GetMedias(ctx context.Context, params ...[]string) ([]*Media,
 	}
 
 	if err := p.CancelRowsError(rows); err != nil {
-		logrus.Errorf("Error getting rows: %s", err)
+		log.Errorf("Error getting rows: %s", err)
 		return nil, err
 	}
 
@@ -104,8 +106,45 @@ func (p *Postgres) CreateProfessional(ctx context.Context, pro *Professional) (s
 		p.HandleRowError(err)
 		return "", err
 	}
-	logrus.Infof("Inserted new pro with id: %v", id)
+	log.Infof("Inserted new pro with id: %v", id)
 	return strconv.Itoa(int(id)), nil
+}
+
+// GetProProfile -
+func (p *Postgres) GetProProfile(ctx context.Context, id string) (*Professional, error) {
+	var pro Professional
+	query := "SELECT * FROM professional WHERE id = $1"
+
+	row := p.DB.QueryRowContext(ctx, query, id)
+	if err := row.Scan(&pro.ID, &pro.DisplayName, &pro.UserID, &pro.Name, &pro.Email, &pro.StatsID); err != nil {
+		return nil, err
+	}
+	return &pro, nil
+}
+
+// CreateProStats adds stats from the pro ID column to stats table
+func (p *Postgres) CreateProStats(ctx context.Context, stats *Stats) (int64, error) {
+	var id int64
+	err := p.DB.QueryRowContext(ctx,
+		"INSERT INTO stats(accepted_assignments, device, sales_amount, sales_quantity) VALUES ($2, $3, $4, $5) WHERE id = $1 RETURNING id;",
+		stats.AcceptedAssignments, stats.Device, stats.SalesAmount, stats.SalesQuantity).Scan(&id)
+	if err != nil {
+		return -1, err
+	}
+	log.Infof("Added pro stats with id: %v", id)
+	return id, nil
+}
+
+// GetProStats returns stats given an ID for a professional
+func (p *Postgres) GetProStats(ctx context.Context, proID string) (*Stats, error) {
+	var stats Stats
+	query := "SELECT * FROM stats WHERE id = $1"
+	row := p.DB.QueryRowContext(ctx, query, proID)
+	err := row.Scan(&stats.ID, &stats.AcceptedAssignments, &stats.Device, &stats.SalesAmount, &stats.SalesQuantity)
+	if err != nil {
+		return nil, err
+	}
+	return &stats, nil
 }
 
 // GetProByID -
@@ -116,7 +155,7 @@ func (p *Postgres) GetProByID(ctx context.Context, id string) (*Professional, er
 		return nil, err
 	}
 	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = $1`, sqlid)
-	err = row.Scan(&pro.ID, &pro.Name, &pro.UserID, &pro.DisplayName)
+	err = row.Scan(&pro.ID, &pro.Name, &pro.UserID, &pro.DisplayName, &pro.Email)
 	if err != nil {
 		p.HandleRowError(err)
 		return nil, err
@@ -142,11 +181,11 @@ func (p *Postgres) Close() error {
 func (p *Postgres) HandleRowError(err error) {
 	switch {
 	case err == sql.ErrNoRows:
-		logrus.Errorf("No rows were returned: %s\n", err)
+		log.Errorf("No rows were returned: %s\n", err)
 	case err != nil:
-		logrus.Errorf("Error with query: %v\n", err)
+		log.Errorf("Error with query: %v\n", err)
 	default:
-		logrus.Panicf("Default error: %v\n", err)
+		log.Panicf("Default error: %v\n", err)
 	}
 }
 

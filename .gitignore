@@ -10,3 +10,4 @@ vendor
 .env-prod
 .dockerignore
 docker-compose.yml
+*.sql
