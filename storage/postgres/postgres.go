@@ -113,8 +113,12 @@ func (p *Postgres) CreateProfessional(ctx context.Context, pro *Professional) (s
 // GetProProfile -
 func (p *Postgres) GetProProfile(ctx context.Context, id string) (*Professional, error) {
 	var pro Professional
+	// query, _, err := qb.Select("*").From("professional").Where("id", id).ToSql()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.Infoln(query)
 	query := "SELECT * FROM professional WHERE id = $1"
-
 	row := p.DB.QueryRowContext(ctx, query, id)
 	if err := row.Scan(&pro.ID, &pro.DisplayName, &pro.UserID, &pro.Name, &pro.Email, &pro.StatsID); err != nil {
 		return nil, err
