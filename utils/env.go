@@ -3,9 +3,12 @@ package utils
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/blixenkrone/gopro/utils/logger"
 )
 
+var log = logger.NewLogger()
+
+// LookupEnv -
 func LookupEnv(val, fallback string) string {
 	v, ok := os.LookupEnv(val)
 	if !ok {
@@ -13,7 +16,6 @@ func LookupEnv(val, fallback string) string {
 			log.Printf("Error getting env, using: %s", fallback)
 			return fallback
 		}
-		log.Error("Error getting fallback")
 	}
 	return v
 }

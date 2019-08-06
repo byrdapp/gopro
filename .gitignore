@@ -11,3 +11,4 @@ vendor
 .dockerignore
 docker-compose.yml
 *.sql
+*.http

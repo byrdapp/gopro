@@ -6,6 +6,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
+
+	qb "github.com/Masterminds/squirrel"
+
 	"github.com/blixenkrone/gopro/utils/logger"
 
 	// Postgres driver
@@ -36,13 +40,6 @@ func NewPQ() (Service, error) {
 	}
 	log.Infoln("Started psql DB")
 	return &Postgres{db}, nil
-}
-
-// UpdateMedia -
-func (p *Postgres) UpdateMedia(id string) (*Media, error) {
-	// todo: also alters the departments or new method?
-	var media Media
-	return &media, nil
 }
 
 // CreateMedia -
@@ -120,6 +117,23 @@ func (p *Postgres) GetProProfile(ctx context.Context, id string) (*Professional,
 	// log.Infoln(query)
 	query := "SELECT * FROM professional WHERE id = $1"
 	row := p.DB.QueryRowContext(ctx, query, id)
+	if err := row.Scan(&pro.ID, &pro.DisplayName, &pro.UserID, &pro.Name, &pro.Email, &pro.StatsID); err != nil {
+		return nil, err
+	}
+	return &pro, nil
+}
+
+// GetProProfileByEmail -
+func (p *Postgres) GetProProfileByEmail(ctx context.Context, email string) (*Professional, error) {
+	var pro Professional
+	query, i, err := qb.Select("*").From("professional").Where("email = ?", email).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	spew.Dump(i)
+	log.Infoln(query)
+	// query := "SELECT * FROM professional WHERE id = $1"
+	row := p.DB.QueryRowContext(ctx, query)
 	if err := row.Scan(&pro.ID, &pro.DisplayName, &pro.UserID, &pro.Name, &pro.Email, &pro.StatsID); err != nil {
 		return nil, err
 	}

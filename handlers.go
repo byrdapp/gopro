@@ -1,152 +1,74 @@
 package main
 
 import (
-	"crypto/tls"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	stdliberr "errors"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/blixenkrone/gopro/securion"
-
-	goexif "github.com/rwcarlsen/goexif/exif"
-
-	exif "github.com/blixenkrone/gopro/upload/exif"
-
-	"github.com/blixenkrone/gopro/utils/errors"
-	"github.com/rs/cors"
-
-	mux "github.com/gorilla/mux"
-
-	"github.com/blixenkrone/gopro/mailtips"
-	"github.com/blixenkrone/gopro/slack"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
+	exif "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/blixenkrone/gopro/utils/errors"
 	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/crypto/acme/autocert"
+	mux "github.com/gorilla/mux"
+	goexif "github.com/rwcarlsen/goexif/exif"
 	"golang.org/x/net/context"
-	"golang.org/x/net/http2"
 )
 
 /**
- * * What is the relationship between media and department?
- * * What should be shown to the user of these ^?
  * ! implement context in all server>db calls
  */
 
-// Server -
-type Server struct {
-	httpsSrv *http.Server
-	httpSrv  *http.Server
-	certm    *autocert.Manager
-	// handlermux http.Handler
+// Credentials for at user to get JWT
+type Credentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
-var jwtKey = []byte("thiskeyiswhat")
-var wg = sync.WaitGroup{}
-
-// Creates a new server with H2 & HTTPS
-func newServer() *Server {
-	mux := mux.NewRouter()
-	// ? Public endpoints
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusTooEarly)
-		fmt.Fprintln(w, "Nothing to see here :-)")
-	}).Methods("GET")
-	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
-	mux.HandleFunc("/securion/plans", securionPlans).Methods("GET")
-	mux.HandleFunc("/reauthenticate", isJWTAuth(generateJWT)).Methods("GET")
-
-	// * Private endpoints
-	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Secure msg from gopro service"))
-	})).Methods("GET")
-
-	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
-	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
-	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/medias", isJWTAuth(getMedias)).Methods("GET")
-	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
-	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
-
-	mux.HandleFunc("/pro/{id}", isJWTAuth(getProProfile)).Methods("GET")
-	mux.HandleFunc("/stats/{id}", isJWTAuth(getProStats)).Methods("GET")
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200"},
-		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
-		AllowCredentials: true,
-	})
-
-	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*host),
-		Cache:      autocert.DirCache("/certs"),
+func getJWTFromEnvMust() []byte {
+	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
+	if !ok {
+		log.Errorln("Environment didn't provide a JWT_SECRET string val")
 	}
-
-	httpsSrv := &http.Server{
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
-		Addr:              ":https",
-		TLSConfig: &tls.Config{
-			PreferServerCipherSuites: true,
-			CurvePreferences: []tls.CurveID{
-				tls.CurveP256,
-				tls.X25519,
-			},
-		},
-		Handler: c.Handler(mux),
-	}
-
-	// Create server for redirecting HTTP to HTTPS
-	httpSrv := &http.Server{
-		Addr:         ":http",
-		ReadTimeout:  httpsSrv.ReadTimeout,
-		WriteTimeout: httpsSrv.WriteTimeout,
-		IdleTimeout:  httpsSrv.IdleTimeout,
-		Handler:      m.HTTPHandler(nil),
-	}
-
-	return &Server{
-		httpsSrv: httpsSrv,
-		httpSrv:  httpSrv,
-		certm:    &m,
-	}
+	return []byte(JWTSecret)
 }
 
-// JWTCreds for at user to get JWT
-type JWTCreds struct {
-	Username string `json:"username"`
-}
+// JWTSecret the secret token from sys environment
+var JWTSecret = getJWTFromEnvMust()
 
-func generateJWT(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Content-Type", "text/html")
+var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		var creds JWTCreds
-		if err := decodeJSON(r.Body, creds); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		var creds Credentials
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			return
+		}
+		if creds.Password == "" || creds.Username == "" {
+			err := stdliberr.New("Missing username or password in credentials")
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
 		}
 		exp := time.Now().Add(tokenExpirationTime)
 		claims := &Claims{
 			Username: creds.Username,
+			Password: creds.Password,
 			Claims: jwt.StandardClaims{
 				ExpiresAt: exp.Unix(),
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
-		signedToken, err := token.SignedString(jwtKey)
+
+		signedToken, err := token.SignedString(JWTSecret)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errors.NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
 			return
 		}
 
@@ -160,13 +82,13 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
 			return
 		}
 	}
 }
 
-func getMediaByID(w http.ResponseWriter, r *http.Request) {
+var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
@@ -181,7 +103,8 @@ func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createMedia(w http.ResponseWriter, r *http.Request) {
+// Dont use this for public routes
+var createMedia = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		r.Header.Set("content-type", "application/json")
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
@@ -203,7 +126,7 @@ func createMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 // getMedias endpoint: /medias
-func getMedias(w http.ResponseWriter, r *http.Request) {
+var getMedias = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
 	defer cancel()
@@ -225,7 +148,7 @@ type TagResult struct {
 	Err string       `json:"err,omitempty"`
 }
 
-func securionPlans(w http.ResponseWriter, r *http.Request) {
+var getSecurionPlans = func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 	var res []*securion.Plan
@@ -256,7 +179,7 @@ func securionPlans(w http.ResponseWriter, r *http.Request) {
 }
 
 // getExif recieves body with img files
-func getExif(w http.ResponseWriter, r *http.Request) {
+var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
@@ -315,7 +238,7 @@ func getExif(w http.ResponseWriter, r *http.Request) {
  * Professional PQ handlers
  */
 
-func getProProfile(w http.ResponseWriter, r *http.Request) {
+var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method now allowed.", 403)
 	}
@@ -340,7 +263,7 @@ func getProProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getProStats(w http.ResponseWriter, r *http.Request) {
+var getProStats = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method now allowed.", 403)
 	}
@@ -359,21 +282,4 @@ func getProStats(w http.ResponseWriter, r *http.Request) {
 		errors.NewResErr(err, "Error parsing to JSON", 503, w)
 		return
 	}
-}
-
-func (s *Server) useHTTP2() error {
-	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.httpsSrv, &http2Srv)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func decodeJSON(r io.Reader, val JWTCreds) error {
-	err := json.NewDecoder(r).Decode(&val)
-	if err != nil {
-		return err
-	}
-	return nil
 }

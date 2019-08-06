@@ -7,7 +7,7 @@ import (
 
 // Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type Service interface {
-	UpdateMedia(id string) (*Media, error)
+	// UpdateMedia(id string) (*Media, error)
 	// Load(string) (string, error)
 	CreateMedia(context.Context, *Media) (string, error)
 	// Delete(string) (string, error)
