@@ -20,7 +20,7 @@ func createCSV(record []string, index int, info interface{}) {
 }
 
 // WithdrawalsToCSV asdasd
-func WithdrawalsToCSV(db *firebase.DBInstance) {
+func WithdrawalsToCSV(db *firebase.Firebase) {
 	withdrawals, err := db.GetWithdrawals()
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)
@@ -34,7 +34,7 @@ func WithdrawalsToCSV(db *firebase.DBInstance) {
 }
 
 // WriteWithdrawalsToCSV Does everything inside the loop above
-func writeWithdrawalsToCSV(db *firebase.DBInstance, w *csv.Writer, index int, val *storage.Withdrawals) {
+func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
 	profile, err := db.GetProfile(val.RequestUserID)
 	var record []string
@@ -53,7 +53,7 @@ func writeWithdrawalsToCSV(db *firebase.DBInstance, w *csv.Writer, index int, va
 }
 
 // ProfilesToCSV initiates data and loops the write process
-func ProfilesToCSV(db *firebase.DBInstance) {
+func ProfilesToCSV(db *firebase.Firebase) {
 	prfs, err := db.GetProfiles()
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)

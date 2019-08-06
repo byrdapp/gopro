@@ -26,18 +26,18 @@ import (
  * ! implement context in all server>db calls
  */
 
-// Credentials for at user to get JWT
-type Credentials struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
 func getJWTFromEnvMust() []byte {
 	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
 	if !ok {
 		log.Errorln("Environment didn't provide a JWT_SECRET string val")
 	}
 	return []byte(JWTSecret)
+}
+
+// Credentials for at user to get JWT
+type Credentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 // JWTSecret the secret token from sys environment
@@ -61,8 +61,19 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			Username: creds.Username,
 			Password: creds.Password,
 			Claims: jwt.StandardClaims{
+				IssuedAt:  time.Now().Unix(),
 				ExpiresAt: exp.Unix(),
+				Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
+				Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
+				Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
 			},
+			// Claims: auth.Token{
+			// 	IssuedAt:  time.Now().Unix(),
+			// 	ExpiresAt: exp.Unix(),
+			// 	Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
+			// 	Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
+			// 	Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
+			// }
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
 
@@ -93,7 +104,7 @@ var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
-		val, err := db.GetMediaByID(ctx, params["id"])
+		val, err := pq.GetMediaByID(ctx, params["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -114,7 +125,7 @@ var createMedia = func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		id, err := db.CreateMedia(ctx, &media)
+		id, err := pq.CreateMedia(ctx, &media)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -131,7 +142,7 @@ var getMedias = func(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
 	defer cancel()
 	// todo: params
-	medias, err := db.GetMedias(ctx)
+	medias, err := pq.GetMedias(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -248,7 +259,7 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	pro, err := db.GetProProfile(ctx, params["id"])
+	pro, err := pq.GetProProfile(ctx, params["id"])
 	if err != nil {
 		if err == sql.ErrNoRows {
 			errors.NewResErr(err, "No result for this proID", http.StatusNoContent, w)
@@ -273,7 +284,7 @@ var getProStats = func(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	stats, err := db.GetProStats(ctx, params["id"])
+	stats, err := pq.GetProStats(ctx, params["id"])
 	if err != nil {
 		errors.NewResErr(err, "Error getting pro stats", 503, w)
 		return

@@ -5,14 +5,16 @@ import (
 
 	logger "github.com/blixenkrone/gopro/utils/logger"
 
+	firebase "github.com/blixenkrone/gopro/storage/firebase"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
 	"github.com/joho/godotenv"
 )
 
-var db postgres.Service
-var log = logger.NewLogger()
-
 var (
+	log = logger.NewLogger()
+	pq  postgres.Service
+	fb  firebase.Service
+
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
 	host  = flag.String("host", "", "What host are you using?")
 	// ? not yet in use
@@ -31,15 +33,23 @@ func init() {
 }
 
 func main() {
-	svc, err := postgres.NewPQ()
+	pqsrv, err := postgres.NewPQ()
 	if err != nil {
 		log.Fatalf("POSTGRESQL err: %s", err)
+		return
 	}
-	db = svc
-	defer svc.Close()
-	s := newServer()
+	pq = pqsrv
+	defer pqsrv.Close()
+
+	fbsrv, err := firebase.New()
+	if err != nil {
+		log.Fatalf("Error starting firebase: %s", err)
+		return
+	}
+	fb = fbsrv
 
 	// Serve on localhost with localhost certs if no host provided
+	s := newServer()
 	if *host == "" {
 		s.httpsSrv.Addr = "localhost:8085"
 		log.Info("Serving on http://localhost:8085")

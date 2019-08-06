@@ -18,6 +18,7 @@ type Claims struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Claims   jwt.StandardClaims
+	UID      string
 }
 
 const (
