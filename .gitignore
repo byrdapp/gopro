@@ -10,4 +10,5 @@ vendor
 .env-prod
 .dockerignore
 docker-compose.yml
-docker-compose.yml
+*.sql
+*.http
