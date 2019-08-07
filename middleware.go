@@ -1,12 +1,11 @@
 package main
 
 import (
-	stdliberr "errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"firebase.google.com/go/auth"
 
 	"github.com/blixenkrone/gopro/utils/errors"
 
@@ -15,10 +14,11 @@ import (
 
 // Claims -
 type Claims struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Claims   jwt.StandardClaims
-	UID      string
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	FbClaims  auth.Token
+	JWTClaims jwt.StandardClaims
+	UID       string
 }
 
 const (
@@ -30,10 +30,46 @@ const (
 )
 
 // isJWTAuth middleware requires routes to possess a JWToken
+var isJWTAuthFB = func(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		cookie, err := r.Cookie(proToken)
+		if err != nil {
+			if err == http.ErrNoCookie {
+				fmt.Printf("Error %s", err.Error())
+				// force user to relogin
+				errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
+				http.RedirectHandler("/login", http.StatusFound)
+			}
+			errors.NewResErr(err, "Error getting token", 503, w)
+			http.RedirectHandler("/login", http.StatusFound)
+		}
+		token, err := fb.VerifyToken(r.Context(), cookie.Value)
+		if err != nil {
+			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
+			http.RedirectHandler("/login", http.StatusFound)
+			return
+		}
+		_ = token
+		// ? refresh if the token is expired but value still in cookie
+		next(w, r)
+	})
+}
+
+func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		next(w, r)
+	}
+}
+
+/**
+ * Deprecated
+ */
 func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := Claims{}
-		c, err := r.Cookie("pro_token")
+		cookie, err := r.Cookie(proToken)
 		if err != nil {
 			if err == http.ErrNoCookie {
 				fmt.Printf("Error %s", err.Error())
@@ -42,17 +78,14 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 			errors.NewResErr(err, "Error getting token", 503, w)
 		}
 
-		token, err := jwt.ParseWithClaims(c.Value, &claims.Claims, func(token *jwt.Token) (interface{}, error) {
-			fmt.Println(c.Value)
-			if sm, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				err := stdliberr.New("Invalid signing algorithm")
+		token, err := jwt.ParseWithClaims(cookie.Value, &claims.JWTClaims, func(token *jwt.Token) (interface{}, error) {
+			fmt.Println(cookie.Value)
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-				spew.Dump(sm)
 				return nil, err
 			}
-			return JWTSecret, nil
+			return JWTSecretMust(), nil
 		})
-
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
 				errors.NewResErr(err, "Invalid signature", 503, w)
@@ -76,25 +109,25 @@ func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (c *Claims) refreshToken(w http.ResponseWriter) error {
-	tokenRefreshThrottle := time.Now().Add(tokenRefreshThrottle).Unix()
-	fmt.Println(c.Claims.ExpiresAt)
-	fmt.Println(tokenRefreshThrottle)
-	if c.Claims.ExpiresAt < tokenRefreshThrottle {
-		expirationTime := time.Now().Add(tokenExpirationTime)
-		c.Claims.ExpiresAt = expirationTime.Unix()
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
-		signedToken, err := token.SignedString(JWTSecret)
-		if err != nil {
-			return err
-		}
-		http.SetCookie(w, &http.Cookie{
-			Name:   "pro_token",
-			Value:  signedToken,
-			Path:   "/",
-			Secure: false,
-		})
-		fmt.Println("Refreshed token")
-		return nil
-	}
+	// tokenRefreshThrottle := time.Now().Add(tokenRefreshThrottle).Unix()
+	// fmt.Println(c.Claims.ExpiresAt)
+	// fmt.Println(tokenRefreshThrottle)
+	// if c.Claims.ExpiresAt < tokenRefreshThrottle {
+	// 	expirationTime := time.Now().Add(tokenExpirationTime)
+	// 	c.Claims.ExpiresAt = expirationTime.Unix()
+	// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
+	// 	signedToken, err := token.SignedString(JWTSecretMust())
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	http.SetCookie(w, &http.Cookie{
+	// 		Name:   "pro_token",
+	// 		Value:  signedToken,
+	// 		Path:   "/",
+	// 		Secure: false,
+	// 	})
+	// 	fmt.Println("Refreshed token")
+	// 	return nil
+	// }
 	return nil
 }

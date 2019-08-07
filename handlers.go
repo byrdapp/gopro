@@ -12,11 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+
 	"github.com/blixenkrone/gopro/securion"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
 	exif "github.com/blixenkrone/gopro/upload/exif"
 	"github.com/blixenkrone/gopro/utils/errors"
-	"github.com/dgrijalva/jwt-go"
 	mux "github.com/gorilla/mux"
 	goexif "github.com/rwcarlsen/goexif/exif"
 	"golang.org/x/net/context"
@@ -24,9 +25,15 @@ import (
 
 /**
  * ! implement context in all server>db calls
+ *
+ * * New plan:
+ * In PQ:
+ * - Keep table "profile" or "professional" and have only UID from FB in there (at least not conflicting data from FB)
+ * - refer to the UID when adding / getting data from PQ db
  */
 
-func getJWTFromEnvMust() []byte {
+// JWTSecretMust -
+func JWTSecretMust() []byte {
 	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
 	if !ok {
 		log.Errorln("Environment didn't provide a JWT_SECRET string val")
@@ -38,10 +45,58 @@ func getJWTFromEnvMust() []byte {
 type Credentials struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
+	UID      string `json:"uid,omitempty"`
 }
 
-// JWTSecret the secret token from sys environment
-var JWTSecret = getJWTFromEnvMust()
+var signOut = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		w.Header().Set("Content-Type", "application/json")
+		http.SetCookie(w, &http.Cookie{
+			Name:   "pro_token",
+			Value:  "",
+			MaxAge: 0,
+		})
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}
+}
+
+var loginGetTokenFB = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		w.Header().Set("Content-Type", "application/json")
+		var creds Credentials
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			return
+		}
+		if creds.Password == "" || creds.Username == "" {
+			err := stdliberr.New("Missing username or password in credentials")
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+
+		token, err := fb.GetToken(r.Context(), creds.UID)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+
+		log.Printf("Got token: %s", token)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "pro_token",
+			Expires:  time.Now().Add(tokenExpirationTime),
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+		})
+
+		if err := json.NewEncoder(w).Encode(token); err != nil {
+			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
+			return
+		}
+	}
+}
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -56,28 +111,21 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
-		exp := time.Now().Add(tokenExpirationTime)
 		claims := &Claims{
 			Username: creds.Username,
 			Password: creds.Password,
-			Claims: jwt.StandardClaims{
+			JWTClaims: jwt.StandardClaims{
 				IssuedAt:  time.Now().Unix(),
-				ExpiresAt: exp.Unix(),
+				ExpiresAt: time.Now().Add(time.Minute * 30).Unix(),
 				Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
 				Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
 				Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
 			},
-			// Claims: auth.Token{
-			// 	IssuedAt:  time.Now().Unix(),
-			// 	ExpiresAt: exp.Unix(),
-			// 	Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
-			// 	Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
-			// 	Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
-			// }
+			UID: creds.UID,
 		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
-
-		signedToken, err := token.SignedString(JWTSecret)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.JWTClaims)
+		// JWTSecret the secret token from sys environment
+		signedToken, err := token.SignedString(JWTSecretMust())
 		if err != nil {
 			errors.NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
 			return

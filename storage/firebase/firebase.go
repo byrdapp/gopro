@@ -35,6 +35,8 @@ type Service interface {
 	UpdateData(uid string, prop string, value string) error
 	GetAuth() ([]*auth.ExportedUserRecord, error)
 	DeleteAuthUserByUID(uid string) error
+	GetToken(ctx context.Context, uid string) (string, error)
+	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 
 // New SE
@@ -65,17 +67,17 @@ func New() (Service, error) {
 	}, nil
 }
 
-// VerifyToken verify JWT handled by middleware.go
-func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (bool, error) {
+// VerifyToken verify JWT handled by middleware.go returning the uid
+func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Token, error) {
 	token, err := db.Auth.VerifyIDToken(ctx, idToken)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	sub := token.Subject
 	uid := token.UID
 	spew.Dump(sub)
 	spew.Dump(uid)
-	return true, nil
+	return token, nil
 }
 
 // GetTransactions - this guy
@@ -174,4 +176,9 @@ func (db *Firebase) DeleteAuthUserByUID(uid string) error {
 		return err
 	}
 	return nil
+}
+
+// GetToken returns token as a string
+func (db *Firebase) GetToken(ctx context.Context, uid string) (string, error) {
+	return db.Auth.CustomToken(ctx, uid)
 }
