@@ -3,7 +3,7 @@ package bookings
 import (
 	"time"
 
-	"github.com/byblix/gopro/models"
+	"github.com/blixenkrone/gopro/models"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +26,7 @@ type Booking struct {
 	log     *logrus.Logger
 }
 
+// BookingService -
 type BookingService interface {
 	CreateBooking() error
 	DeleteBooking() error

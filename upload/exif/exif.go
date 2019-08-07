@@ -2,10 +2,11 @@ package exif
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 
-	"github.com/byblix/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/utils/logger"
 
 	// Keep this import so the compiler knows the format
 	_ "image/jpeg"
@@ -27,9 +28,8 @@ type ImageReader struct {
 
 // ImgService contains methods for imgs
 type ImgService interface {
-	TagExif(*sync.WaitGroup, chan<- *exif.Exif)
-	TagExifSync() *exif.Exif                         // For tests no goroutines
-	TagExifError(*sync.WaitGroup, chan<- *TagResult) // Tests
+	TagExif(*sync.WaitGroup, chan<- *exif.Exif, chan<- error)
+	TagExifSync() (*exif.Exif, error) // For tests no goroutines
 }
 
 var log = logger.NewLogger()
@@ -56,14 +56,8 @@ func NewExifReq(r io.Reader) (ImgService, error) {
 	}, nil
 }
 
-// TagResult struct for exif channel to return either result or err
-type TagResult struct {
-	res *exif.Exif
-	err error
-}
-
 // TagExif returns the bytes of the image/tiff in ch
-func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif) {
+func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif, cherr chan<- error) {
 	defer wg.Done()
 	out, err := exif.Decode(img.Buffer)
 	if err != nil {
@@ -73,45 +67,42 @@ func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif) {
 		log.Printf("exif.Decode, warning: %v", err)
 	}
 	log.Printf("Tagged exif: %s", img.Name)
-	ch <- out
-	close(ch)
+
+	if err := img.requiredExifData(out); err != nil {
+		cherr <- err
+	} else {
+		ch <- out
+	}
 }
 
-// TagExifError - testing with ch errors
-func (img *ImageReader) TagExifError(wg *sync.WaitGroup, ch chan<- *TagResult) {
-	defer wg.Done()
-	requiredExifData := [3]exif.FieldName{"DateTime", "GPSLatitude", "GPSLongitude"}
-	var tag TagResult
-	out, err := exif.Decode(img.Buffer)
-	if err != nil {
-		if exif.IsCriticalError(err) {
-			log.Fatalf("exif.Decode, critical error: %v", err)
-		}
-		log.Printf("exif.Decode, warning: %v", err)
-		tag.err = err
-	}
-	log.Printf("Tagged exif: %s", img.Name)
-	for _, rq := range requiredExifData {
-		_, err := out.Get(rq)
+// RequiredExifData - testing with ch errors
+func (img *ImageReader) requiredExifData(out *exif.Exif) error {
+	minExifData := [3]exif.FieldName{"DateTime", "GPSLatitude", "GPSLongitude"}
+	for _, r := range minExifData {
+		_, err := out.Get(r)
 		if err != nil {
-			tag.err = err
+			return errors.New("EXIF Tag was not present: " + string(r))
 		}
 	}
-	tag.res = out
-	ch <- &tag
-	close(ch)
+	return nil
 }
 
 // TagExifSync returns the bytes of the image/tiff in ch - dont use in production
-func (img *ImageReader) TagExifSync() *exif.Exif {
+func (img *ImageReader) TagExifSync() (*exif.Exif, error) {
 	out, err := exif.Decode(img.Buffer)
 	if err != nil {
 		if exif.IsCriticalError(err) {
 			log.Errorf("exif.Decode, critical error: %v", err)
+			return nil, errors.New("exif.Decode, critical error: " + err.Error())
 		}
-		log.Printf("exif.Decode, warning: %v", err)
+		log.Printf("exif.Decode, warning: " + err.Error())
+		return nil, err
 	}
 	log.Printf("Tagged exif: %s", img.Name)
 
-	return out
+	if err := img.requiredExifData(out); err != nil {
+		log.Info(err)
+		return nil, err
+	}
+	return out, nil
 }

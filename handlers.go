@@ -1,145 +1,133 @@
 package main
 
 import (
-	"crypto/tls"
+	"database/sql"
 	"encoding/json"
-	"fmt"
+	stdliberr "errors"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
-	"sync"
 	"time"
 
-	goexif "github.com/rwcarlsen/goexif/exif"
-
-	exif "github.com/blixenkrone/gopro/upload/exif"
-
-	"github.com/blixenkrone/gopro/utils/errors"
-	"github.com/rs/cors"
-
-	mux "github.com/gorilla/mux"
-
-	"github.com/byblix/gopro/mailtips"
-	"github.com/byblix/gopro/slack"
-	postgres "github.com/byblix/gopro/storage/postgres"
 	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/crypto/acme/autocert"
+
+	"github.com/blixenkrone/gopro/securion"
+	postgres "github.com/blixenkrone/gopro/storage/postgres"
+	exif "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/blixenkrone/gopro/utils/errors"
+	mux "github.com/gorilla/mux"
+	goexif "github.com/rwcarlsen/goexif/exif"
 	"golang.org/x/net/context"
-	"golang.org/x/net/http2"
 )
 
 /**
- * * What is the relationship between media and department?
- * * What should be shown to the user of these ^?
  * ! implement context in all server>db calls
+ *
+ * * New plan:
+ * In PQ:
+ * - Keep table "profile" or "professional" and have only UID from FB in there (at least not conflicting data from FB)
+ * - refer to the UID when adding / getting data from PQ db
  */
 
-// Server -
-type Server struct {
-	httpsSrv *http.Server
-	httpSrv  *http.Server
-	certm    *autocert.Manager
-	// handlermux http.Handler
+// JWTSecretMust -
+func JWTSecretMust() []byte {
+	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
+	if !ok {
+		log.Errorln("Environment didn't provide a JWT_SECRET string val")
+	}
+	return []byte(JWTSecret)
 }
 
-var jwtKey = []byte("thiskeyiswhat")
-var wg = sync.WaitGroup{}
-
-// Creates a new server with H2 & HTTPS
-func newServer() *Server {
-	mux := mux.NewRouter()
-	// ? Public endpoints
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusTooEarly)
-		fmt.Fprintln(w, "Nothing to see here :-)")
-	}).Methods("GET")
-	mux.HandleFunc("/authenticate", generateJWT).Methods("POST")
-	mux.HandleFunc("/reauthenticate", isJWTAuth(generateJWT)).Methods("GET")
-
-	// * Private endpoints
-	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Secure msg from gopro service"))
-	})).Methods("GET")
-
-	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
-	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
-	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/media", isJWTAuth(getMedias)).Methods("GET")
-	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
-	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200"},
-		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
-		AllowCredentials: true,
-	})
-
-	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*host),
-		Cache:      autocert.DirCache("/certs"),
-	}
-
-	httpsSrv := &http.Server{
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
-		Addr:              ":https",
-		TLSConfig: &tls.Config{
-			PreferServerCipherSuites: true,
-			CurvePreferences: []tls.CurveID{
-				tls.CurveP256,
-				tls.X25519,
-			},
-		},
-		Handler: c.Handler(mux),
-	}
-
-	// Create server for redirecting HTTP to HTTPS
-	httpSrv := &http.Server{
-		Addr:         ":http",
-		ReadTimeout:  httpsSrv.ReadTimeout,
-		WriteTimeout: httpsSrv.WriteTimeout,
-		IdleTimeout:  httpsSrv.IdleTimeout,
-		Handler:      m.HTTPHandler(nil),
-	}
-
-	return &Server{
-		httpsSrv: httpsSrv,
-		httpSrv:  httpSrv,
-		certm:    &m,
-	}
+// Credentials for at user to get JWT
+type Credentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	UID      string `json:"uid,omitempty"`
 }
 
-// JWTCreds for at user to get JWT
-type JWTCreds struct {
-	Username string `json:"username"`
-}
-
-func generateJWT(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Content-Type", "text/html")
+var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		var creds JWTCreds
-		if err := decodeJSON(r.Body, creds); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		http.SetCookie(w, &http.Cookie{
+			Name:   "pro_token",
+			Value:  "",
+			MaxAge: 0,
+		})
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}
+}
+
+var loginGetTokenFB = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		w.Header().Set("Content-Type", "application/json")
+		var creds Credentials
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			return
 		}
-		exp := time.Now().Add(tokenExpirationTime)
+		if creds.Password == "" || creds.Username == "" {
+			err := stdliberr.New("Missing username or password in credentials")
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+
+		token, err := fb.GetToken(r.Context(), creds.UID)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+
+		log.Printf("Got token: %s", token)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "pro_token",
+			Expires:  time.Now().Add(tokenExpirationTime),
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+		})
+
+		if err := json.NewEncoder(w).Encode(token); err != nil {
+			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
+			return
+		}
+	}
+}
+
+var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		w.Header().Set("Content-Type", "application/json")
+		var creds Credentials
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			return
+		}
+		if creds.Password == "" || creds.Username == "" {
+			err := stdliberr.New("Missing username or password in credentials")
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
 		claims := &Claims{
 			Username: creds.Username,
-			Claims: jwt.StandardClaims{
-				ExpiresAt: exp.Unix(),
+			Password: creds.Password,
+			JWTClaims: jwt.StandardClaims{
+				IssuedAt:  time.Now().Unix(),
+				ExpiresAt: time.Now().Add(time.Minute * 30).Unix(),
+				Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
+				Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
+				Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
 			},
+			UID: creds.UID,
 		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.Claims)
-		signedToken, err := token.SignedString(jwtKey)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.JWTClaims)
+		// JWTSecret the secret token from sys environment
+		signedToken, err := token.SignedString(JWTSecretMust())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errors.NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
 			return
 		}
 
@@ -153,18 +141,18 @@ func generateJWT(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
 			return
 		}
 	}
 }
 
-func getMediaByID(w http.ResponseWriter, r *http.Request) {
+var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
-		val, err := db.GetMediaByID(ctx, params["id"])
+		val, err := pq.GetMediaByID(ctx, params["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -174,7 +162,8 @@ func getMediaByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createMedia(w http.ResponseWriter, r *http.Request) {
+// Dont use this for public routes
+var createMedia = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		r.Header.Set("content-type", "application/json")
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
@@ -184,7 +173,7 @@ func createMedia(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		id, err := db.CreateMedia(ctx, &media)
+		id, err := pq.CreateMedia(ctx, &media)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -196,12 +185,12 @@ func createMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 // getMedias endpoint: /medias
-func getMedias(w http.ResponseWriter, r *http.Request) {
+var getMedias = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
 	defer cancel()
 	// todo: params
-	medias, err := db.GetMedias(ctx)
+	medias, err := pq.GetMedias(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -210,8 +199,46 @@ func getMedias(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleImage recieves body
-func getExif(w http.ResponseWriter, r *http.Request) {
+// TagResult struct for exif handler to return either result or err
+type TagResult struct {
+	Out *goexif.Exif `json:"exif,omitempty"`
+	Lng float64      `json:"lng,omitempty"`
+	Lat float64      `json:"lat,omitempty"`
+	Err string       `json:"err,omitempty"`
+}
+
+var getSecurionPlans = func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	defer r.Body.Close()
+	var res []*securion.Plan
+	interval := r.FormValue("interval")
+
+	secClient := securion.NewClient()
+	plans, err := secClient.GetPlansJSON("10", interval)
+	if err != nil {
+		errors.NewResErr(err, err.Error(), 503, w)
+		return
+	}
+	log.Info(interval)
+	for _, p := range plans {
+		if p.Interval == interval {
+			for _, std := range securion.StdPlans {
+				if c := strings.Compare(p.ID, std); c == 0 {
+					log.Info(p.ID)
+					res = append(res, p)
+				}
+			}
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		errors.NewResErr(err, err.Error(), 503, w)
+		return
+	}
+}
+
+// getExif recieves body with img files
+var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
@@ -222,16 +249,15 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not parse request body"}
-			resErr.ErrResponseLogger(err, w)
+			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
 			return
 		}
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
-			var exifs []*goexif.Exif
-
+			var exifRes []*TagResult
 			for {
+				var res TagResult
 				part, err := mr.NextPart()
 				// read length of files
 				if err == io.EOF {
@@ -239,55 +265,80 @@ func getExif(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-					log.Errorf("Error with something: %s", err)
-					resErr := &errors.ErrorBuilder{Code: http.StatusBadRequest, ClientMsg: "Could not read file" + part.FileName()}
-					resErr.ErrResponseLogger(err, w)
-					return
+					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
+					break
 				}
 
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
-					rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: err.Error()}
-					rErr.ErrResponseLogger(err, w)
-					return
+					errors.NewResErr(err, err.Error(), 503, w)
+					break
 				}
 
-				ch := make(chan *goexif.Exif)
-				wg.Add(1)
-				go imgsrv.TagExif(&wg, ch)
-				exif, ok := <-ch
-				if !ok {
-					// something error
-					return
+				out, err := imgsrv.TagExifSync()
+				if err != nil {
+					res.Err = err.Error()
+				} else {
+					res.Out = out
+					// res.Lat = lat
+					// res.Lng = lng
 				}
-				exifs = append(exifs, exif)
+				exifRes = append(exifRes, &res)
 			}
-			wg.Wait()
-
-			if err := json.NewEncoder(w).Encode(exifs); err != nil {
-				rErr := &errors.ErrorBuilder{Code: 400, ClientMsg: "Could not convert exif to JSON"}
-				rErr.ErrResponseLogger(err, w)
+			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
+				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
 				return
 			}
 		}
 	}
 }
 
-func determineLength() {}
+/**
+ * Professional PQ handlers
+ */
 
-func (s *Server) useHTTP2() error {
-	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.httpsSrv, &http2Srv)
-	if err != nil {
-		return err
+var getProProfile = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method now allowed.", 403)
 	}
-	return nil
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	pro, err := pq.GetProProfile(ctx, params["id"])
+	if err != nil {
+		if err == sql.ErrNoRows {
+			errors.NewResErr(err, "No result for this proID", http.StatusNoContent, w)
+			return
+		}
+		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(pro); err != nil {
+		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		return
+	}
 }
 
-func decodeJSON(r io.Reader, val JWTCreds) error {
-	err := json.NewDecoder(r).Decode(&val)
-	if err != nil {
-		return err
+var getProStats = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method now allowed.", 403)
 	}
-	return nil
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	stats, err := pq.GetProStats(ctx, params["id"])
+	if err != nil {
+		errors.NewResErr(err, "Error getting pro stats", 503, w)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		return
+	}
 }
