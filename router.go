@@ -39,6 +39,7 @@ func newServer() *Server {
 	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Secure msg from gopro service"))
 	})).Methods("GET")
+
 	mux.HandleFunc("/logoff", signOut).Methods("POST")
 
 	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")

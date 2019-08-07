@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/davecgh/go-spew/spew"
@@ -181,4 +182,20 @@ func (db *Firebase) DeleteAuthUserByUID(uid string) error {
 // GetToken returns token as a string
 func (db *Firebase) GetToken(ctx context.Context, uid string) (string, error) {
 	return db.Auth.CustomToken(ctx, uid)
+}
+
+// IsAdmin returns token as a string
+func (db *Firebase) IsAdmin(ctx context.Context, uid string) (bool, error) {
+	user, err := db.Auth.GetUser(ctx, uid)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// The claims can be accessed on the user record.
+	admin, ok := user.CustomClaims["admin"]
+	if !ok {
+		var err error
+		err = fmt.Errorf("Error getting admin Claims")
+		return false, err
+	}
+	return admin.(bool), nil
 }

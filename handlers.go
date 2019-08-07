@@ -43,7 +43,7 @@ func JWTSecretMust() []byte {
 
 // Credentials for at user to get JWT
 type Credentials struct {
-	Username string `json:"username,omitempty"`
+	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
 	UID      string `json:"uid,omitempty"`
 }
@@ -68,7 +68,7 @@ var loginGetTokenFB = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		if creds.Password == "" || creds.Username == "" {
+		if creds.Password == "" || creds.Email == "" {
 			err := stdliberr.New("Missing username or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
@@ -106,14 +106,12 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		if creds.Password == "" || creds.Username == "" {
+		if creds.Password == "" || creds.Email == "" {
 			err := stdliberr.New("Missing username or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
 		claims := &Claims{
-			Username: creds.Username,
-			Password: creds.Password,
 			JWTClaims: jwt.StandardClaims{
 				IssuedAt:  time.Now().Unix(),
 				ExpiresAt: time.Now().Add(time.Minute * 30).Unix(),
@@ -121,7 +119,6 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 				Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
 				Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
 			},
-			UID: creds.UID,
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.JWTClaims)
 		// JWTSecret the secret token from sys environment

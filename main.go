@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	logger "github.com/blixenkrone/gopro/utils/logger"
 
@@ -25,10 +26,11 @@ func init() {
 	// type go run *.go -local
 	flag.Parse()
 	if *local {
-		log.Info("Running locally")
 		if err := godotenv.Load(); err != nil {
 			log.Fatalln(err)
 		}
+		log.Infof("Running locally with %s environment", os.Getenv("ENV"))
+
 	}
 }
 
