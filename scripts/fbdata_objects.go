@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/byblix/gopro/storage"
-	firebase "github.com/byblix/gopro/storage/firebase"
+	"github.com/blixenkrone/gopro/storage"
+	firebase "github.com/blixenkrone/gopro/storage/firebase"
 )
 
 const noSSLstring = "http://res.cloudinary.com"
@@ -16,7 +16,7 @@ const hasSSLstring = "https://res.cloudinary.com"
 // ChangeProfileUserPicture selfexplanatory
 func ChangeProfileUserPicture() error {
 	defer fmt.Println("Done")
-	db, err := firebase.InitFirebaseDB()
+	db, err := firebase.New()
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +57,7 @@ func correctImageString(p *storage.Profile) string {
 // DeleteUnusedAuthProfiles from Auth in Firebase
 func DeleteUnusedAuthProfiles() error {
 	var wg sync.WaitGroup
-	db, err := firebase.InitFirebaseDB()
+	db, err := firebase.New()
 	profiles, err := db.GetAuth()
 	if err != nil {
 		return err

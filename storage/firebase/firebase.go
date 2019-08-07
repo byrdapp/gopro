@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/byblix/gopro/storage"
-	aws "github.com/byblix/gopro/storage/aws"
+	"github.com/davecgh/go-spew/spew"
+
+	"github.com/blixenkrone/gopro/storage"
+	aws "github.com/blixenkrone/gopro/storage/aws"
 
 	"google.golang.org/api/iterator"
 
@@ -17,17 +19,29 @@ import (
 	"google.golang.org/api/option"
 )
 
-// DBInstance is the created struct for creating FB method refs
-type DBInstance struct {
+// Firebase is the created struct for creating FB method refs
+type Firebase struct {
 	Client  *db.Client
-	Context context.Context
 	Auth    *auth.Client
+	Context context.Context
 }
 
-var ctx = context.Background()
+// Service contains the methods attached to the Firebase struct
+type Service interface {
+	GetTransactions() ([]*storage.Transaction, error)
+	GetWithdrawals() ([]*storage.Withdrawals, error)
+	GetProfile(uid string) (*storage.Profile, error)
+	GetProfiles() ([]*storage.Profile, error)
+	UpdateData(uid string, prop string, value string) error
+	GetAuth() ([]*auth.ExportedUserRecord, error)
+	DeleteAuthUserByUID(uid string) error
+	GetToken(ctx context.Context, uid string) (string, error)
+	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
+}
 
-// InitFirebaseDB SE
-func InitFirebaseDB() (*DBInstance, error) {
+// New SE
+func New() (Service, error) {
+	ctx := context.Background()
 	config := &firebase.Config{
 		DatabaseURL: os.Getenv("FB_DATABASE_URL"),
 	}
@@ -46,15 +60,28 @@ func InitFirebaseDB() (*DBInstance, error) {
 		return nil, err
 	}
 
-	return &DBInstance{
+	return &Firebase{
 		Client:  client,
 		Context: ctx,
 		Auth:    auth,
 	}, nil
 }
 
+// VerifyToken verify JWT handled by middleware.go returning the uid
+func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Token, error) {
+	token, err := db.Auth.VerifyIDToken(ctx, idToken)
+	if err != nil {
+		return nil, err
+	}
+	sub := token.Subject
+	uid := token.UID
+	spew.Dump(sub)
+	spew.Dump(uid)
+	return token, nil
+}
+
 // GetTransactions - this guy
-func (db *DBInstance) GetTransactions() ([]*storage.Transaction, error) {
+func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 	p := os.Getenv("ENV") + "/transactions"
 	transaction := []*storage.Transaction{}
 	fmt.Printf("Path: %s\n", p)
@@ -66,7 +93,7 @@ func (db *DBInstance) GetTransactions() ([]*storage.Transaction, error) {
 }
 
 // GetWithdrawals - this guy
-func (db *DBInstance) GetWithdrawals() ([]*storage.Withdrawals, error) {
+func (db *Firebase) GetWithdrawals() ([]*storage.Withdrawals, error) {
 	p := os.Getenv("ENV") + "/transactions"
 	wd := []*storage.Withdrawals{}
 	fmt.Printf("Path: %s\n", p)
@@ -78,7 +105,7 @@ func (db *DBInstance) GetWithdrawals() ([]*storage.Withdrawals, error) {
 }
 
 // GetProfile get a single profile instance
-func (db *DBInstance) GetProfile(uid string) (*storage.Profile, error) {
+func (db *Firebase) GetProfile(uid string) (*storage.Profile, error) {
 	path := os.Getenv("ENV") + "/profiles/" + uid
 	prf := storage.Profile{}
 	fmt.Printf("Path: %s\n", path)
@@ -90,7 +117,7 @@ func (db *DBInstance) GetProfile(uid string) (*storage.Profile, error) {
 }
 
 // GetProfiles get multiple profile instances
-func (db *DBInstance) GetProfiles() ([]*storage.Profile, error) {
+func (db *Firebase) GetProfiles() ([]*storage.Profile, error) {
 	var prfs []*storage.Profile
 	path := os.Getenv("ENV") + "/profiles"
 	ref := db.Client.NewRef(path)
@@ -110,7 +137,7 @@ func (db *DBInstance) GetProfiles() ([]*storage.Profile, error) {
 }
 
 // UpdateData userID is the uid to change profile to. Prop and value is a map.
-func (db *DBInstance) UpdateData(uid string, prop string, value string) error {
+func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 	data := make(map[string]interface{})
 	data[prop] = value
 	path := os.Getenv("ENV") + "/profiles/" + uid
@@ -125,10 +152,10 @@ func (db *DBInstance) UpdateData(uid string, prop string, value string) error {
 }
 
 // GetAuth -
-func (db *DBInstance) GetAuth() ([]*auth.ExportedUserRecord, error) {
+func (db *Firebase) GetAuth() ([]*auth.ExportedUserRecord, error) {
 	// path := os.Getenv("ENV")
 	profiles := []*auth.ExportedUserRecord{}
-	iter := db.Auth.Users(ctx, "")
+	iter := db.Auth.Users(db.Context, "")
 	for {
 		user, err := iter.Next()
 		if err == iterator.Done {
@@ -143,10 +170,15 @@ func (db *DBInstance) GetAuth() ([]*auth.ExportedUserRecord, error) {
 }
 
 // DeleteAuthUserByUID -
-func (db *DBInstance) DeleteAuthUserByUID(uid string) error {
-	err := db.Auth.DeleteUser(ctx, uid)
+func (db *Firebase) DeleteAuthUserByUID(uid string) error {
+	err := db.Auth.DeleteUser(db.Context, uid)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+// GetToken returns token as a string
+func (db *Firebase) GetToken(ctx context.Context, uid string) (string, error) {
+	return db.Auth.CustomToken(ctx, uid)
 }

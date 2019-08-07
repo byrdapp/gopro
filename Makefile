@@ -1,5 +1,5 @@
 serve_local:
-	go run *.go
+	go run *.go -local
 
 serve_docker_local:
 	docker-compose up --build
