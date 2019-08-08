@@ -1,18 +1,16 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	stdliberr "errors"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/blixenkrone/gopro/securion"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
@@ -32,22 +30,6 @@ import (
  * - refer to the UID when adding / getting data from PQ db
  */
 
-// JWTSecretMust -
-func JWTSecretMust() []byte {
-	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
-	if !ok {
-		log.Errorln("Environment didn't provide a JWT_SECRET string val")
-	}
-	return []byte(JWTSecret)
-}
-
-// Credentials for at user to get JWT
-type Credentials struct {
-	Email    string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
-	UID      string `json:"uid,omitempty"`
-}
-
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "application/json")
@@ -60,42 +42,10 @@ var signOut = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var loginGetTokenFB = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		w.Header().Set("Content-Type", "application/json")
-		var creds Credentials
-		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
-			return
-		}
-		if creds.Password == "" || creds.Email == "" {
-			err := stdliberr.New("Missing username or password in credentials")
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-			return
-		}
-
-		token, err := fb.GetToken(r.Context(), creds.UID)
-		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-			return
-		}
-
-		log.Printf("Got token: %s", token)
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "pro_token",
-			Expires:  time.Now().Add(tokenExpirationTime),
-			Value:    token,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   true,
-		})
-
-		if err := json.NewEncoder(w).Encode(token); err != nil {
-			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
-			return
-		}
-	}
+// Credentials for at user to get JWT
+type Credentials struct {
+	Email    string `json:"email,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
@@ -107,25 +57,20 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if creds.Password == "" || creds.Email == "" {
-			err := stdliberr.New("Missing username or password in credentials")
+			err := stdliberr.New("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
-		claims := &Claims{
-			JWTClaims: jwt.StandardClaims{
-				IssuedAt:  time.Now().Unix(),
-				ExpiresAt: time.Now().Add(time.Minute * 30).Unix(),
-				Audience:  "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
-				Subject:   os.Getenv("FB_SERVICE_ACC_EMAIL"),
-				Issuer:    os.Getenv("FB_SERVICE_ACC_EMAIL"),
-			},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.JWTClaims)
-		// JWTSecret the secret token from sys environment
-		signedToken, err := token.SignedString(JWTSecretMust())
+
+		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
-			errors.NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error finding profile UID in Firebase Auth. Does the user exist?", http.StatusGone, w)
 			return
+		}
+
+		signedToken, err := fb.CreateCustomToken(r.Context(), usr.UID)
+		if err != nil {
+			spew.Errorf("Error: %s", err)
 		}
 
 		http.SetCookie(w, &http.Cookie{
@@ -300,16 +245,8 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-	defer cancel()
-
-	pro, err := pq.GetProProfile(ctx, params["id"])
+	pro, err := fb.GetProfile(r.Context(), params["id"])
 	if err != nil {
-		if err == sql.ErrNoRows {
-			errors.NewResErr(err, "No result for this proID", http.StatusNoContent, w)
-			return
-		}
 		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
 		return
 	}

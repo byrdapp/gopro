@@ -38,7 +38,7 @@ func ChangeProfileUserPicture() error {
 	return nil
 }
 
-func changeDetection(p *storage.Profile) (string, bool) {
+func changeDetection(p *storage.FirebaseProfile) (string, bool) {
 	if contains := strings.Contains(p.UserPicture, noSSLstring); contains == true {
 		fmt.Printf("%s is without SSL\n", p.DisplayName)
 		corr := correctImageString(p)
@@ -47,7 +47,7 @@ func changeDetection(p *storage.Profile) (string, bool) {
 	return "", false
 }
 
-func correctImageString(p *storage.Profile) string {
+func correctImageString(p *storage.FirebaseProfile) string {
 	breakpoint := len(noSSLstring)
 	sliced := p.UserPicture[breakpoint:]
 	connected := hasSSLstring + sliced

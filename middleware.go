@@ -68,42 +68,35 @@ func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
  */
 func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := Claims{}
-		cookie, err := r.Cookie(proToken)
-		if err != nil {
-			if err == http.ErrNoCookie {
-				fmt.Printf("Error %s", err.Error())
-				errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
-			}
-			errors.NewResErr(err, "Error getting token", 503, w)
-		}
-
-		token, err := jwt.ParseWithClaims(cookie.Value, &claims.JWTClaims, func(token *jwt.Token) (interface{}, error) {
-			fmt.Println(cookie.Value)
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-				return nil, err
-			}
-			return JWTSecretMust(), nil
-		})
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				errors.NewResErr(err, "Invalid signature", 503, w)
-				return
-			}
-			errors.NewResErr(err, "Error parsing Claims for JWT", http.StatusForbidden, w)
-			return
-		}
+		// claims := Claims{}
+		// cookie, err := r.Cookie(proToken)
+		// if err != nil {
+		// 	if err == http.ErrNoCookie {
+		// 		fmt.Printf("Error %s", err.Error())
+		// 		errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
+		// 		return
+		// 	}
+		// 	errors.NewResErr(err, "Error getting token", 503, w)
+		// 	return
+		// }
+		// if err != nil {
+		// 	if err == jwt.ErrSignatureInvalid {
+		// 		errors.NewResErr(err, "Invalid signature", 503, w)
+		// 		return
+		// 	}
+		// 	errors.NewResErr(err, "Error parsing Claims for JWT", http.StatusForbidden, w)
+		// 	return
+		// }
+		// spew.Dump("Cookie JWT: " + cookie.Value)
 		// ? refresh if the token is expired but value still in cookie
 		// if err := claims.refreshToken(w); err != nil {
 		// 	errors.NewResErr(err, "Error refreshing token", 503, w)
 		// 	return
+		// // }
+		// if !token.Valid {
+		// 	http.Error(w, "Token is not valid", http.StatusUnauthorized)
+		// 	return
 		// }
-		if !token.Valid {
-			http.Error(w, "Token is not valid", http.StatusUnauthorized)
-			return
-		}
-
 		next(w, r)
 	})
 }

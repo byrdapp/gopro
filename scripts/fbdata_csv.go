@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"log"
@@ -36,7 +37,7 @@ func WithdrawalsToCSV(db *firebase.Firebase) {
 // WriteWithdrawalsToCSV Does everything inside the loop above
 func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
-	profile, err := db.GetProfile(val.RequestUserID)
+	profile, err := db.GetProfile(context.Background(), val.RequestUserID)
 	var record []string
 	record = append(record, strconv.FormatInt(int64(index), 10))
 	record = append(record, ParseUnixAsDate(val.RequestDate))
@@ -74,7 +75,7 @@ func ProfilesToCSV(db *firebase.Firebase) {
 }
 
 // WriteProfilesToCSV Does everything inside the loop above
-func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.Profile) {
+func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.FirebaseProfile) {
 	alreadyCashedAmount := (profile.SalesAmount - profile.WithdrawableAmount)
 	var record []string
 	record = append(record, strconv.FormatInt(index, 10))

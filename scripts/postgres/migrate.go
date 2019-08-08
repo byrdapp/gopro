@@ -43,7 +43,7 @@ func main() {
 }
 
 // ExportToPostgres -
-func getProfilesFromFB() ([]*storage.Profile, error) {
+func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
 	fbdb, err := firebase.New()
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func getProfilesFromFB() ([]*storage.Profile, error) {
 	return prfs, nil
 }
 
-func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) error {
+func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.FirebaseProfile) error {
 	var wg sync.WaitGroup
 	if err := sqldb.Ping(); err != nil {
 		log.Fatal(err)
@@ -75,7 +75,7 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) erro
 
 				stats := postgres.Stats{
 					AcceptedAssignments: p.AcceptedAssignments,
-					Device:              p.Device,
+					Device:              p.DeviceBrand,
 					SalesAmount:         p.SalesAmount,
 					SalesQuantity:       p.SalesQuantity,
 				}

@@ -1,7 +1,7 @@
 package storage
 
-// Profile for all types of profiles
-type Profile struct {
+// FirebaseProfile defines a profile in firebsse
+type FirebaseProfile struct {
 	UserID              string `json:"userId,omitempty"`
 	DisplayName         string `json:"displayName"`
 	FirstName           string `json:"firstName,omitempty"`
@@ -16,7 +16,11 @@ type Profile struct {
 	WithdrawableAmount  int64  `json:"withdrawableAmount,omitempty"`
 	AcceptedAssignments int    `json:"acceptedAssignments,omitempty"`
 	UserPicture         string `json:"userPicture,omitempty"`
-	Device              string `json:"deviceBrand,omitempty"`
+	SoldStories         int    `json:"soldStories,omitempty"`
+	DeviceBrand         string `json:"deviceBrand,omitempty"`
+	DeviceModel         string `json:"deviceModel,omitempty"`
+	OsSystem            string `json:"osSystem,omitempty"`
+	UploadedStories     int    `json:"uploadedStories,omitempty"`
 }
 
 // CreateDate         *time.Time `json:"createDate"`
@@ -24,7 +28,7 @@ type Profile struct {
 // Media struct
 type Media struct {
 	ID                  string `sql:"id"`
-	ProfileData         *Profile
+	ProfileData         *FirebaseProfile
 	UserID              string `json:"userId"`
 	Country             string `json:"country,omitempty"`
 	City                string `json:"city,omitempty"`

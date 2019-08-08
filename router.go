@@ -49,7 +49,7 @@ func newServer() *Server {
 	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
 	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
 
-	mux.HandleFunc("/pro/{id}", isJWTAuth(getProProfile)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isJWTAuth(getProProfile)).Methods("GET")
 	mux.HandleFunc("/stats/{id}", isJWTAuth(getProStats)).Methods("GET")
 
 	c := cors.New(cors.Options{
