@@ -3,12 +3,10 @@ package main
 import (
 	"encoding/json"
 	stdliberr "errors"
-	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -90,25 +88,18 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 		fbtoken, err := fb.VerifyToken(r.Context(), tkn)
 		if err != nil {
 			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
-			errors.NewResErr(err, msg, code, w)
 			return
 		}
-		fmtURL := fmt.Sprintf("%s/profile/%s", r.URL.Host, fbtoken.UID)
-		log.Infoln(fmtURL)
-		var client http.Client
-		req := &http.Request{
-			Method: http.MethodGet,
-			URL:    &url.URL{Path: fmtURL},
-		}
-		res, err := client.Do(req)
+		val, err := fb.GetProfile(r.Context(), fbtoken.UID)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
 			return
 		}
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			errors.NewResErr(err, "Error parsing JSON response", http.StatusInternalServerError, w)
+		if err := json.NewEncoder(w).Encode(val); err != nil {
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
+
 	}
 }
 
