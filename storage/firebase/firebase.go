@@ -189,7 +189,6 @@ func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Toke
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Expires: %v", t.Expires)
 	return t, nil
 }
 

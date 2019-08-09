@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	stdliberr "errors"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -49,13 +51,15 @@ type Credentials struct {
 }
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
+		defer r.Body.Close()
+
 		if creds.Password == "" || creds.Email == "" {
 			err := stdliberr.New("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
@@ -73,17 +77,36 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			spew.Errorf("Error: %s", err)
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:    "pro_token",
-			Expires: time.Now().Add(tokenExpirationTime),
-			Value:   signedToken,
-			Path:    "/",
-			// HttpOnly: true,
-			Secure: false,
-		})
-
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			return
+		}
+	}
+}
+
+var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		tkn := r.Header.Get(userToken)
+		fbtoken, err := fb.VerifyToken(r.Context(), tkn)
+		if err != nil {
+			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
+			errors.NewResErr(err, msg, code, w)
+			return
+		}
+		fmtURL := fmt.Sprintf("%s/profile/%s", r.URL.Host, fbtoken.UID)
+		log.Infoln(fmtURL)
+		var client http.Client
+		req := &http.Request{
+			Method: http.MethodGet,
+			URL:    &url.URL{Path: fmtURL},
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			errors.NewResErr(err, "Error parsing JSON response", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -114,6 +137,7 @@ var createMedia = func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
+		defer r.Body.Close()
 
 		id, err := pq.CreateMedia(ctx, &media)
 		if err != nil {
