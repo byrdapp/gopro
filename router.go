@@ -31,7 +31,6 @@ func newServer() *Server {
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
 	mux.HandleFunc("/authenticate", loginGetToken).Methods("POST")
-	mux.HandleFunc("/securion/plans", getSecurionPlans).Methods("GET")
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
 
 	// * Private endpoints
@@ -45,13 +44,11 @@ func newServer() *Server {
 	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
 	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
 	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/medias", isJWTAuth(getMedias)).Methods("GET")
-	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
-	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
+	mux.HandleFunc("/profiles", isJWTAuth(getProfiles)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isJWTAuth(getProfileByID)).Methods("GET")
 
 	mux.HandleFunc("/profile/decode", isJWTAuth(decodeTokenGetProfile)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isJWTAuth(getProProfile)).Methods("GET")
-	mux.HandleFunc("/stats/{id}", isJWTAuth(getProStats)).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},

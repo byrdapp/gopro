@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -20,7 +21,7 @@ func ChangeProfileUserPicture() error {
 	if err != nil {
 		panic(err)
 	}
-	prfs, err := db.GetProfiles()
+	prfs, err := db.GetProfiles(context.Background())
 	if err != nil {
 		return err
 	}

@@ -12,8 +12,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/blixenkrone/gopro/securion"
-	postgres "github.com/blixenkrone/gopro/storage/postgres"
 	exif "github.com/blixenkrone/gopro/upload/exif"
 	"github.com/blixenkrone/gopro/utils/errors"
 	mux "github.com/gorilla/mux"
@@ -82,6 +80,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// /profile/decode func attempts to return a profile from a given client UID header
 var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		tkn := r.Header.Get(userToken)
@@ -103,12 +102,13 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
+// /profile/{uid}
+var getProfileByID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
-		val, err := pq.GetMediaByID(ctx, params["id"])
+		val, err := fb.GetProfile(ctx, params["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -118,41 +118,15 @@ var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Dont use this for public routes
-var createMedia = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		r.Header.Set("content-type", "application/json")
-		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
-		defer cancel()
-		var media postgres.Media
-		if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-		defer r.Body.Close()
-
-		id, err := pq.CreateMedia(ctx, &media)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		err = json.NewEncoder(w).Encode(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
-
-// getMedias endpoint: /medias
-var getMedias = func(w http.ResponseWriter, r *http.Request) {
+// getProfiles endpoint: /profiles
+var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
-	defer cancel()
-	// todo: params
-	medias, err := pq.GetMedias(ctx)
+	medias, err := fb.GetProfiles(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.NewResErr(err, "Error finding media profiles", http.StatusFound, w)
 	}
 	if err := json.NewEncoder(w).Encode(medias); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.NewResErr(err, "JSON Encoding failed", 500, w)
 	}
 }
 
@@ -162,36 +136,6 @@ type TagResult struct {
 	Lng float64      `json:"lng,omitempty"`
 	Lat float64      `json:"lat,omitempty"`
 	Err string       `json:"err,omitempty"`
-}
-
-var getSecurionPlans = func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	defer r.Body.Close()
-	var res []*securion.Plan
-	interval := r.FormValue("interval")
-
-	secClient := securion.NewClient()
-	plans, err := secClient.GetPlansJSON("10", interval)
-	if err != nil {
-		errors.NewResErr(err, err.Error(), 503, w)
-		return
-	}
-	log.Info(interval)
-	for _, p := range plans {
-		if p.Interval == interval {
-			for _, std := range securion.StdPlans {
-				if c := strings.Compare(p.ID, std); c == 0 {
-					log.Info(p.ID)
-					res = append(res, p)
-				}
-			}
-		}
-	}
-
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		errors.NewResErr(err, err.Error(), 503, w)
-		return
-	}
 }
 
 // getExif recieves body with img files
@@ -266,27 +210,6 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(pro); err != nil {
-		errors.NewResErr(err, "Error parsing to JSON", 503, w)
-		return
-	}
-}
-
-var getProStats = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method now allowed.", 403)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-	defer cancel()
-
-	stats, err := pq.GetProStats(ctx, params["id"])
-	if err != nil {
-		errors.NewResErr(err, "Error getting pro stats", 503, w)
-		return
-	}
-	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		errors.NewResErr(err, "Error parsing to JSON", 503, w)
 		return
 	}

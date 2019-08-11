@@ -33,33 +33,6 @@ const (
 	userToken           = "user_token"
 )
 
-// isJWTAuth middleware requires routes to possess a JWToken
-var isJWTAuthFB = func(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		cookie, err := r.Cookie(proToken)
-		if err != nil {
-			if err == http.ErrNoCookie {
-				fmt.Printf("Error %s", err.Error())
-				// force user to relogin
-				errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
-				http.RedirectHandler("/login", http.StatusFound)
-			}
-			errors.NewResErr(err, "Error getting token", 503, w)
-			http.RedirectHandler("/login", http.StatusFound)
-		}
-		token, err := fb.VerifyToken(r.Context(), cookie.Value)
-		if err != nil {
-			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
-			http.RedirectHandler("/login", http.StatusFound)
-			return
-		}
-		_ = token
-		// ? refresh if the token is expired but value still in cookie
-		next(w, r)
-	})
-}
-
 func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -83,6 +56,7 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 
 		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
+			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)
 			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return

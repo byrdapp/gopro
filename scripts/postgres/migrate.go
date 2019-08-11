@@ -48,7 +48,7 @@ func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	prfs, err := fbdb.GetProfiles()
+	prfs, err := fbdb.GetProfiles(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -67,32 +67,14 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.FirebaseProfi
 			defer wg.Done()
 			if p.IsProfessional {
 				pro := postgres.Professional{
-					Name:        fmt.Sprintf("%s %s", p.FirstName, p.LastName),
-					DisplayName: p.DisplayName,
-					UserID:      p.UserID,
-					Email:       p.Email,
+					ID: p.UserID,
 				}
 
-				stats := postgres.Stats{
-					AcceptedAssignments: p.AcceptedAssignments,
-					Device:              p.DeviceBrand,
-					SalesAmount:         p.SalesAmount,
-					SalesQuantity:       p.SalesQuantity,
-				}
-
-				proID, err := sqldb.CreateProfessional(ctx, &pro)
+				_, err := sqldb.CreateProfessional(ctx, &pro)
 				if err != nil {
 					log.Errorf("Didnt create row: %s", err)
 					return
 				}
-
-				statsID, err := sqldb.CreateProStats(ctx, &stats)
-				if err != nil {
-					log.Errorf("Error with stats: %s", err)
-					return
-				}
-
-				fmt.Printf("Inserted this fellow: %s and created id in SQL: %v.\nReferenced to these statsID: %v\n", pro.DisplayName, proID, statsID)
 			}
 		}()
 		wg.Wait()

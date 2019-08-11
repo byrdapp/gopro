@@ -28,13 +28,16 @@ type Firebase struct {
 	Context context.Context // context.Backgroun() - use r.Context()
 }
 
+// ! Get profile params to switch profile type (reg, media, pro)
+// ! Integrate GET's from FB to .go
+
 // Service contains the methods attached to the Firebase struct
 type Service interface {
 	GetTransactions() ([]*storage.Transaction, error)
 	GetWithdrawals() ([]*storage.Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*storage.FirebaseProfile, error)
 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
-	GetProfiles() ([]*storage.FirebaseProfile, error)
+	GetProfiles(ctx context.Context) ([]*storage.FirebaseProfile, error)
 	UpdateData(uid string, prop string, value string) error
 	GetAuth() ([]*auth.ExportedUserRecord, error)
 	DeleteAuthUserByUID(uid string) error
@@ -96,10 +99,10 @@ func (db *Firebase) GetWithdrawals() ([]*storage.Withdrawals, error) {
 
 // GetProfile get a single FirebaseProfile instance
 func (db *Firebase) GetProfile(ctx context.Context, uid string) (*storage.FirebaseProfile, error) {
-	path := os.Getenv("ENV") + "/profiles/" + uid
+	path := os.Getenv("ENV") + "/profiles"
 	prf := storage.FirebaseProfile{}
 	fmt.Printf("Path: %s\n", path)
-	ref := db.Client.NewRef(path)
+	ref := db.Client.NewRef(path).Child(uid)
 	_, err := ref.GetWithETag(ctx, &prf)
 	if err != nil {
 		return nil, err
@@ -117,11 +120,11 @@ func (db *Firebase) GetProfileByEmail(ctx context.Context, email string) (*auth.
 }
 
 // GetProfiles get multiple FirebaseProfile instances
-func (db *Firebase) GetProfiles() ([]*storage.FirebaseProfile, error) {
+func (db *Firebase) GetProfiles(ctx context.Context) ([]*storage.FirebaseProfile, error) {
 	var prfs []*storage.FirebaseProfile
 	path := os.Getenv("ENV") + "/profiles"
 	ref := db.Client.NewRef(path)
-	res, err := ref.OrderByKey().GetOrdered(db.Context)
+	res, err := ref.OrderByKey().GetOrdered(ctx)
 	if err != nil {
 		return nil, err
 	}
