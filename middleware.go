@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"firebase.google.com/go/auth"
 
 	"github.com/blixenkrone/gopro/utils/errors"
@@ -74,12 +76,12 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		headerToken := r.Header.Get(userToken)
 		if headerToken == "" {
 			var err error
-			err = fmt.Errorf("Headertoken value must not be empty or: ' %s '", headerToken)
-			errors.NewResErr(err, "No or wrong token value provided", http.StatusUnauthorized, w)
+			err = fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 
-		_, err := fb.VerifyToken(r.Context(), headerToken)
+		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
 			http.RedirectHandler("/login", http.StatusFound)
@@ -88,6 +90,7 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		if os.Getenv("ENV") == "development" {
 			log.Infoln("Middleware ran successfully")
 		}
+		spew.Dump(token.UID)
 		next(w, r)
 	})
 }

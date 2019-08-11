@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	logger "github.com/blixenkrone/gopro/utils/logger"
-	fmterr "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 // ErrorBuilder builds custom errors
@@ -16,6 +16,10 @@ type ErrorBuilder struct {
 	w         http.ResponseWriter
 	err       error
 	s         sync.Once
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
 }
 
 var log = logger.NewLogger()
@@ -30,19 +34,13 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter) {
 	}
 	w.WriteHeader(code)
 	build.errResponseLogger()
+	build.errStackTraced()
 }
 
 func (e *ErrorBuilder) errStackTraced() {
-	// switch err := fmterr.Cause(e.err).(type) {
-	// case err:
-	// ! build error handler stack trace
-
-	// handle specifically
-	// default:
-	// unknown error
-	// }
-	newErr := fmterr.Wrap(e.err, e.ClientMsg)
-	log.Errorf("New error: %s\n", newErr)
+	cause := errors.New("Error stacktrace: ")
+	err := errors.WithStack(cause)
+	log.Printf("%+v", err)
 }
 
 // ErrResponseLogger defines what error goes to the log and what to display as JSON in client
