@@ -55,7 +55,7 @@ func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
 	return prfs, nil
 }
 
-func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.FirebaseProfile) error {
+func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProfile) error {
 	var wg sync.WaitGroup
 	if err := sqldb.Ping(); err != nil {
 		log.Fatal(err)
@@ -66,7 +66,7 @@ func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.FirebaseProfi
 		go func() {
 			defer wg.Done()
 			if p.IsProfessional {
-				pro := postgres.Professional{
+				pro := storage.Professional{
 					ID: p.UserID,
 				}
 

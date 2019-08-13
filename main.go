@@ -4,17 +4,17 @@ import (
 	"flag"
 	"os"
 
-	logger "github.com/blixenkrone/gopro/utils/logger"
-
+	storage "github.com/blixenkrone/gopro/storage"
 	firebase "github.com/blixenkrone/gopro/storage/firebase"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
+	"github.com/blixenkrone/gopro/utils/logger"
 	"github.com/joho/godotenv"
 )
 
 var (
 	log = logger.NewLogger()
-	pq  postgres.Service
-	fb  firebase.Service
+	pq  storage.PQService
+	fb  storage.FBService
 
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
 	host  = flag.String("host", "", "What host are you using?")

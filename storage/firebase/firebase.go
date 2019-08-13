@@ -31,22 +31,8 @@ type Firebase struct {
 // ! Get profile params to switch profile type (reg, media, pro)
 // ! Integrate GET's from FB to .go
 
-// Service contains the methods attached to the Firebase struct
-type Service interface {
-	GetTransactions() ([]*storage.Transaction, error)
-	GetWithdrawals() ([]*storage.Withdrawals, error)
-	GetProfile(ctx context.Context, uid string) (*storage.FirebaseProfile, error)
-	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
-	GetProfiles(ctx context.Context) ([]*storage.FirebaseProfile, error)
-	UpdateData(uid string, prop string, value string) error
-	GetAuth() ([]*auth.ExportedUserRecord, error)
-	DeleteAuthUserByUID(uid string) error
-	CreateCustomToken(ctx context.Context, uid string) (string, error)
-	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
-}
-
 // New SE
-func New() (Service, error) {
+func New() (storage.FBService, error) {
 	ctx := context.Background()
 	config := &firebase.Config{
 		DatabaseURL: os.Getenv("FB_DATABASE_URL"),

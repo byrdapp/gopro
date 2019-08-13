@@ -12,7 +12,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	exif "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/blixenkrone/gopro/storage"
+	"github.com/blixenkrone/gopro/upload/exif"
 	"github.com/blixenkrone/gopro/utils/errors"
 	mux "github.com/gorilla/mux"
 	goexif "github.com/rwcarlsen/goexif/exif"
@@ -214,3 +215,21 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+/**
+ * Booking postgres
+ */
+
+var getBookingByID = func(w http.ResponseWriter, r *http.Request) {}
+
+var createBooking = func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	defer r.Body.Close()
+	var req storage.Booking
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
+		return
+	}
+
+}
+var updateBooking = func(w http.ResponseWriter, r *http.Request) {}

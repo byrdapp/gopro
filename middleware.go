@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -46,6 +47,7 @@ func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// var claims Claims
+		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
 		if headerToken == "" {
 			var err error
@@ -54,6 +56,10 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		if strings.Contains(headerToken, "\"") {
+			log.Info("Removed quotes")
+			headerToken = strings.Trim(headerToken, "\"")
+		}
 		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)

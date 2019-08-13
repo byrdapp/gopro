@@ -10,20 +10,14 @@ import (
 
 	qb "github.com/Masterminds/squirrel"
 
+	"github.com/blixenkrone/gopro/storage"
 	"github.com/blixenkrone/gopro/utils/logger"
 
 	// Postgres driver
 	_ "github.com/lib/pq"
 )
 
-// Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
-type Service interface {
-	ProfessionalService
-	Close() error
-	Ping() error
-	HandleRowError(error)
-	CancelRowsError(*sql.Rows) error
-}
+var log = logger.NewLogger()
 
 // Postgres is the database
 type Postgres struct {
@@ -31,7 +25,7 @@ type Postgres struct {
 }
 
 // NewPQ Starts ORM
-func NewPQ() (Service, error) {
+func NewPQ() (storage.PQService, error) {
 	log.Info("Starting postgres...")
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
@@ -53,18 +47,18 @@ func NewPQ() (Service, error) {
  * BOOKING
  */
 
-// BookingService -
-type BookingService interface {
-}
-
-// Booking from a professional
-type Booking struct {
-	BookingID int `json:"booking_id" sql:"booking_id"`
-}
+// CreateBooking -
+// func (p *Postgres) CreateBooking(uid string, b storage.Booking) (*storage.Booking, error) {
+// 	str, i, err := qb.Insert("booking").Values(&b).Options("returning booking_id").ToSql()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	log.Info(str)
+// }
 
 // GetBooking by ID
-func (p *Postgres) GetBooking(ctx context.Context, proID string) ([]*Booking, error) {
-	var b Booking
+func (p *Postgres) GetBooking(ctx context.Context, proID string) ([]*storage.Booking, error) {
+	var b storage.Booking
 	query, i, err := qb.Select("*").From("booking").Where("pro_id = ?", proID).ToSql()
 	if err != nil {
 		return nil, err
@@ -92,21 +86,8 @@ func (p *Postgres) GetBooking(ctx context.Context, proID string) ([]*Booking, er
  * PROFESSIONAL
  */
 
-// Professional user class
-type Professional struct {
-	ID string `json:"id" sql:"id"`
-}
-
-// ProfessionalService -
-type ProfessionalService interface {
-	GetProProfile(ctx context.Context, id string) (*Professional, error)
-	CreateProfessional(context.Context, *Professional) (string, error)
-}
-
-var log = logger.NewLogger()
-
 // CreateProfessional under construction
-func (p *Postgres) CreateProfessional(ctx context.Context, pro *Professional) (string, error) {
+func (p *Postgres) CreateProfessional(ctx context.Context, pro *storage.Professional) (string, error) {
 	var id int64
 	// err := p.DB.QueryRowContext(ctx, "INSERT INTO professional(name, user_id, display_name, email) VALUES($1, $2, $3, $4) RETURNING id;", pro.Name, pro.UserID, pro.DisplayName, pro.Email).Scan(&id)
 	// if err != nil {
@@ -118,8 +99,8 @@ func (p *Postgres) CreateProfessional(ctx context.Context, pro *Professional) (s
 }
 
 // GetProProfile -
-func (p *Postgres) GetProProfile(ctx context.Context, id string) (*Professional, error) {
-	var pro Professional
+func (p *Postgres) GetProProfile(ctx context.Context, id string) (*storage.Professional, error) {
+	var pro storage.Professional
 	// query, _, err := qb.Select("*").From("professional").Where("id", id).ToSql()
 	// if err != nil {
 	// 	return nil, err
@@ -134,8 +115,8 @@ func (p *Postgres) GetProProfile(ctx context.Context, id string) (*Professional,
 }
 
 // GetProProfileByEmail -
-func (p *Postgres) GetProProfileByEmail(ctx context.Context, email string) (*Professional, error) {
-	var pro Professional
+func (p *Postgres) GetProProfileByEmail(ctx context.Context, email string) (*storage.Professional, error) {
+	var pro storage.Professional
 	query, i, err := qb.Select("*").From("professional").Where("email = ?", email).ToSql()
 	if err != nil {
 		return nil, err
@@ -151,8 +132,8 @@ func (p *Postgres) GetProProfileByEmail(ctx context.Context, email string) (*Pro
 }
 
 // GetProByID -
-func (p *Postgres) GetProByID(ctx context.Context, id string) (*Professional, error) {
-	var pro Professional
+func (p *Postgres) GetProByID(ctx context.Context, id string) (*storage.Professional, error) {
+	var pro storage.Professional
 	sqlid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err

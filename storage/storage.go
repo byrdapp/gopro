@@ -1,5 +1,40 @@
 package storage
 
+import (
+	"context"
+	"database/sql"
+
+	"firebase.google.com/go/auth"
+)
+
+// Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
+type PQService interface {
+	GetProProfile(ctx context.Context, id string) (*Professional, error)
+	CreateProfessional(context.Context, *Professional) (string, error)
+	Close() error
+	Ping() error
+	HandleRowError(error)
+	CancelRowsError(*sql.Rows) error
+}
+
+type FBService interface {
+	GetTransactions() ([]*Transaction, error)
+	GetWithdrawals() ([]*Withdrawals, error)
+	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
+	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
+	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
+	UpdateData(uid string, prop string, value string) error
+	GetAuth() ([]*auth.ExportedUserRecord, error)
+	DeleteAuthUserByUID(uid string) error
+	CreateCustomToken(ctx context.Context, uid string) (string, error)
+	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
+}
+
+// Professional user class
+type Professional struct {
+	ID string `json:"id" sql:"id"`
+}
+
 // FirebaseProfile defines a profile in firebsse
 type FirebaseProfile struct {
 	UserID              string `json:"userId,omitempty"`
@@ -54,4 +89,14 @@ type Withdrawals struct {
 	RequestCompletedDate int64  `json:"requestCompletedDate,omitempty"`
 	RequestUserID        string `json:"requestUser,omitempty"`
 	RequestDate          int64  `json:"requestDate,omitempty"`
+}
+
+// Booking from a professional
+type Booking struct {
+	BookingID   int `json:"bookingId" sql:"booking_id"`
+	Task        string
+	Price       float64
+	Credits     int
+	isActive    bool // false
+	isCompleted bool // false
 }
