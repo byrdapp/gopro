@@ -3,12 +3,16 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"math/big"
+	"time"
 
 	"firebase.google.com/go/auth"
 )
 
-// Service is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
+// PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
+	CreateBooking(uid string, b Booking) (*Booking, error)
+	GetProBookings(ctx context.Context, proID string) ([]*Booking, error)
 	GetProProfile(ctx context.Context, id string) (*Professional, error)
 	CreateProfessional(context.Context, *Professional) (string, error)
 	Close() error
@@ -17,6 +21,7 @@ type PQService interface {
 	CancelRowsError(*sql.Rows) error
 }
 
+// FBService contains firebase methods
 type FBService interface {
 	GetTransactions() ([]*Transaction, error)
 	GetWithdrawals() ([]*Withdrawals, error)
@@ -91,12 +96,27 @@ type Withdrawals struct {
 	RequestDate          int64  `json:"requestDate,omitempty"`
 }
 
-// Booking from a professional
+// Booking repræsents a professional user appointment from a media
 type Booking struct {
-	BookingID   int `json:"bookingId" sql:"booking_id"`
-	Task        string
-	Price       float64
-	Credits     int
-	isActive    bool // false
-	isCompleted bool // false
+	BookingID   int       `json:"bookingId" sql:"booking_id"`
+	Task        string    `json:"task"`
+	Booker      string    `json:"booker"`
+	Price       int       `json:"price"`
+	Credits     int       `json:"credits"`
+	IsActive    bool      `json:"isActive" sql:"is_active"`
+	IsCompleted bool      `json:"isCompleted" sql:"is_completed"`
+	DateStart   time.Time `json:"dateStart" sql:"date_start"`
+	DateEnd     time.Time `json:"dateEnd" sql:"date_end"`
+	CreatedAt   time.Time `json:"createdAt" sql:"created_at"`
+	Lat         big.Float `json:"lat" sql:"lat"`
+	Lng         big.Float `json:"lng" sql:"lng"`
+}
+
+func (b *Booking) parseBookingTypes(input interface{}) {
+	var output interface{}
+	switch i := input.(type) {
+	case string:
+
+	}
+
 }

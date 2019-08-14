@@ -48,16 +48,19 @@ func NewPQ() (storage.PQService, error) {
  */
 
 // CreateBooking -
-// func (p *Postgres) CreateBooking(uid string, b storage.Booking) (*storage.Booking, error) {
-// 	str, i, err := qb.Insert("booking").Values(&b).Options("returning booking_id").ToSql()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	log.Info(str)
-// }
+func (p *Postgres) CreateBooking(uid string, b storage.Booking) (*storage.Booking, error) {
+	// var id string
+	spew.Dump(&b)
+	// str, _, err := qb.Insert("booking").Values(&b).Suffix("returning booking_id", id).ToSql()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.Info(str)
+	return &b, nil
+}
 
-// GetBooking by ID
-func (p *Postgres) GetBooking(ctx context.Context, proID string) ([]*storage.Booking, error) {
+// GetProBookings gets all the bookings from a professional user by ID
+func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
 	var b storage.Booking
 	query, i, err := qb.Select("*").From("booking").Where("pro_id = ?", proID).ToSql()
 	if err != nil {

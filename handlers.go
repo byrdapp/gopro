@@ -7,12 +7,13 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/blixenkrone/gopro/storage"
+	storage "github.com/blixenkrone/gopro/storage"
 	"github.com/blixenkrone/gopro/upload/exif"
 	"github.com/blixenkrone/gopro/utils/errors"
 	mux "github.com/gorilla/mux"
@@ -74,6 +75,9 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			spew.Errorf("Error: %s", err)
 		}
 
+		if os.Getenv("ENV") == "development" {
+			r.Header.Set("user_token", signedToken)
+		}
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
 			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
@@ -222,14 +226,48 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 
 var getBookingByID = func(w http.ResponseWriter, r *http.Request) {}
 
+// FORM /booking/{uid}
 var createBooking = func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	defer r.Body.Close()
-	var req storage.Booking
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
-		return
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		var req storage.Booking
+		// params := mux.Vars(r)
+		// uid := params["uid"]
+		if err := r.ParseForm(); err != nil {
+			errors.NewResErr(err, err.Error(), 503, w)
+			return
+		}
+		req.Lat = r.PostFormValue("lat")
+		req.Lng = r.PostFormValue("lng")
+		req.Task = r.PostFormValue("task")
+		req.Booker = r.PostFormValue("booker")
+		req.Price = r.PostFormValue("price")
+		req.Credits = r.PostFormValue("credits")
+		req.DateEnd = r.PostFormValue("dateEnd")
+		req.DateStart = r.PostFormValue("dateStart")
+
+		for key := range r.Form {
+			str := r.PostFormValue(key)
+			log.Infof("Val %s", str)
+		}
+
+		// if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// 	errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
+		// 	return
+		// }
+		defer r.Body.Close()
+
+		// b, err := pq.CreateBooking(uid, req)
+		// if err != nil {
+		// 	errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+		// 	return
+		// }
+		// if err := json.NewEncoder(w).Encode(b); err != nil {
+		// 	errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+		// 	return
+		// }
 	}
 
 }
+
 var updateBooking = func(w http.ResponseWriter, r *http.Request) {}

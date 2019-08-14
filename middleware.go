@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -49,21 +48,18 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		// var claims Claims
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
+
 		if headerToken == "" {
 			var err error
 			err = fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
 			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-
-		if strings.Contains(headerToken, "\"") {
-			log.Info("Removed quotes")
-			headerToken = strings.Trim(headerToken, "\"")
-		}
 		token, err := fb.VerifyToken(r.Context(), headerToken)
+
 		if err != nil {
 			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)
-			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
+			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusFound, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
