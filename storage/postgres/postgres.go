@@ -48,14 +48,18 @@ func NewPQ() (storage.PQService, error) {
  */
 
 // CreateBooking -
-func (p *Postgres) CreateBooking(uid string, b storage.Booking) (*storage.Booking, error) {
-	// var id string
+func (p *Postgres) CreateBooking(ctx context.Context, uid string, b storage.Booking) (*storage.Booking, error) {
+	var id string
 	spew.Dump(&b)
-	// str, _, err := qb.Insert("booking").Values(&b).Suffix("returning booking_id", id).ToSql()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Info(str)
+	query, _, err := qb.Insert("booking").Values(&b).Suffix("returning booking_id", id).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	res, err := p.DB.ExecContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	log.Info(res.LastInsertId())
 	return &b, nil
 }
 

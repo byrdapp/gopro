@@ -11,7 +11,7 @@ import (
 
 // PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
-	CreateBooking(uid string, b Booking) (*Booking, error)
+	CreateBooking(ctx context.Context, uid string, b Booking) (*Booking, error)
 	GetProBookings(ctx context.Context, proID string) ([]*Booking, error)
 	GetProProfile(ctx context.Context, id string) (*Professional, error)
 	CreateProfessional(context.Context, *Professional) (string, error)
@@ -110,13 +110,4 @@ type Booking struct {
 	CreatedAt   time.Time `json:"createdAt" sql:"created_at"`
 	Lat         big.Float `json:"lat" sql:"lat"`
 	Lng         big.Float `json:"lng" sql:"lng"`
-}
-
-func (b *Booking) parseBookingTypes(input interface{}) {
-	var output interface{}
-	switch i := input.(type) {
-	case string:
-
-	}
-
 }

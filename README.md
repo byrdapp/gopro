@@ -40,3 +40,25 @@
 			}
 			return JWTKeyPublic(), nil
 		}) -->
+
+
+### Considering using PostForm for this:
+#### Create booking
+	// if err := r.ParseForm(); err != nil {
+		// 	errors.NewResErr(err, err.Error(), 503, w)
+		// 	return
+		// }
+
+		// req.Lat = r.PostFormValue("lat")
+		// req.Lng = r.PostFormValue("lng")
+		// req.Task = r.PostFormValue("task")
+		// req.Booker = r.PostFormValue("booker")
+		// req.Price = r.PostFormValue("price")
+		// req.Credits = r.PostFormValue("credits")
+		// req.DateEnd = r.PostFormValue("dateEnd")
+		// req.DateStart = r.PostFormValue("dateStart")
+
+		// for key := range r.Form {
+		// 	str := r.PostFormValue(key)
+		// 	log.Infof("Val %s", str)
+		// }

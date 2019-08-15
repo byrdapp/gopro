@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"firebase.google.com/go/auth"
 
 	"github.com/blixenkrone/gopro/utils/errors"
@@ -55,8 +53,7 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-		token, err := fb.VerifyToken(r.Context(), headerToken)
-
+		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)
 			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusFound, w)
@@ -66,7 +63,6 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		if os.Getenv("ENV") == "development" {
 			log.Infoln("Middleware ran successfully")
 		}
-		spew.Dump(token.UID)
 		next(w, r)
 	})
 }

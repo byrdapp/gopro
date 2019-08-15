@@ -231,41 +231,26 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var req storage.Booking
-		// params := mux.Vars(r)
-		// uid := params["uid"]
-		if err := r.ParseForm(); err != nil {
-			errors.NewResErr(err, err.Error(), 503, w)
+		params := mux.Vars(r)
+		uid := params["uid"]
+		log.Infoln(uid)
+
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
 			return
 		}
-		req.Lat = r.PostFormValue("lat")
-		req.Lng = r.PostFormValue("lng")
-		req.Task = r.PostFormValue("task")
-		req.Booker = r.PostFormValue("booker")
-		req.Price = r.PostFormValue("price")
-		req.Credits = r.PostFormValue("credits")
-		req.DateEnd = r.PostFormValue("dateEnd")
-		req.DateStart = r.PostFormValue("dateStart")
-
-		for key := range r.Form {
-			str := r.PostFormValue(key)
-			log.Infof("Val %s", str)
-		}
-
-		// if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// 	errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
-		// 	return
-		// }
 		defer r.Body.Close()
 
-		// b, err := pq.CreateBooking(uid, req)
-		// if err != nil {
-		// 	errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-		// 	return
-		// }
-		// if err := json.NewEncoder(w).Encode(b); err != nil {
-		// 	errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-		// 	return
-		// }
+		b, err := pq.CreateBooking(r.Context(), uid, req)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(b); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
 	}
 
 }
