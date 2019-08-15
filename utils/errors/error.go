@@ -38,14 +38,14 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter) {
 }
 
 func (e *ErrorBuilder) errStackTraced() {
-	cause := errors.New("Error stacktrace: ")
-	err := errors.WithStack(cause)
-	log.Printf("%+v", err)
+	// cause := errors.New("Error stacktrace: ")
+	err := errors.WithStack(e.err)
+	log.Errorf("%+v", err)
 }
 
 // ErrResponseLogger defines what error goes to the log and what to display as JSON in client
 func (e *ErrorBuilder) errResponseLogger() {
-	log.Errorf("Original error: %s\n", e.err)
+	// log.Errorf("Original error: %s\n", e.err)
 	jsonParseErr := json.NewEncoder(e.w).Encode(e)
 	if jsonParseErr != nil {
 		log.Errorf("Json parse error: %s\n", jsonParseErr)

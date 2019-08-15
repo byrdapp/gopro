@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -46,6 +47,7 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		// var claims Claims
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
+		headerToken = base64.RawStdEncoding.EncodeToString([]byte(headerToken))
 
 		if headerToken == "" {
 			var err error

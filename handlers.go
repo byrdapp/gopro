@@ -77,7 +77,9 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 
 		if os.Getenv("ENV") == "development" {
 			r.Header.Set("user_token", signedToken)
+			log.Infoln(r.Header.Get("user_token"))
 		}
+
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
 			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
@@ -234,7 +236,6 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		uid := params["uid"]
 		log.Infoln(uid)
-
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
