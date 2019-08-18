@@ -47,7 +47,7 @@ func newServer() *Server {
 	mux.HandleFunc("/profiles", isJWTAuth(getProfiles)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isJWTAuth(getProfileByID)).Methods("GET")
 
-	mux.HandleFunc("/profile/decode", isJWTAuth(decodeTokenGetProfile)).Methods("GET")
+	mux.HandleFunc("/auth/profile/token", isJWTAuth(decodeTokenGetProfile)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isJWTAuth(getProProfile)).Methods("GET")
 
 	mux.HandleFunc("/booking/{id}", isJWTAuth(getBookingByID)).Methods("GET")

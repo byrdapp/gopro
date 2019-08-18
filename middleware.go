@@ -43,11 +43,9 @@ func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
  */
 var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// var claims Claims
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
-		// headerToken = base64.RawStdEncoding.EncodeToString([]byte(headerToken))
-		log.Infof("token: %s - type: %T", headerToken, headerToken)
+		// ? verify here, that the user is a pro user
 
 		if headerToken == "" {
 			var err error
@@ -55,6 +53,7 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
+		log.Infof("token type: %T", headerToken)
 		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)

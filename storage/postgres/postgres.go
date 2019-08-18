@@ -26,7 +26,6 @@ type Postgres struct {
 
 // NewPQ Starts ORM
 func NewPQ() (storage.PQService, error) {
-	log.Info("Starting postgres...")
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
 		log.Fatal("Error opening postgress connstr")
@@ -49,14 +48,20 @@ func NewPQ() (storage.PQService, error) {
 
 // CreateBooking -
 func (p *Postgres) CreateBooking(ctx context.Context, uid string, b storage.Booking) (*storage.Booking, error) {
-	var id string
+	// var id string
 	spew.Dump(&b)
-	query, _, err := qb.Insert("booking").Values(&b).Suffix("returning booking_id", id).ToSql()
+	// query, _, err := qb.Insert("booking").Values(
+	// 	&b.Booker,
+	// 	&b.Credits).Suffix("RETURNING booking_id", id).ToSql()
+	query := "INSERT INTO booking(user_id, credits, booker, task) VALUES ($1, $2, $3, $4) RETURNING booking_id"
+	log.Infof("Query: %s", query)
+	// if err != nil {
+	// 	log.Errorf("Query error: %s", err)
+	// 	return nil, err
+	// }
+	res, err := p.DB.ExecContext(ctx, query, uid, &b.Credits, &b.Booker, &b.Task)
 	if err != nil {
-		return nil, err
-	}
-	res, err := p.DB.ExecContext(ctx, query)
-	if err != nil {
+		log.Errorf("Exec error: %s", err)
 		return nil, err
 	}
 	log.Info(res.LastInsertId())

@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	stdliberr "errors"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -49,6 +49,7 @@ type Credentials struct {
 }
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
+	// ? verify here, that the user is a pro user
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
@@ -75,11 +76,6 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			spew.Errorf("Error: %s", err)
 		}
 
-		if os.Getenv("ENV") == "development" {
-			r.Header.Set("user_token", signedToken)
-			log.Infoln(r.Header.Get("user_token"))
-		}
-
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
 			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
@@ -90,22 +86,29 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 // /profile/decode func attempts to return a profile from a given client UID header
 var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		tkn := r.Header.Get(userToken)
-		fbtoken, err := fb.VerifyToken(r.Context(), tkn)
+		var err error
+		clientToken := r.Header.Get(userToken)
+		log.Infoln(clientToken)
+		if clientToken == "" {
+			err = fmt.Errorf("No header token from client")
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+		fbtoken, err := fb.VerifyToken(r.Context(), clientToken)
 		if err != nil {
 			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
 			return
 		}
-		val, err := fb.GetProfile(r.Context(), fbtoken.UID)
+		log.Infoln(fbtoken.UID)
+		profile, err := fb.GetProfile(r.Context(), fbtoken.UID)
 		if err != nil {
 			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
 			return
 		}
-		if err := json.NewEncoder(w).Encode(val); err != nil {
+		if err := json.NewEncoder(w).Encode(profile); err != nil {
 			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
-
 	}
 }
 

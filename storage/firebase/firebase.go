@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/blixenkrone/gopro/utils/logger"
-
 	"github.com/blixenkrone/gopro/storage"
 	aws "github.com/blixenkrone/gopro/storage/aws"
 
-	"google.golang.org/api/iterator"
+	"github.com/blixenkrone/gopro/utils/logger"
 
-	"firebase.google.com/go/auth"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 
 	firebase "firebase.google.com/go"
+	"firebase.google.com/go/auth"
 	"firebase.google.com/go/db"
-	"google.golang.org/api/option"
 )
 
 var log = logger.NewLogger()
@@ -52,11 +51,17 @@ func New() (storage.FBService, error) {
 		return nil, err
 	}
 
+	log.Infoln("Started Firebase admin")
+
 	return &Firebase{
 		Client:  client,
 		Context: ctx,
 		Auth:    auth,
 	}, nil
+}
+
+func (db *Firebase) signInToken() {
+
 }
 
 // GetTransactions - this guy

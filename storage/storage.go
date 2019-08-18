@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"math/big"
-	"time"
 
 	"firebase.google.com/go/auth"
 )
@@ -105,9 +104,9 @@ type Booking struct {
 	Credits     int       `json:"credits"`
 	IsActive    bool      `json:"isActive" sql:"is_active"`
 	IsCompleted bool      `json:"isCompleted" sql:"is_completed"`
-	DateStart   time.Time `json:"dateStart" sql:"date_start"`
-	DateEnd     time.Time `json:"dateEnd" sql:"date_end"`
-	CreatedAt   time.Time `json:"createdAt" sql:"created_at"`
+	DateStart   int64     `json:"dateStart" sql:"date_start"`
+	DateEnd     int64     `json:"dateEnd" sql:"date_end"`
+	CreatedAt   int64     `json:"createdAt" sql:"created_at"`
 	Lat         big.Float `json:"lat" sql:"lat"`
 	Lng         big.Float `json:"lng" sql:"lng"`
 }
