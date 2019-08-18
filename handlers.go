@@ -88,7 +88,7 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		var err error
 		clientToken := r.Header.Get(userToken)
-		log.Infoln(clientToken)
+		defer r.Body.Close()
 		if clientToken == "" {
 			err = fmt.Errorf("No header token from client")
 			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
