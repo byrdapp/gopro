@@ -8,7 +8,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	qb "github.com/Masterminds/squirrel"
+	squirrel "github.com/Masterminds/squirrel"
 
 	"github.com/blixenkrone/gopro/storage"
 	"github.com/blixenkrone/gopro/utils/logger"
@@ -17,7 +17,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var log = logger.NewLogger()
+var (
+	qb  = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	log = logger.NewLogger()
+)
 
 // Postgres is the database
 type Postgres struct {
@@ -46,26 +49,18 @@ func NewPQ() (storage.PQService, error) {
  * BOOKING
  */
 
-// CreateBooking -
-func (p *Postgres) CreateBooking(ctx context.Context, uid string, b storage.Booking) (*storage.Booking, error) {
-	// var id string
-	spew.Dump(&b)
-	// query, _, err := qb.Insert("booking").Values(
-	// 	&b.Booker,
-	// 	&b.Credits).Suffix("RETURNING booking_id", id).ToSql()
-	query := "INSERT INTO booking(user_id, credits, booker, task) VALUES ($1, $2, $3, $4) RETURNING booking_id"
-	log.Infof("Query: %s", query)
-	// if err != nil {
-	// 	log.Errorf("Query error: %s", err)
-	// 	return nil, err
-	// }
-	res, err := p.DB.ExecContext(ctx, query, uid, &b.Credits, &b.Booker, &b.Task)
+// CreateBooking is being made from the media client
+func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.Booking) (bookingID string, err error) {
+	sb := qb.RunWith(p.DB)
+	err = sb.Insert("booking").Columns(
+		"user_uid_fk", "media_uid", "media_booker", "task", "price", "credits", "date_start", "date_end", "lat", "lng").Values(
+		proUID, &b.MediaUID, &b.MediaBooker, &b.Task, &b.Price, &b.Credits, &b.DateStart, &b.DateEnd, &b.Lat, &b.Lng,
+	).Suffix("RETURNING id").QueryRowContext(ctx).Scan(&bookingID)
 	if err != nil {
-		log.Errorf("Exec error: %s", err)
-		return nil, err
+		log.Errorf("Insert error: %s", err)
+		return "", err
 	}
-	log.Info(res.LastInsertId())
-	return &b, nil
+	return bookingID, nil
 }
 
 // GetProBookings gets all the bookings from a professional user by ID
@@ -82,7 +77,7 @@ func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage
 	}
 	for {
 		if rows.Next() {
-			err := rows.Scan(&b.BookingID)
+			err := rows.Scan(&b.ID)
 			if err != nil {
 				return nil, err
 			}

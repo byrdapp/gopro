@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	stdliberr "errors"
 	"fmt"
 	"io"
 	"mime"
@@ -12,13 +12,13 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-
-	storage "github.com/blixenkrone/gopro/storage"
-	"github.com/blixenkrone/gopro/upload/exif"
-	"github.com/blixenkrone/gopro/utils/errors"
 	mux "github.com/gorilla/mux"
 	goexif "github.com/rwcarlsen/goexif/exif"
-	"golang.org/x/net/context"
+
+	storage "github.com/blixenkrone/gopro/storage"
+	exif "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/blixenkrone/gopro/utils/errors"
+	timeutil "github.com/blixenkrone/gopro/utils/time"
 )
 
 /**
@@ -60,7 +60,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		if creds.Password == "" || creds.Email == "" {
-			err := stdliberr.New("Missing email or password in credentials")
+			err := fmt.Errorf("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
@@ -153,7 +153,6 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
-		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
 
@@ -166,6 +165,7 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
 			var exifRes []*TagResult
 			for {
 				var res TagResult
@@ -237,7 +237,7 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var req storage.Booking
 		params := mux.Vars(r)
-		uid := params["uid"]
+		uid := params["proUID"]
 		log.Infoln(uid)
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -245,6 +245,13 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
+
+		// Is the date zero valued (i.e. missing or wrongly formatted)
+		tb := timeutil.NewTime(req.DateStart, req.DateEnd)
+		if err := tb.IsZero(); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
 
 		b, err := pq.CreateBooking(r.Context(), uid, req)
 		if err != nil {

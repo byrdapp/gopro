@@ -51,7 +51,7 @@ func newServer() *Server {
 	mux.HandleFunc("/profile/{id}", isJWTAuth(getProProfile)).Methods("GET")
 
 	mux.HandleFunc("/booking/{id}", isJWTAuth(getBookingByID)).Methods("GET")
-	mux.HandleFunc("/booking/{uid}", isJWTAuth(createBooking)).Methods("POST")
+	mux.HandleFunc("/booking/{proUID}", isJWTAuth(createBooking)).Methods("POST")
 	mux.HandleFunc("/booking/{id}", isJWTAuth(updateBooking)).Methods("PUT")
 
 	c := cors.New(cors.Options{

@@ -53,10 +53,9 @@ var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-		log.Infof("token type: %T", headerToken)
 		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			err = fmt.Errorf("Err: %s. Token: %s", err, headerToken)
+			err = fmt.Errorf("Err: %s", err)
 			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusFound, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return

@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"math/big"
+	"time"
 
 	"firebase.google.com/go/auth"
 )
@@ -97,16 +97,18 @@ type Withdrawals struct {
 
 // Booking repræsents a professional user appointment from a media
 type Booking struct {
-	BookingID   int       `json:"bookingId" sql:"booking_id"`
+	ID          string    `json:"id" sql:"id"`
+	ProUID      string    `json:"proUID" sql:"pro_uid"`
 	Task        string    `json:"task"`
-	Booker      string    `json:"booker"`
+	MediaBooker string    `json:"mediaBooker" sql:"media_booker"`
+	MediaUID    string    `json:"mediaUID" sql:"media_uid"`
 	Price       int       `json:"price"`
 	Credits     int       `json:"credits"`
 	IsActive    bool      `json:"isActive" sql:"is_active"`
 	IsCompleted bool      `json:"isCompleted" sql:"is_completed"`
-	DateStart   int64     `json:"dateStart" sql:"date_start"`
-	DateEnd     int64     `json:"dateEnd" sql:"date_end"`
-	CreatedAt   int64     `json:"createdAt" sql:"created_at"`
-	Lat         big.Float `json:"lat" sql:"lat"`
-	Lng         big.Float `json:"lng" sql:"lng"`
+	DateStart   time.Time `json:"dateStart" sql:"date_start"`
+	DateEnd     time.Time `json:"dateEnd" sql:"date_end"`
+	CreatedAt   time.Time `json:"createdAt" sql:"created_at"`
+	Lng         string    `json:"lng" sql:"lng"`
+	Lat         string    `json:"lat" sql:"lat"`
 }
