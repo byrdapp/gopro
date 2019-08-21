@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -53,7 +54,7 @@ func NewPQ() (storage.PQService, error) {
 func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.Booking) (bookingID string, err error) {
 	sb := qb.RunWith(p.DB)
 	err = sb.Insert("booking").Columns(
-		"user_uid_fk", "media_uid", "media_booker", "task", "price", "credits", "date_start", "date_end", "lat", "lng").Values(
+		"user_uid", "media_uid", "media_booker", "task", "price", "credits", "date_start", "date_end", "lat", "lng").Values(
 		proUID, &b.MediaUID, &b.MediaBooker, &b.Task, &b.Price, &b.Credits, &b.DateStart, &b.DateEnd, &b.Lat, &b.Lng,
 	).Suffix("RETURNING id").QueryRowContext(ctx).Scan(&bookingID)
 	if err != nil {
@@ -65,28 +66,26 @@ func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.B
 
 // GetProBookings gets all the bookings from a professional user by ID
 func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
-	var b storage.Booking
-	query, i, err := qb.Select("*").From("booking").Where("pro_id = ?", proID).ToSql()
+	var bookings []*storage.Booking
+	sb := qb.RunWith(p.DB)
+	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at ASC").QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.Infoln(i)
-	rows, err := p.DB.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		if rows.Next() {
-			err := rows.Scan(&b.ID)
-			if err != nil {
-				return nil, err
-			}
-		}
-		err := rows.Err()
+	defer rows.Close()
+
+	for rows.Next() {
+		var b storage.Booking
+		err := rows.Scan(&b.ID, &b.UserUID, &b.MediaUID, &b.MediaBooker, &b.Task, &b.Price, &b.Credits, &b.IsActive, &b.IsCompleted, &b.DateStart, &b.DateEnd, &b.CreatedAt, &b.Lat, &b.Lng)
 		if err != nil {
 			return nil, err
 		}
+		if err := p.HandleRowError(err); err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &b)
 	}
+	return bookings, nil
 }
 
 /**
@@ -173,14 +172,16 @@ func (p *Postgres) Close() error {
 }
 
 // HandleRowError to handle errors from sql requests
-func (p *Postgres) HandleRowError(err error) {
+func (p *Postgres) HandleRowError(err error) error {
+	err = fmt.Errorf("Error with rows: %s", err)
 	switch {
 	case err == sql.ErrNoRows:
-		log.Errorf("No rows were returned: %s\n", err)
+		return sql.ErrNoRows
 	case err != nil:
-		log.Errorf("Error with query: %v\n", err)
+		return nil
 	default:
 		log.Panicf("Default error: %v\n", err)
+		return err
 	}
 }
 

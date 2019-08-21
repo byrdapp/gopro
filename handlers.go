@@ -229,9 +229,27 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
  * Booking postgres
  */
 
-var getBookingByID = func(w http.ResponseWriter, r *http.Request) {}
+//  GET /booking/{uid}
+var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		params := mux.Vars(r)
+		proUID := params["uid"]
 
-// FORM /booking/{uid}
+		bookings, err := pq.GetProBookings(r.Context(), proUID)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(bookings); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+	}
+}
+
+// POST /booking/{uid}
 var createBooking = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")

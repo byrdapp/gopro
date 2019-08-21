@@ -10,13 +10,13 @@ import (
 
 // PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
-	CreateBooking(ctx context.Context, uid string, b Booking) (*Booking, error)
+	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
 	GetProBookings(ctx context.Context, proID string) ([]*Booking, error)
 	GetProProfile(ctx context.Context, id string) (*Professional, error)
 	CreateProfessional(context.Context, *Professional) (string, error)
 	Close() error
 	Ping() error
-	HandleRowError(error)
+	HandleRowError(error) error
 	CancelRowsError(*sql.Rows) error
 }
 
@@ -98,10 +98,10 @@ type Withdrawals struct {
 // Booking repræsents a professional user appointment from a media
 type Booking struct {
 	ID          string    `json:"id" sql:"id"`
-	ProUID      string    `json:"proUID" sql:"pro_uid"`
-	Task        string    `json:"task"`
-	MediaBooker string    `json:"mediaBooker" sql:"media_booker"`
 	MediaUID    string    `json:"mediaUID" sql:"media_uid"`
+	MediaBooker string    `json:"mediaBooker" sql:"media_booker"`
+	UserUID     string    `json:"userUID" sql:"user_uid"`
+	Task        string    `json:"task"`
 	Price       int       `json:"price"`
 	Credits     int       `json:"credits"`
 	IsActive    bool      `json:"isActive" sql:"is_active"`
