@@ -8,27 +8,31 @@ import (
 	"github.com/pkg/errors"
 )
 
+var log = logger.NewLogger()
+
 // ErrorBuilder builds custom errors to a http response writer
 type ErrorBuilder struct {
 	Code      int    `json:"code"`
 	ClientMsg string `json:"msg"`
 	w         http.ResponseWriter
 	err       error
+	traced    bool
 }
 
-var log = logger.NewLogger()
-
 // NewResErr -
-func NewResErr(err error, msg string, code int, w http.ResponseWriter) {
+func NewResErr(err error, msg string, code int, w http.ResponseWriter, trace bool) {
 	build := &ErrorBuilder{
 		Code:      code,
 		ClientMsg: msg,
 		w:         w,
 		err:       err,
+		traced:    trace,
 	}
 	w.WriteHeader(code)
 	build.errResponseLogger()
-	build.errStackTraced()
+	if build.traced {
+		build.errStackTraced()
+	}
 }
 
 func (e *ErrorBuilder) errStackTraced() {

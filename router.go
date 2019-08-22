@@ -34,25 +34,29 @@ func newServer() *Server {
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
 
 	// * Private endpoints
-	mux.HandleFunc("/reauthenticate", isJWTAuth(loginGetToken)).Methods("GET")
-	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Secure msg from gopro service"))
+	mux.HandleFunc("/reauthenticate", isAuth(loginGetToken)).Methods("GET")
+	mux.HandleFunc("/secure", isAuth(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"msg": "Secure msg from gopro service"}`))
+	})).Methods("GET")
+
+	mux.HandleFunc("/admin/secure", isAdmin(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"msg": "Secure msg from gopro service to ADMINS!"}`))
 	})).Methods("GET")
 
 	mux.HandleFunc("/logoff", signOut).Methods("POST")
 
-	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
-	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
-	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/profiles", isJWTAuth(getProfiles)).Methods("GET")
-	mux.HandleFunc("/profile/{id}", isJWTAuth(getProfileByID)).Methods("GET")
+	mux.HandleFunc("/mail/send", isAuth(mailtips.MailHandler)).Methods("POST")
+	mux.HandleFunc("/slack/tip", isAuth(slack.PostSlackMsg)).Methods("POST")
+	mux.HandleFunc("/exif", isAuth(getExif)).Methods("POST")
+	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
 
-	mux.HandleFunc("/auth/profile/token", isJWTAuth(decodeTokenGetProfile)).Methods("GET")
-	mux.HandleFunc("/profile/{id}", isJWTAuth(getProProfile)).Methods("GET")
+	mux.HandleFunc("/auth/profile/token", isAuth(decodeTokenGetProfile)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isAuth(getProProfile)).Methods("GET")
 
-	mux.HandleFunc("/booking/{uid}", isJWTAuth(getBookingsByUID)).Methods("GET")
-	mux.HandleFunc("/booking/{proUID}", isJWTAuth(createBooking)).Methods("POST")
-	mux.HandleFunc("/booking/{id}", isJWTAuth(updateBooking)).Methods("PUT")
+	mux.HandleFunc("/booking/{uid}", isAuth(getBookingsByUID)).Methods("GET")
+	mux.HandleFunc("/booking/{proUID}", isAuth(createBooking)).Methods("POST")
+	mux.HandleFunc("/booking/{bookingID}", isAuth(updateBooking)).Methods("PUT")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},

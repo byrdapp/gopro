@@ -60,8 +60,19 @@ func New() (storage.FBService, error) {
 	}, nil
 }
 
-func (db *Firebase) signInToken() {
-
+// UpdateData userID is the uid to change FirebaseProfile to. Prop and value is a map.
+func (db *Firebase) UpdateData(uid string, prop string, value string) error {
+	data := make(map[string]interface{})
+	data[prop] = value
+	path := os.Getenv("ENV") + "/profiles/" + uid
+	ref := db.Client.NewRef(path)
+	fmt.Println("Path to set:", ref.Path)
+	err := ref.Update(db.Context, data)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Successfully updated FirebaseProfile with %s\n", data[prop])
+	return nil
 }
 
 // GetTransactions - this guy
@@ -130,21 +141,6 @@ func (db *Firebase) GetProfiles(ctx context.Context) ([]*storage.FirebaseProfile
 	return prfs, nil
 }
 
-// UpdateData userID is the uid to change FirebaseProfile to. Prop and value is a map.
-func (db *Firebase) UpdateData(uid string, prop string, value string) error {
-	data := make(map[string]interface{})
-	data[prop] = value
-	path := os.Getenv("ENV") + "/profiles/" + uid
-	ref := db.Client.NewRef(path)
-	fmt.Println("Path to set:", ref.Path)
-	err := ref.Update(db.Context, data)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Successfully updated FirebaseProfile with %s\n", data[prop])
-	return nil
-}
-
 // GetAuth -
 func (db *Firebase) GetAuth() ([]*auth.ExportedUserRecord, error) {
 	// path := os.Getenv("ENV")
@@ -172,9 +168,9 @@ func (db *Firebase) DeleteAuthUserByUID(uid string) error {
 	return nil
 }
 
-// CreateCustomToken returns token as a string
-func (db *Firebase) CreateCustomToken(ctx context.Context, uid string) (string, error) {
-	return db.Auth.CustomToken(ctx, uid)
+// CreateCustomTokenWithClaims returns token as a string
+func (db *Firebase) CreateCustomTokenWithClaims(ctx context.Context, uid string, claims map[string]interface{}) (string, error) {
+	return db.Auth.CustomTokenWithClaims(ctx, uid, claims)
 }
 
 // VerifyToken verify JWT handled by middleware.go returning the uid
@@ -186,18 +182,28 @@ func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Toke
 	return t, nil
 }
 
-// IsAdmin returns token as a string
-func (db *Firebase) IsAdmin(ctx context.Context, uid string) (bool, error) {
-	user, err := db.Auth.GetUser(ctx, uid)
-	if err != nil {
-		log.Fatal(err)
-	}
+// IsAdminClaims returns token as a string. Used in admin middleware.go.
+func (db *Firebase) IsAdminClaims(claims map[string]interface{}) bool {
 	// The claims can be accessed on the user record.
-	admin, ok := user.CustomClaims["admin"]
-	if !ok {
-		var err error
-		err = fmt.Errorf("Error getting admin Claims")
+	if admin, ok := claims["is_admin"]; ok {
+		if admin.(bool) {
+			return admin.(bool)
+		}
+	}
+	return false
+}
+
+// IsAdminUID will return true if the uid is found in the admin fb storage
+// It's being called in loginCreateToken handler
+func (db *Firebase) IsAdminUID(ctx context.Context, uid string) (bool, error) {
+	path := os.Getenv("ENV") + "/admins"
+	ref := db.Client.NewRef(path)
+	var isAdmin map[string]float64
+	if err := ref.Get(ctx, &isAdmin); err != nil {
 		return false, err
 	}
-	return admin.(bool), nil
+	if _, ok := isAdmin[uid]; ok {
+		return true, nil
+	}
+	return false, nil
 }

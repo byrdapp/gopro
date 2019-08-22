@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	mux "github.com/gorilla/mux"
 	goexif "github.com/rwcarlsen/goexif/exif"
 
@@ -54,30 +53,39 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w, false)
 			return
 		}
 		defer r.Body.Close()
 
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w, false)
 			return
 		}
 
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
-			errors.NewResErr(err, "Error finding profile UID in Firebase Auth. Does the user exist?", http.StatusGone, w)
+			errors.NewResErr(err, "Error finding profile UID in Firebase Auth. Does the user exist?", http.StatusGone, w, false)
 			return
 		}
 
-		signedToken, err := fb.CreateCustomToken(r.Context(), usr.UID)
+		// Is user an admin? Set claims as such.
+		claims := make(map[string]interface{})
+		isAdmin, err := fb.IsAdminUID(r.Context(), usr.UID)
 		if err != nil {
-			spew.Errorf("Error: %s", err)
+			errors.NewResErr(err, "Error admin ref was not found", http.StatusGone, w, false)
+			return
+		}
+		claims[isAdminClaim] = isAdmin
+		signedToken, err := fb.CreateCustomTokenWithClaims(r.Context(), usr.UID, claims)
+		if err != nil {
+			errors.NewResErr(err, "Error creating token!", http.StatusInternalServerError, w, true)
+			return
 		}
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w, false)
 			return
 		}
 	}
@@ -91,22 +99,21 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		if clientToken == "" {
 			err = fmt.Errorf("No header token from client")
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
 			return
 		}
 		fbtoken, err := fb.VerifyToken(r.Context(), clientToken)
 		if err != nil {
-			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
+			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w, false)
 			return
 		}
-		log.Infoln(fbtoken.UID)
 		profile, err := fb.GetProfile(r.Context(), fbtoken.UID)
 		if err != nil {
-			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w, false)
 			return
 		}
 		if err := json.NewEncoder(w).Encode(profile); err != nil {
-			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w, false)
 			return
 		}
 	}
@@ -133,10 +140,10 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
 	medias, err := fb.GetProfiles(r.Context())
 	if err != nil {
-		errors.NewResErr(err, "Error finding media profiles", http.StatusFound, w)
+		errors.NewResErr(err, "Error finding media profiles", http.StatusFound, w, false)
 	}
 	if err := json.NewEncoder(w).Encode(medias); err != nil {
-		errors.NewResErr(err, "JSON Encoding failed", 500, w)
+		errors.NewResErr(err, "JSON Encoding failed", 500, w, false)
 	}
 }
 
@@ -159,7 +166,7 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w, false)
 			return
 		}
 
@@ -176,13 +183,13 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
+					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w, false)
 					break
 				}
 
 				imgsrv, err := exif.NewExifReq(part)
 				if err != nil {
-					errors.NewResErr(err, err.Error(), 503, w)
+					errors.NewResErr(err, err.Error(), 503, w, false)
 					break
 				}
 
@@ -197,7 +204,7 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 				exifRes = append(exifRes, &res)
 			}
 			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
-				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
+				errors.NewResErr(err, "Error convert exif to JSON", 503, w, false)
 				return
 			}
 		}
@@ -216,11 +223,11 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	pro, err := fb.GetProfile(r.Context(), params["id"])
 	if err != nil {
-		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w, false)
 		return
 	}
 	if err := json.NewEncoder(w).Encode(pro); err != nil {
-		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		errors.NewResErr(err, "Error parsing to JSON", 503, w, false)
 		return
 	}
 }
@@ -236,14 +243,14 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		proUID := params["uid"]
 
-		bookings, err := pq.GetProBookings(r.Context(), proUID)
+		bookings, err := pq.GetBookings(r.Context(), proUID)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
 			return
 		}
 
 		if err := json.NewEncoder(w).Encode(bookings); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
 			return
 		}
 	}
@@ -259,29 +266,61 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		log.Infoln(uid)
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
+			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w, false)
 			return
 		}
 		defer r.Body.Close()
 
-		// Is the date zero valued (i.e. missing or wrongly formatted)
+		// * Is the date zero valued (i.e. missing or wrongly formatted)
 		tb := timeutil.NewTime(req.DateStart, req.DateEnd)
 		if err := tb.IsZero(); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
 			return
 		}
 
 		b, err := pq.CreateBooking(r.Context(), uid, req)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w, false)
 			return
 		}
 		if err := json.NewEncoder(w).Encode(b); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w, false)
 			return
 		}
 	}
 
 }
 
-var updateBooking = func(w http.ResponseWriter, r *http.Request) {}
+// PUT /booking/{bookingID}
+var updateBooking = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPut {
+		w.Header().Set("Content-Type", "application/json")
+		var b storage.Booking
+		params := mux.Vars(r)
+		bookingID, ok := params["bookingID"]
+		if !ok {
+			err := fmt.Errorf("No booking ID provided")
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
+			return
+		}
+
+		b.ID = bookingID
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w, false)
+			return
+		}
+
+		if err := pq.UpdateBooking(r.Context(), &b); err != nil {
+			errors.NewResErr(err, "Error inserting record", http.StatusInternalServerError, w, true)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(&b); err != nil {
+			errors.NewResErr(err, "Error returning response", http.StatusInternalServerError, w, false)
+			return
+		}
+	}
+}
+
+// Response from byrd API OK?
+var chargeBooking = func(w http.ResponseWriter, r *http.Request) {}

@@ -64,11 +64,11 @@ func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.B
 	return bookingID, nil
 }
 
-// GetProBookings gets all the bookings from a professional user by ID
-func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
+// GetBookings gets all the bookings from a professional user by ID
+func (p *Postgres) GetBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
 	var bookings []*storage.Booking
 	sb := qb.RunWith(p.DB)
-	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at ASC").QueryContext(ctx)
+	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at DESC").QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +88,21 @@ func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage
 	return bookings, nil
 }
 
+// UpdateBooking -
+func (p *Postgres) UpdateBooking(ctx context.Context, b *storage.Booking) error {
+
+	sb := qb.RunWith(p.DB)
+	_, err := sb.Update("booking").
+		Set("is_active", &b.IsActive).
+		Set("is_completed", &b.IsCompleted).
+		Set("task", &b.Task).
+		Where("id = ?", &b.ID).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 /**
  * PROFESSIONAL
  */
@@ -104,8 +119,8 @@ func (p *Postgres) CreateProfessional(ctx context.Context, pro *storage.Professi
 	return strconv.Itoa(int(id)), nil
 }
 
-// GetProProfile -
-func (p *Postgres) GetProProfile(ctx context.Context, id string) (*storage.Professional, error) {
+// GetProfile -
+func (p *Postgres) GetProfile(ctx context.Context, id string) (*storage.Professional, error) {
 	var pro storage.Professional
 	// query, _, err := qb.Select("*").From("professional").Where("id", id).ToSql()
 	// if err != nil {
