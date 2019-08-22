@@ -1,8 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	stdliberr "errors"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -11,14 +12,13 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-
-	"github.com/blixenkrone/gopro/securion"
-	postgres "github.com/blixenkrone/gopro/storage/postgres"
-	exif "github.com/blixenkrone/gopro/upload/exif"
-	"github.com/blixenkrone/gopro/utils/errors"
 	mux "github.com/gorilla/mux"
 	goexif "github.com/rwcarlsen/goexif/exif"
-	"golang.org/x/net/context"
+
+	storage "github.com/blixenkrone/gopro/storage"
+	exif "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/blixenkrone/gopro/utils/errors"
+	timeutil "github.com/blixenkrone/gopro/utils/time"
 )
 
 /**
@@ -49,15 +49,18 @@ type Credentials struct {
 }
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	// ? verify here, that the user is a pro user
+	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
+		defer r.Body.Close()
+
 		if creds.Password == "" || creds.Email == "" {
-			err := stdliberr.New("Missing email or password in credentials")
+			err := fmt.Errorf("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
@@ -73,28 +76,49 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			spew.Errorf("Error: %s", err)
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:    "pro_token",
-			Expires: time.Now().Add(tokenExpirationTime),
-			Value:   signedToken,
-			Path:    "/",
-			// HttpOnly: true,
-			Secure: false,
-		})
-
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			errors.NewResErr(err, "Error encoding token", http.StatusInternalServerError, w)
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
 	}
 }
 
-var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
+// /profile/decode func attempts to return a profile from a given client UID header
+var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		var err error
+		clientToken := r.Header.Get(userToken)
+		defer r.Body.Close()
+		if clientToken == "" {
+			err = fmt.Errorf("No header token from client")
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+		fbtoken, err := fb.VerifyToken(r.Context(), clientToken)
+		if err != nil {
+			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
+			return
+		}
+		log.Infoln(fbtoken.UID)
+		profile, err := fb.GetProfile(r.Context(), fbtoken.UID)
+		if err != nil {
+			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(profile); err != nil {
+			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			return
+		}
+	}
+}
+
+// /profile/{uid}
+var getProfileByID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		params := mux.Vars(r)
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 		defer cancel()
-		val, err := pq.GetMediaByID(ctx, params["id"])
+		val, err := fb.GetProfile(ctx, params["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -104,40 +128,15 @@ var getMediaByID = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Dont use this for public routes
-var createMedia = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		r.Header.Set("content-type", "application/json")
-		ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
-		defer cancel()
-		var media postgres.Media
-		if err := json.NewDecoder(r.Body).Decode(&media); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		id, err := pq.CreateMedia(ctx, &media)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		err = json.NewEncoder(w).Encode(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
-
-// getMedias endpoint: /medias
-var getMedias = func(w http.ResponseWriter, r *http.Request) {
+// getProfiles endpoint: /profiles
+var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*3)
-	defer cancel()
-	// todo: params
-	medias, err := pq.GetMedias(ctx)
+	medias, err := fb.GetProfiles(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.NewResErr(err, "Error finding media profiles", http.StatusFound, w)
 	}
 	if err := json.NewEncoder(w).Encode(medias); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.NewResErr(err, "JSON Encoding failed", 500, w)
 	}
 }
 
@@ -149,42 +148,11 @@ type TagResult struct {
 	Err string       `json:"err,omitempty"`
 }
 
-var getSecurionPlans = func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	defer r.Body.Close()
-	var res []*securion.Plan
-	interval := r.FormValue("interval")
-
-	secClient := securion.NewClient()
-	plans, err := secClient.GetPlansJSON("10", interval)
-	if err != nil {
-		errors.NewResErr(err, err.Error(), 503, w)
-		return
-	}
-	log.Info(interval)
-	for _, p := range plans {
-		if p.Interval == interval {
-			for _, std := range securion.StdPlans {
-				if c := strings.Compare(p.ID, std); c == 0 {
-					log.Info(p.ID)
-					res = append(res, p)
-				}
-			}
-		}
-	}
-
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		errors.NewResErr(err, err.Error(), 503, w)
-		return
-	}
-}
-
 // getExif recieves body with img files
 var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
-		defer r.Body.Close()
 		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
 		defer cancel()
 
@@ -197,6 +165,7 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
 			var exifRes []*TagResult
 			for {
 				var res TagResult
@@ -256,23 +225,63 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var getProStats = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method now allowed.", 403)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
+/**
+ * Booking postgres
+ */
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-	defer cancel()
+//  GET /booking/{uid}
+var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		params := mux.Vars(r)
+		proUID := params["uid"]
 
-	stats, err := pq.GetProStats(ctx, params["id"])
-	if err != nil {
-		errors.NewResErr(err, "Error getting pro stats", 503, w)
-		return
-	}
-	if err := json.NewEncoder(w).Encode(stats); err != nil {
-		errors.NewResErr(err, "Error parsing to JSON", 503, w)
-		return
+		bookings, err := pq.GetProBookings(r.Context(), proUID)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(bookings); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
 	}
 }
+
+// POST /booking/{uid}
+var createBooking = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		var req storage.Booking
+		params := mux.Vars(r)
+		uid := params["proUID"]
+		log.Infoln(uid)
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
+			return
+		}
+		defer r.Body.Close()
+
+		// Is the date zero valued (i.e. missing or wrongly formatted)
+		tb := timeutil.NewTime(req.DateStart, req.DateEnd)
+		if err := tb.IsZero(); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			return
+		}
+
+		b, err := pq.CreateBooking(r.Context(), uid, req)
+		if err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(b); err != nil {
+			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			return
+		}
+	}
+
+}
+
+var updateBooking = func(w http.ResponseWriter, r *http.Request) {}

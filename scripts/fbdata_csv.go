@@ -55,7 +55,7 @@ func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val 
 
 // ProfilesToCSV initiates data and loops the write process
 func ProfilesToCSV(db *firebase.Firebase) {
-	prfs, err := db.GetProfiles()
+	prfs, err := db.GetProfiles(db.Context)
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)
 	}
