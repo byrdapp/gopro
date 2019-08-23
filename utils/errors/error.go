@@ -16,28 +16,32 @@ type ErrorBuilder struct {
 	ClientMsg string `json:"msg"`
 	w         http.ResponseWriter
 	err       error
-	traced    bool
+	traced    string
 }
 
-// NewResErr -
-func NewResErr(err error, msg string, code int, w http.ResponseWriter, trace bool) {
+// NewResErr constructs and executes an err struct.
+// Set stackTraced = "trace" to show error stack.
+func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTraced ...string) {
 	build := &ErrorBuilder{
 		Code:      code,
 		ClientMsg: msg,
 		w:         w,
 		err:       err,
-		traced:    trace,
 	}
+	if len(stackTraced) > 0 {
+		build.traced = stackTraced[0]
+	}
+
 	w.WriteHeader(code)
-	build.errResponseLogger()
-	if build.traced {
+	if build.traced == "trace" {
 		build.errStackTraced()
 	}
+	build.errResponseLogger()
 }
 
 func (e *ErrorBuilder) errStackTraced() {
 	err := errors.WithStack(e.err)
-	log.Errorf("%+v", err)
+	log.Errorf("Originated error: %+v", err)
 }
 
 // ErrResponseLogger defines what error goes to the log and what to display as JSON in client

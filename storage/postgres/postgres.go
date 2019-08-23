@@ -90,7 +90,6 @@ func (p *Postgres) GetBookings(ctx context.Context, proID string) ([]*storage.Bo
 
 // UpdateBooking -
 func (p *Postgres) UpdateBooking(ctx context.Context, b *storage.Booking) error {
-
 	sb := qb.RunWith(p.DB)
 	_, err := sb.Update("booking").
 		Set("is_active", &b.IsActive).
@@ -103,21 +102,71 @@ func (p *Postgres) UpdateBooking(ctx context.Context, b *storage.Booking) error 
 	return nil
 }
 
+// DeleteBooking -
+func (p *Postgres) DeleteBooking(ctx context.Context, bookingID string) error {
+	sb := qb.RunWith(p.DB)
+	_, err := sb.Delete("booking").
+		Where("id = ?", bookingID).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type joined struct {
+	booking *storage.Booking
+	pro     *storage.Professional
+}
+
+// GetBookingsAdmin returns bookings sorted by created_at date with crossjoined profile uid's.
+func (p *Postgres) GetBookingsAdmin(ctx context.Context) (interface{}, error) {
+	// sb := qb.RunWith(p.DB)
+	// rows, err := sb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "professional.user_uid", "professional.pro_level").
+	// 	From("booking").LeftJoin("professional", "booking.user_uid = professional.user_uid").
+	// OrderBy("booking.created_at DESC", "booking.is_active DESC").
+	// Limit(5).
+	// QueryContext(ctx)
+	query := `SELECT
+	booking.task,
+	booking.credits,
+	booking.price,
+	booking.created_at,
+	booking.is_active,
+	professional.user_uid,
+	professional.pro_level
+FROM
+	booking
+	LEFT JOIN professional ON booking.user_uid = professional.user_uid
+ORDER BY
+	booking.created_at DESC,
+	booking.is_active DESC
+LIMIT 5;`
+
+	rows, err := p.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var jarr []*joined
+
+	for rows.Next() {
+		var j joined
+		if err := rows.Scan(&j.booking.Task, &j.booking.Credits, &j.booking.Price, &j.booking.CreatedAt, &j.booking.IsActive, &j.pro.UserUID, &j.pro.ProLevel); err != nil {
+			return nil, err
+		}
+		if err := p.HandleRowError(rows.Err()); err != nil {
+			return nil, err
+		}
+
+		jarr = append(jarr, &j)
+	}
+	return jarr, nil
+}
+
 /**
  * PROFESSIONAL
  */
-
-// CreateProfessional under construction
-func (p *Postgres) CreateProfessional(ctx context.Context, pro *storage.Professional) (string, error) {
-	var id int64
-	// err := p.DB.QueryRowContext(ctx, "INSERT INTO professional(name, user_id, display_name, email) VALUES($1, $2, $3, $4) RETURNING id;", pro.Name, pro.UserID, pro.DisplayName, pro.Email).Scan(&id)
-	// if err != nil {
-	// 	p.HandleRowError(err)
-	// 	return "", err
-	// }
-	log.Infof("Inserted new pro with id: %v", id)
-	return strconv.Itoa(int(id)), nil
-}
 
 // GetProfile -
 func (p *Postgres) GetProfile(ctx context.Context, id string) (*storage.Professional, error) {

@@ -57,6 +57,8 @@ func newServer() *Server {
 	mux.HandleFunc("/booking/{uid}", isAuth(getBookingsByUID)).Methods("GET")
 	mux.HandleFunc("/booking/{proUID}", isAuth(createBooking)).Methods("POST")
 	mux.HandleFunc("/booking/{bookingID}", isAuth(updateBooking)).Methods("PUT")
+	mux.HandleFunc("/booking/{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
+	mux.HandleFunc("/bookings" /** isAdmin() middleware */, isAuth(getBookingsAdmin)).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},

@@ -10,11 +10,12 @@ import (
 
 // PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
+	GetBookings(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
 	UpdateBooking(ctx context.Context, b *Booking) error
-	GetBookings(ctx context.Context, proID string) ([]*Booking, error)
+	DeleteBooking(ctx context.Context, bookingID string) error
+	GetBookingsAdmin(ctx context.Context) (interface{}, error)
 	GetProfile(ctx context.Context, id string) (*Professional, error)
-	CreateProfessional(context.Context, *Professional) (string, error)
 	Close() error
 	Ping() error
 	HandleRowError(error) error

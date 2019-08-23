@@ -36,13 +36,13 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 		headerToken := r.Header.Get(userToken)
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
-			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w, false)
+			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 
 		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			errors.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w, false)
+			errors.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
@@ -51,7 +51,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		err = fmt.Errorf("No admin rights found")
-		errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, false)
+		errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 		return
 	}
 }
@@ -64,13 +64,13 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
-			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w, false)
+			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s", err)
-			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w, false)
+			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
