@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -11,7 +12,53 @@ import (
 	exifsrv "github.com/blixenkrone/gopro/upload/exif"
 
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/mknote"
 )
+
+func TestExifReader(t *testing.T) {
+
+	exif.RegisterParsers(mknote.All...)
+	file, err := os.Open("./tests/1.jpeg")
+	if err != nil {
+		t.Errorf("Error: %s\n", err)
+	}
+
+	x, err := exif.LazyDecode(file)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+	lat, lng, err := x.LatLong()
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+	t.Log(lat)
+	t.Log(lng)
+	// model, err := x.Get(exif.Model)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// t.Logf("Model %s", model.String())
+
+	// lat, err := x.Get(exif.GPSLatitude)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// t.Logf("Lat: %s", lat)
+
+	// long, err := x.Get(exif.GPSLongitude)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// t.Logf("Long: %s", long)
+
+	// lat, lng, err := x.LatLong()
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// t.Logf("Lat: %v, Lng: %v", lat, lng)
+
+	t.Log(x.String())
+}
 
 var wg sync.WaitGroup
 

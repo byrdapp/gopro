@@ -100,9 +100,9 @@ func (img *ImageReader) TagExifSync() (*exif.Exif, error) {
 	}
 	log.Printf("Tagged exif: %s", img.Name)
 
-	if err := img.requiredExifData(out); err != nil {
-		log.Info(err)
-		return nil, err
-	}
+	// if err := img.requiredExifData(out); err != nil {
+	// 	log.Info(err)
+	// 	return nil, err
+	// }
 	return out, nil
 }

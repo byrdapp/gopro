@@ -66,7 +66,6 @@ func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 	data[prop] = value
 	path := os.Getenv("ENV") + "/profiles/" + uid
 	ref := db.Client.NewRef(path)
-	fmt.Println("Path to set:", ref.Path)
 	err := ref.Update(db.Context, data)
 	if err != nil {
 		return err
@@ -79,7 +78,6 @@ func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 	p := os.Getenv("ENV") + "/transactions"
 	transaction := []*storage.Transaction{}
-	fmt.Printf("Path: %s\n", p)
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, transaction); err != nil {
 		return nil, err
@@ -91,7 +89,6 @@ func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 func (db *Firebase) GetWithdrawals() ([]*storage.Withdrawals, error) {
 	p := os.Getenv("ENV") + "/transactions"
 	wd := []*storage.Withdrawals{}
-	fmt.Printf("Path: %s\n", p)
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, wd); err != nil {
 		return nil, err
@@ -103,7 +100,6 @@ func (db *Firebase) GetWithdrawals() ([]*storage.Withdrawals, error) {
 func (db *Firebase) GetProfile(ctx context.Context, uid string) (*storage.FirebaseProfile, error) {
 	path := os.Getenv("ENV") + "/profiles"
 	prf := storage.FirebaseProfile{}
-	fmt.Printf("Path: %s\n", path)
 	ref := db.Client.NewRef(path).Child(uid)
 	_, err := ref.GetWithETag(ctx, &prf)
 	if err != nil {

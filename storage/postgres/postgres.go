@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -113,55 +112,33 @@ func (p *Postgres) DeleteBooking(ctx context.Context, bookingID string) error {
 	return nil
 }
 
-type joined struct {
-	booking *storage.Booking
-	pro     *storage.Professional
-}
-
 // GetBookingsAdmin returns bookings sorted by created_at date with crossjoined profile uid's.
-func (p *Postgres) GetBookingsAdmin(ctx context.Context) (interface{}, error) {
-	// sb := qb.RunWith(p.DB)
-	// rows, err := sb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "professional.user_uid", "professional.pro_level").
-	// 	From("booking").LeftJoin("professional", "booking.user_uid = professional.user_uid").
-	// OrderBy("booking.created_at DESC", "booking.is_active DESC").
-	// Limit(5).
-	// QueryContext(ctx)
-	query := `SELECT
-	booking.task,
-	booking.credits,
-	booking.price,
-	booking.created_at,
-	booking.is_active,
-	professional.user_uid,
-	professional.pro_level
-FROM
-	booking
-	LEFT JOIN professional ON booking.user_uid = professional.user_uid
-ORDER BY
-	booking.created_at DESC,
-	booking.is_active DESC
-LIMIT 5;`
-
+func (p *Postgres) GetBookingsAdmin(ctx context.Context) (res []*storage.BookingProfessional, err error) {
+	query, _, err := qb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "booking.is_active", "professional.user_uid", "professional.pro_level").
+		From("booking").
+		LeftJoin("professional ON booking.user_uid = professional.user_uid").
+		OrderBy("booking.created_at DESC", "booking.is_active DESC").
+		Limit(5).ToSql()
+	if err != nil {
+		return nil, err
+	}
 	rows, err := p.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var jarr []*joined
-
 	for rows.Next() {
-		var j joined
-		if err := rows.Scan(&j.booking.Task, &j.booking.Credits, &j.booking.Price, &j.booking.CreatedAt, &j.booking.IsActive, &j.pro.UserUID, &j.pro.ProLevel); err != nil {
+		var j storage.BookingProfessional
+		if err := rows.Scan(&j.Booking.Task, &j.Booking.Credits, &j.Booking.Price, &j.Booking.CreatedAt, &j.Booking.IsActive, &j.Professional.UserUID, &j.Professional.ProLevel); err != nil {
 			return nil, err
 		}
 		if err := p.HandleRowError(rows.Err()); err != nil {
 			return nil, err
 		}
-
-		jarr = append(jarr, &j)
+		res = append(res, &j)
 	}
-	return jarr, nil
+	return res, nil
 }
 
 /**
@@ -237,14 +214,13 @@ func (p *Postgres) Close() error {
 
 // HandleRowError to handle errors from sql requests
 func (p *Postgres) HandleRowError(err error) error {
-	err = fmt.Errorf("Error with rows: %s", err)
+	// err = fmt.Errorf("Error with rows: %s", err)
 	switch {
 	case err == sql.ErrNoRows:
 		return sql.ErrNoRows
 	case err != nil:
-		return nil
+		return err
 	default:
-		log.Panicf("Default error: %v\n", err)
 		return err
 	}
 }

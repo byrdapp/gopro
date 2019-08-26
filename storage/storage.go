@@ -14,7 +14,7 @@ type PQService interface {
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
 	UpdateBooking(ctx context.Context, b *Booking) error
 	DeleteBooking(ctx context.Context, bookingID string) error
-	GetBookingsAdmin(ctx context.Context) (interface{}, error)
+	GetBookingsAdmin(ctx context.Context) ([]*BookingProfessional, error)
 	GetProfile(ctx context.Context, id string) (*Professional, error)
 	Close() error
 	Ping() error
@@ -25,7 +25,7 @@ type PQService interface {
 // FBService contains firebase methods
 type FBService interface {
 	GetTransactions() ([]*Transaction, error)
-	// ! dont update anything from the API - only scripts
+	// ! dont update anything from the API - only scripting
 	UpdateData(uid string, prop string, value string) error
 	GetWithdrawals() ([]*Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
@@ -44,6 +44,31 @@ type Professional struct {
 	ID       string `json:"id" sql:"id"`
 	UserUID  string `json:"userUID" sql:"user_uid"`
 	ProLevel int    `json:"proLevel" sql:"pro_level"`
+}
+
+// Booking repræsents a professional user appointment from a media
+type Booking struct {
+	ID          string     `json:"id,omitempty" sql:"id"`
+	MediaUID    string     `json:"mediaUID,omitempty" sql:"media_uid"`
+	MediaBooker string     `json:"mediaBooker,omitempty" sql:"media_booker"`
+	UserUID     string     `json:"userUID,omitempty" sql:"user_uid"`
+	Task        string     `json:"task,omitempty"`
+	Price       int        `json:"price,omitempty"`
+	Credits     int        `json:"credits,omitempty"`
+	IsActive    bool       `json:"isActive,omitempty" sql:"is_active"`
+	IsCompleted bool       `json:"isCompleted,omitempty" sql:"is_completed"`
+	DateStart   *time.Time `json:"dateStart,omitempty" sql:"date_start"`
+	DateEnd     *time.Time `json:"dateEnd,omitempty" sql:"date_end"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty" sql:"created_at"`
+	Lng         string     `json:"lng,omitempty" sql:"lng"`
+	Lat         string     `json:"lat,omitempty" sql:"lat"`
+}
+
+// BookingProfessional is a joined response for a booking attached to a pro user
+type BookingProfessional struct {
+	Booking
+	Professional
+	FirebaseProfile
 }
 
 // FirebaseProfile defines a profile in firebsse
@@ -100,22 +125,4 @@ type Withdrawals struct {
 	RequestCompletedDate int64  `json:"requestCompletedDate,omitempty"`
 	RequestUserID        string `json:"requestUser,omitempty"`
 	RequestDate          int64  `json:"requestDate,omitempty"`
-}
-
-// Booking repræsents a professional user appointment from a media
-type Booking struct {
-	ID          string    `json:"id,omitempty" sql:"id"`
-	MediaUID    string    `json:"mediaUID,omitempty" sql:"media_uid"`
-	MediaBooker string    `json:"mediaBooker,omitempty" sql:"media_booker"`
-	UserUID     string    `json:"userUID,omitempty" sql:"user_uid"`
-	Task        string    `json:"task,omitempty"`
-	Price       int       `json:"price,omitempty"`
-	Credits     int       `json:"credits,omitempty"`
-	IsActive    bool      `json:"isActive,omitempty" sql:"is_active"`
-	IsCompleted bool      `json:"isCompleted,omitempty" sql:"is_completed"`
-	DateStart   time.Time `json:"dateStart,omitempty" sql:"date_start"`
-	DateEnd     time.Time `json:"dateEnd,omitempty" sql:"date_end"`
-	CreatedAt   time.Time `json:"createdAt,omitempty" sql:"created_at"`
-	Lng         string    `json:"lng,omitempty" sql:"lng"`
-	Lat         string    `json:"lat,omitempty" sql:"lat"`
 }
