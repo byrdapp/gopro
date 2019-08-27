@@ -1,108 +1,98 @@
 package exif_test
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
-	"sync"
 	"testing"
+	"time"
 
-	exifsrv "github.com/blixenkrone/gopro/upload/exif"
+	"github.com/rwcarlsen/goexif/tiff"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
 )
 
-func TestExifReader(t *testing.T) {
-
-	exif.RegisterParsers(mknote.All...)
-	file, err := os.Open("./tests/1.jpeg")
-	if err != nil {
-		t.Errorf("Error: %s\n", err)
-	}
-
-	x, err := exif.LazyDecode(file)
-	if err != nil {
-		t.Errorf("Error: %s", err)
-	}
-	lat, lng, err := x.LatLong()
-	if err != nil {
-		t.Errorf("Error: %s", err)
-	}
-	t.Log(lat)
-	t.Log(lng)
-	// model, err := x.Get(exif.Model)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// t.Logf("Model %s", model.String())
-
-	// lat, err := x.Get(exif.GPSLatitude)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// t.Logf("Lat: %s", lat)
-
-	// long, err := x.Get(exif.GPSLongitude)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// t.Logf("Long: %s", long)
-
-	// lat, lng, err := x.LatLong()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// t.Logf("Lat: %v, Lng: %v", lat, lng)
-
-	t.Log(x.String())
+type TagResult struct {
+	Exif *exif.Exif
+	Date *time.Time
+	Lng  float64
+	Lat  float64
+	Err  string
 }
 
-var wg sync.WaitGroup
+func TestExifReader(t *testing.T) {
+	t.Run("Run EXIF lat lng", func(t *testing.T) {
+		exif.RegisterParsers(mknote.All...)
+		for i := 1; i < 5; i++ {
+			if i == 0 {
+				continue
+			}
+			path := fmt.Sprintf("./test2/%v.jpg", i)
+			file, err := os.Open(path)
+			if err != nil {
+				t.Errorf("Error: %s\n", err)
+			}
+			x, err := exif.Decode(file)
+			// x, err := exif.LazyDecode(file)
+			if err != nil {
+				t.Errorf("Error: %s", err)
+			}
 
-func TestMultipleImageReader(t *testing.T) {
-	var exifs []*exif.Exif
-	for i := 0; i < 5; i++ {
-		if i == 0 {
-			continue
+			// lat, _ := x.Get(exif.GPSLongitude)
+			// deg, _ := lat.Rat(0)
+			// floatDeg, _ := deg.Float64()
+			// min, _ := lat.Rat(1)
+			// floatMin, _ := min.Float64()
+			// sec, _ := lat.Rat(2)
+			// floatSec, _ := sec.Float64()
+			// floatLat := floatDeg + floatMin/60 + floatSec/3600
+
+			// t.Log(floatLat)
+
+			tRes := &TagResult{}
+			fieldNames := [2]exif.FieldName{exif.GPSLatitude, exif.GPSLongitude}
+			for _, val := range fieldNames {
+				tag, err := x.Get(val)
+				if err != nil {
+					t.Error(err)
+				}
+				latlng, err := tRes.setCoordinates(tag)
+				if err != nil {
+					t.Error(err)
+				}
+				t.Logf("Values: %v %v", tRes.Lat, tRes.Lng)
+			}
+
 		}
-		fmt.Printf("Running image: %d", i)
-		fmtFileName := fmt.Sprintf("../../assets/teststories/image%v.jpeg", i)
-		fileName, err := filepath.Abs(fmtFileName)
+	})
+}
+
+type LatLng struct {
+	Lat float64
+	Lng float64
+}
+
+func (t *TagResult) setCoordinates(tag *tiff.Tag) (*LatLng, error) {
+	intRationals := [3]int{0, 1, 2}
+	var finalFloats = make([]float64, 3)
+	calc := map[string]int{"deg": 0, "min": 1, "sec": 2}
+	res := map[string]float64{"1": 0.0, "2": 0.0, "3": 0.0}
+
+	for key, val := range calc {
+		ratVal, err := tag.Rat(num)
 		if err != nil {
-			t.Errorf("Couldnt read error: %s", err)
+			return nil, err
 		}
-		fbytes, err := ioutil.ReadFile(fileName)
-		if err != nil {
-			t.Errorf("Error: %s\n", err)
-		}
-
-		r := bytes.NewReader(fbytes)
-
-		_, err = exifsrv.NewExifReq(r)
-		if err != nil {
-			t.Errorf("Error getting exif: %s\n", err)
-		}
-
-		ch := make(chan *exif.Exif)
-		wg.Add(1)
-		go func() {
-			// imgsrv.TagExif(&wg, ch)
-		}()
-		exif := <-ch
-		exifs = append(exifs, exif)
+		calc["deg"] = ratVal.Float64()
+		calc["deg"] = ratVal.Float64()
+		calc["deg"] = ratVal.Float64()
+		f, _ := ratVal.Float64()
+		finalFloats = append(finalFloats, f)
 	}
-	wg.Wait()
-	for idx, val := range exifs {
-		t.Logf("Index: %v, value: %s\n\n", idx, val)
+
+	for _, v := range finalFloats {
+		fmt.Println(v)
 	}
-	// rr := httptest.NewRecorder()
-	// byt, _ := json.Marshal(exifs)
-	// r := bytes.NewReader(byt)
-	// req := httptest.NewRequest("POST", "/exif", r)
-	// body, _ := ioutil.ReadAll(req.Body)
-	// rr.Write(body)
-	t.Log("DONE")
+
+	return &res, nil
 }
