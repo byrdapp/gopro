@@ -52,13 +52,6 @@ type imgExifData struct {
 
 // loadExifData request exif data for image
 func loadExifData(r io.Reader) (*imgExifData, error) {
-	// var buf = new(bytes.Buffer)
-	// teeRead := io.TeeReader(r, buf)
-	// _, format, err := image.Decode(teeRead)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Error decoding img w go stdlib: %s", err)
-	// }
-	// fmt.Printf("Image format is: %s\n", format)
 	x, err := exif.Decode(r)
 	if err != nil {
 		log.Errorln(err)
