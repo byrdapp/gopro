@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -64,11 +63,11 @@ func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.B
 	return bookingID, nil
 }
 
-// GetProBookings gets all the bookings from a professional user by ID
-func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
+// GetBookings gets all the bookings from a professional user by ID
+func (p *Postgres) GetBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
 	var bookings []*storage.Booking
 	sb := qb.RunWith(p.DB)
-	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at ASC").QueryContext(ctx)
+	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at DESC").QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,24 +87,66 @@ func (p *Postgres) GetProBookings(ctx context.Context, proID string) ([]*storage
 	return bookings, nil
 }
 
+// UpdateBooking -
+func (p *Postgres) UpdateBooking(ctx context.Context, b *storage.Booking) error {
+	sb := qb.RunWith(p.DB)
+	_, err := sb.Update("booking").
+		Set("is_active", &b.IsActive).
+		Set("is_completed", &b.IsCompleted).
+		Set("task", &b.Task).
+		Where("id = ?", &b.ID).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteBooking -
+func (p *Postgres) DeleteBooking(ctx context.Context, bookingID string) error {
+	sb := qb.RunWith(p.DB)
+	_, err := sb.Delete("booking").
+		Where("id = ?", bookingID).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetBookingsAdmin returns bookings sorted by created_at date with crossjoined profile uid's.
+func (p *Postgres) GetBookingsAdmin(ctx context.Context) (res []*storage.BookingProfessional, err error) {
+	query, _, err := qb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "booking.is_active", "professional.user_uid", "professional.pro_level").
+		From("booking").
+		LeftJoin("professional ON booking.user_uid = professional.user_uid").
+		OrderBy("booking.created_at DESC", "booking.is_active DESC").
+		Limit(5).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := p.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var j storage.BookingProfessional
+		if err := rows.Scan(&j.Booking.Task, &j.Booking.Credits, &j.Booking.Price, &j.Booking.CreatedAt, &j.Booking.IsActive, &j.Professional.UserUID, &j.Professional.ProLevel); err != nil {
+			return nil, err
+		}
+		if err := p.HandleRowError(rows.Err()); err != nil {
+			return nil, err
+		}
+		res = append(res, &j)
+	}
+	return res, nil
+}
+
 /**
  * PROFESSIONAL
  */
 
-// CreateProfessional under construction
-func (p *Postgres) CreateProfessional(ctx context.Context, pro *storage.Professional) (string, error) {
-	var id int64
-	// err := p.DB.QueryRowContext(ctx, "INSERT INTO professional(name, user_id, display_name, email) VALUES($1, $2, $3, $4) RETURNING id;", pro.Name, pro.UserID, pro.DisplayName, pro.Email).Scan(&id)
-	// if err != nil {
-	// 	p.HandleRowError(err)
-	// 	return "", err
-	// }
-	log.Infof("Inserted new pro with id: %v", id)
-	return strconv.Itoa(int(id)), nil
-}
-
-// GetProProfile -
-func (p *Postgres) GetProProfile(ctx context.Context, id string) (*storage.Professional, error) {
+// GetProfile -
+func (p *Postgres) GetProfile(ctx context.Context, id string) (*storage.Professional, error) {
 	var pro storage.Professional
 	// query, _, err := qb.Select("*").From("professional").Where("id", id).ToSql()
 	// if err != nil {
@@ -173,14 +214,13 @@ func (p *Postgres) Close() error {
 
 // HandleRowError to handle errors from sql requests
 func (p *Postgres) HandleRowError(err error) error {
-	err = fmt.Errorf("Error with rows: %s", err)
+	// err = fmt.Errorf("Error with rows: %s", err)
 	switch {
 	case err == sql.ErrNoRows:
 		return sql.ErrNoRows
 	case err != nil:
-		return nil
+		return err
 	default:
-		log.Panicf("Default error: %v\n", err)
 		return err
 	}
 }

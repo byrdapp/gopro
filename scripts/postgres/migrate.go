@@ -60,21 +60,23 @@ func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProf
 	if err := sqldb.Ping(); err != nil {
 		log.Fatal(err)
 	}
-	ctx := context.Background()
+	// ctx := context.Background()
 	for _, p := range profiles {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if p.IsProfessional {
-				pro := storage.Professional{
-					ID: p.UserID,
-				}
 
-				_, err := sqldb.CreateProfessional(ctx, &pro)
-				if err != nil {
-					log.Errorf("Didnt create row: %s", err)
-					return
-				}
+				// ! create profile with level and userUID
+				// pro := storage.Professional{
+				// 	ID: p.UserID,
+				// }
+
+				// _, err := sqldb.CreateProfessional(ctx, &pro)
+				// if err != nil {
+				// 	log.Errorf("Didnt create row: %s", err)
+				// 	return
+				// }
 			}
 		}()
 		wg.Wait()

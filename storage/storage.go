@@ -10,10 +10,12 @@ import (
 
 // PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
+	GetBookings(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
-	GetProBookings(ctx context.Context, proID string) ([]*Booking, error)
-	GetProProfile(ctx context.Context, id string) (*Professional, error)
-	CreateProfessional(context.Context, *Professional) (string, error)
+	UpdateBooking(ctx context.Context, b *Booking) error
+	DeleteBooking(ctx context.Context, bookingID string) error
+	GetBookingsAdmin(ctx context.Context) ([]*BookingProfessional, error)
+	GetProfile(ctx context.Context, id string) (*Professional, error)
 	Close() error
 	Ping() error
 	HandleRowError(error) error
@@ -23,20 +25,50 @@ type PQService interface {
 // FBService contains firebase methods
 type FBService interface {
 	GetTransactions() ([]*Transaction, error)
+	// ! dont update anything from the API - only scripting
+	UpdateData(uid string, prop string, value string) error
 	GetWithdrawals() ([]*Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
 	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
-	UpdateData(uid string, prop string, value string) error
 	GetAuth() ([]*auth.ExportedUserRecord, error)
 	DeleteAuthUserByUID(uid string) error
-	CreateCustomToken(ctx context.Context, uid string) (string, error)
+	CreateCustomTokenWithClaims(ctx context.Context, uid string, claims map[string]interface{}) (string, error)
+	IsAdminClaims(claims map[string]interface{}) bool
+	IsAdminUID(ctx context.Context, uid string) (bool, error)
 	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 
 // Professional user class
 type Professional struct {
-	ID string `json:"id" sql:"id"`
+	ID       string `json:"id" sql:"id"`
+	UserUID  string `json:"userUID" sql:"user_uid"`
+	ProLevel int    `json:"proLevel" sql:"pro_level"`
+}
+
+// Booking repræsents a professional user appointment from a media
+type Booking struct {
+	ID          string     `json:"id,omitempty" sql:"id"`
+	MediaUID    string     `json:"mediaUID,omitempty" sql:"media_uid"`
+	MediaBooker string     `json:"mediaBooker,omitempty" sql:"media_booker"`
+	UserUID     string     `json:"userUID,omitempty" sql:"user_uid"`
+	Task        string     `json:"task,omitempty"`
+	Price       int        `json:"price,omitempty"`
+	Credits     int        `json:"credits,omitempty"`
+	IsActive    bool       `json:"isActive,omitempty" sql:"is_active"`
+	IsCompleted bool       `json:"isCompleted,omitempty" sql:"is_completed"`
+	DateStart   *time.Time `json:"dateStart,omitempty" sql:"date_start"`
+	DateEnd     *time.Time `json:"dateEnd,omitempty" sql:"date_end"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty" sql:"created_at"`
+	Lng         string     `json:"lng,omitempty" sql:"lng"`
+	Lat         string     `json:"lat,omitempty" sql:"lat"`
+}
+
+// BookingProfessional is a joined response for a booking attached to a pro user
+type BookingProfessional struct {
+	Booking
+	Professional
+	FirebaseProfile
 }
 
 // FirebaseProfile defines a profile in firebsse
@@ -93,22 +125,4 @@ type Withdrawals struct {
 	RequestCompletedDate int64  `json:"requestCompletedDate,omitempty"`
 	RequestUserID        string `json:"requestUser,omitempty"`
 	RequestDate          int64  `json:"requestDate,omitempty"`
-}
-
-// Booking repræsents a professional user appointment from a media
-type Booking struct {
-	ID          string    `json:"id" sql:"id"`
-	MediaUID    string    `json:"mediaUID" sql:"media_uid"`
-	MediaBooker string    `json:"mediaBooker" sql:"media_booker"`
-	UserUID     string    `json:"userUID" sql:"user_uid"`
-	Task        string    `json:"task"`
-	Price       int       `json:"price"`
-	Credits     int       `json:"credits"`
-	IsActive    bool      `json:"isActive" sql:"is_active"`
-	IsCompleted bool      `json:"isCompleted" sql:"is_completed"`
-	DateStart   time.Time `json:"dateStart" sql:"date_start"`
-	DateEnd     time.Time `json:"dateEnd" sql:"date_end"`
-	CreatedAt   time.Time `json:"createdAt" sql:"created_at"`
-	Lng         string    `json:"lng" sql:"lng"`
-	Lat         string    `json:"lat" sql:"lat"`
 }
