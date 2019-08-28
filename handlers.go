@@ -15,7 +15,6 @@ import (
 	utils "github.com/blixenkrone/gopro/utils/fmt"
 
 	mux "github.com/gorilla/mux"
-	goexif "github.com/rwcarlsen/goexif/exif"
 
 	storage "github.com/blixenkrone/gopro/storage"
 	exif "github.com/blixenkrone/gopro/upload/exif"
@@ -150,20 +149,6 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type latlng struct {
-	Lng float64 `json:"lng,omitempty"`
-	Lat float64 `json:"lat,omitempty"`
-}
-
-// TagResult struct for exif handler to return either result or err
-type TagResult struct {
-	Out *goexif.Exif `json:"exif,omitempty"`
-	// LatLng latlng       `json:"geo,omitempty"`
-	Lng float64 `json:"lng,omitempty"`
-	Lat float64 `json:"lat,omitempty"`
-	Err string  `json:"err,omitempty"`
-}
-
 // getExif recieves body with img files
 var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
@@ -182,9 +167,8 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var exifRes []*TagResult
+			var res []*exif.Output
 			for {
-				var res TagResult
 				part, err := mr.NextPart()
 				// read length of files
 				if err == io.EOF {
@@ -195,27 +179,19 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
-
-				imgsrv, err := exif.NewExifReq(part)
+				output, err := exif.GetOutput(part)
 				if err != nil {
 					errors.NewResErr(err, err.Error(), 503, w)
 					break
 				}
 
-				out, err := imgsrv.TagExifSync()
 				if err != nil {
 					errors.NewResErr(err, "Error decoding EXIF for img: %s", http.StatusBadRequest, w, "trace")
 					break
 				}
-				res.Out = out
-				res.Lat, res.Lng, err = out.LatLong()
-				if err != nil {
-					errors.NewResErr(err, "Error decoding EXIF for img: %s", http.StatusBadRequest, w, "trace")
-					res.Err = err.Error()
-				}
-				exifRes = append(exifRes, &res)
+				res = append(res, output)
 			}
-			if err := json.NewEncoder(w).Encode(exifRes); err != nil {
+			if err := json.NewEncoder(w).Encode(res); err != nil {
 				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
 				return
 			}

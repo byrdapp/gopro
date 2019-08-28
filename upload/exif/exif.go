@@ -1,108 +1,108 @@
 package exif
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"image"
+	"io"
 
 	"github.com/blixenkrone/gopro/utils/logger"
-
-	// Keep this import so the compiler knows the format
-	_ "image/jpeg"
-	_ "image/png"
-	"io"
-	"os/exec"
-	"sync"
 
 	"github.com/rwcarlsen/goexif/exif"
 )
 
-// ImageReader contains image info
-type ImageReader struct {
-	Image  image.Image
-	Name   string
-	Format string
-	Buffer *bytes.Buffer
+var (
+	log = logger.NewLogger()
+)
+
+// Output represents the final decoded EXIF data from an image
+type Output struct {
+	Date      string
+	Lng       float64
+	Lat       float64
+	Copyright string
 }
 
-// ImgService contains methods for imgs
-type ImgService interface {
-	TagExif(*sync.WaitGroup, chan<- *exif.Exif, chan<- error)
-	TagExifSync() (*exif.Exif, error) // For tests no goroutines
-}
-
-var log = logger.NewLogger()
-
-// NewExifReq request exif data for image
-func NewExifReq(r io.Reader) (ImgService, error) {
-	var buf = new(bytes.Buffer)
-	teeRead := io.TeeReader(r, buf)
-	src, format, err := image.Decode(teeRead)
+// GetOutput returns the struct *Output containing img data. Call this for each img.
+func GetOutput(r io.Reader) (*Output, error) {
+	x, err := loadExifData(r)
+	lat, err := x.calcGeoCoordinate(exif.GPSLatitude)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Image format is: %s\n", format)
-
-	uuid, err := exec.Command("uuidgen").Output()
+	lng, err := x.calcGeoCoordinate(exif.GPSLongitude)
 	if err != nil {
 		return nil, err
 	}
-	return &ImageReader{
-		Image:  src,
-		Format: format,
-		Name:   string(uuid)[:13] + "." + format,
-		Buffer: buf,
-	}, nil
-}
-
-// TagExif returns the bytes of the image/tiff in ch
-func (img *ImageReader) TagExif(wg *sync.WaitGroup, ch chan<- *exif.Exif, cherr chan<- error) {
-	defer wg.Done()
-	out, err := exif.Decode(img.Buffer)
+	date, err := x.getDateTime()
 	if err != nil {
-		if exif.IsCriticalError(err) {
-			log.Fatalf("exif.Decode, critical error: %v", err)
-		}
-		log.Printf("exif.Decode, warning: %v", err)
-	}
-	log.Printf("Tagged exif: %s", img.Name)
-
-	if err := img.requiredExifData(out); err != nil {
-		cherr <- err
-	} else {
-		ch <- out
-	}
-}
-
-// RequiredExifData - testing with ch errors
-func (img *ImageReader) requiredExifData(out *exif.Exif) error {
-	minExifData := [3]exif.FieldName{"DateTime", "GPSLatitude", "GPSLongitude"}
-	for _, r := range minExifData {
-		_, err := out.Get(r)
-		if err != nil {
-			return errors.New("EXIF Tag was not present: " + string(r))
-		}
-	}
-	return nil
-}
-
-// TagExifSync returns the bytes of the image/tiff in ch - dont use in production
-func (img *ImageReader) TagExifSync() (*exif.Exif, error) {
-	out, err := exif.Decode(img.Buffer)
-	if err != nil {
-		if exif.IsCriticalError(err) {
-			log.Errorf("exif.Decode, critical error: %v", err)
-			return nil, errors.New("exif.Decode, critical error: " + err.Error())
-		}
-		log.Printf("exif.Decode, warning: " + err.Error())
 		return nil, err
 	}
-	log.Printf("Tagged exif: %s", img.Name)
+	author, err := x.getCopyright()
+	res := &Output{
+		Lat:       lat,
+		Lng:       lng,
+		Date:      date,
+		Copyright: author,
+	}
+	return res, nil
+}
 
-	// if err := img.requiredExifData(out); err != nil {
-	// 	log.Info(err)
-	// 	return nil, err
+type imgExifData struct {
+	x *exif.Exif
+}
+
+// loadExifData request exif data for image
+func loadExifData(r io.Reader) (*imgExifData, error) {
+	// var buf = new(bytes.Buffer)
+	// teeRead := io.TeeReader(r, buf)
+	// _, format, err := image.Decode(teeRead)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Error decoding img w go stdlib: %s", err)
 	// }
-	return out, nil
+	// fmt.Printf("Image format is: %s\n", format)
+	x, err := exif.Decode(r)
+	if err != nil {
+		log.Errorln(err)
+	}
+	return &imgExifData{x}, nil
+}
+
+func (e *imgExifData) calcGeoCoordinate(fieldName exif.FieldName) (float64, error) {
+	tag, err := e.x.Get(fieldName)
+	if err != nil {
+		return 0.0, err
+	}
+	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
+	fVals := make(map[string]float64, len(ratVals))
+
+	for key, val := range ratVals {
+		rVals, err := tag.Rat(val)
+		if err != nil {
+			return 0.0, err
+		}
+		f, _ := rVals.Float64()
+		fVals[key] = f
+	}
+
+	res := fVals["deg"] + (fVals["min"] / 60) + (fVals["sec"] / 3600)
+	return res, nil
+}
+
+func (e *imgExifData) getDateTime() (date string, err error) {
+	tag, err := e.x.Get(exif.DateTimeOriginal)
+	if err != nil {
+		return date, fmt.Errorf("Date error: %s", err)
+	}
+	date, err = tag.StringVal()
+	if err != nil {
+		return date, err
+	}
+	return date, nil
+}
+
+func (e *imgExifData) getCopyright() (author string, err error) {
+	tag, err := e.x.Get(exif.Copyright)
+	if err != nil {
+		return author, err
+	}
+	return tag.StringVal()
 }

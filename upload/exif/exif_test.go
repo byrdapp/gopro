@@ -4,20 +4,25 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/rwcarlsen/goexif/tiff"
+	"github.com/blixenkrone/gopro/utils/logger"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
 )
 
-type TagResult struct {
-	Exif *exif.Exif
-	Date *time.Time
-	Lng  float64
-	Lat  float64
-	Err  string
+var (
+	log = logger.NewLogger()
+)
+
+// Output represents the final decoded EXIF data from an image
+type Output struct {
+	Date      string
+	Lng       float64
+	Lat       float64
+	Copyright string
 }
 
 func TestExifReader(t *testing.T) {
@@ -28,71 +33,85 @@ func TestExifReader(t *testing.T) {
 				continue
 			}
 			path := fmt.Sprintf("./test2/%v.jpg", i)
-			file, err := os.Open(path)
+			output, err := GetOutput(path)
 			if err != nil {
-				t.Errorf("Error: %s\n", err)
+				t.Error(err)
 			}
-			x, err := exif.Decode(file)
-			// x, err := exif.LazyDecode(file)
-			if err != nil {
-				t.Errorf("Error: %s", err)
-			}
-
-			// lat, _ := x.Get(exif.GPSLongitude)
-			// deg, _ := lat.Rat(0)
-			// floatDeg, _ := deg.Float64()
-			// min, _ := lat.Rat(1)
-			// floatMin, _ := min.Float64()
-			// sec, _ := lat.Rat(2)
-			// floatSec, _ := sec.Float64()
-			// floatLat := floatDeg + floatMin/60 + floatSec/3600
-
-			// t.Log(floatLat)
-
-			tRes := &TagResult{}
-			fieldNames := [2]exif.FieldName{exif.GPSLatitude, exif.GPSLongitude}
-			for _, val := range fieldNames {
-				tag, err := x.Get(val)
-				if err != nil {
-					t.Error(err)
-				}
-				latlng, err := tRes.setCoordinates(tag)
-				if err != nil {
-					t.Error(err)
-				}
-				t.Logf("Values: %v %v", tRes.Lat, tRes.Lng)
-			}
-
+			spew.Dump(output)
 		}
 	})
 }
 
-type LatLng struct {
-	Lat float64
-	Lng float64
+func GetOutput(path string) (*Output, error) {
+	x := loadExif(path)
+	var err error
+	lat, err := x.calcGeoCoordinate(exif.GPSLatitude)
+	if err != nil {
+		return nil, err
+	}
+	lng, err := x.calcGeoCoordinate(exif.GPSLongitude)
+	if err != nil {
+		return nil, err
+	}
+	date, err := x.getDateTime()
+	if err != nil {
+		return nil, err
+	}
+	res := &Output{
+		Lat:  lat,
+		Lng:  lng,
+		Date: date,
+	}
+	return res, nil
 }
 
-func (t *TagResult) setCoordinates(tag *tiff.Tag) (*LatLng, error) {
-	intRationals := [3]int{0, 1, 2}
-	var finalFloats = make([]float64, 3)
-	calc := map[string]int{"deg": 0, "min": 1, "sec": 2}
-	res := map[string]float64{"1": 0.0, "2": 0.0, "3": 0.0}
+type exifData struct {
+	x *exif.Exif
+}
 
-	for key, val := range calc {
-		ratVal, err := tag.Rat(num)
+func loadExif(path string) *exifData {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Errorln(err)
+	}
+	x, err := exif.Decode(file)
+	if err != nil {
+		log.Errorln(err)
+	}
+	return &exifData{
+		x: x,
+	}
+}
+
+func (e *exifData) calcGeoCoordinate(fieldName exif.FieldName) (float64, error) {
+	tag, err := e.x.Get(fieldName)
+	if err != nil {
+		return 0.0, err
+	}
+	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
+	fVals := make(map[string]float64, len(ratVals))
+
+	for key, val := range ratVals {
+		rVals, err := tag.Rat(val)
 		if err != nil {
-			return nil, err
+			return 0.0, err
 		}
-		calc["deg"] = ratVal.Float64()
-		calc["deg"] = ratVal.Float64()
-		calc["deg"] = ratVal.Float64()
-		f, _ := ratVal.Float64()
-		finalFloats = append(finalFloats, f)
+		f, _ := rVals.Float64()
+		fVals[key] = f
 	}
 
-	for _, v := range finalFloats {
-		fmt.Println(v)
-	}
+	res := fVals["deg"] + (fVals["min"] / 60) + (fVals["sec"] / 3600)
+	return res, nil
+}
 
-	return &res, nil
+func (e *exifData) getDateTime() (date string, err error) {
+	tag, err := e.x.Get(exif.DateTimeOriginal)
+	if err != nil {
+		return date, fmt.Errorf("Date error: %s", err)
+	}
+	date, err = tag.StringVal()
+	if err != nil {
+		return date, err
+	}
+	return date, nil
 }
