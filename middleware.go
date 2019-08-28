@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"firebase.google.com/go/auth"
@@ -27,66 +26,54 @@ const (
 	tokenRefreshThrottle = 10 * time.Minute
 	// How much time will the token be extended for
 	tokenExpirationTime = 30 * time.Minute
-	proToken            = "pro_token"
 	userToken           = "user_token"
+	isAdminClaim        = "is_admin"
 )
 
-func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
+var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		headerToken := r.Header.Get(userToken)
+		if headerToken == "" {
+			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
+			return
+		}
 
-		next(w, r)
+		token, err := fb.VerifyToken(r.Context(), headerToken)
+		if err != nil {
+			errors.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
+			http.RedirectHandler("/login", http.StatusFound)
+			return
+		}
+		if ok := fb.IsAdminClaims(token.Claims); ok {
+			next(w, r)
+			return
+		}
+		err = fmt.Errorf("No admin rights found")
+		errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
+		return
 	}
 }
 
-/**
- * Deprecated
- */
-var isJWTAuth = func(next http.HandlerFunc) http.HandlerFunc {
+var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
 		// ? verify here, that the user is a pro user
 
 		if headerToken == "" {
-			var err error
-			err = fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
 			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s", err)
-			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusFound, w)
+			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-		if os.Getenv("ENV") == "development" {
-			log.Infoln("Middleware ran successfully")
-		}
 		next(w, r)
 	})
-}
-
-func (c *Claims) refreshToken(w http.ResponseWriter) error {
-	// tokenRefreshThrottle := time.Now().Add(tokenRefreshThrottle).Unix()
-	// fmt.Println(c.Claims.ExpiresAt)
-	// fmt.Println(tokenRefreshThrottle)
-	// if c.Claims.ExpiresAt < tokenRefreshThrottle {
-	// 	expirationTime := time.Now().Add(tokenExpirationTime)
-	// 	c.Claims.ExpiresAt = expirationTime.Unix()
-	// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
-	// 	signedToken, err := token.SignedString(JWTSecretMust())
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	http.SetCookie(w, &http.Cookie{
-	// 		Name:   "pro_token",
-	// 		Value:  signedToken,
-	// 		Path:   "/",
-	// 		Secure: false,
-	// 	})
-	// 	fmt.Println("Refreshed token")
-	// 	return nil
-	// }
-	return nil
 }
