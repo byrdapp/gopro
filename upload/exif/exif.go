@@ -66,7 +66,7 @@ type imgExifData struct {
 func loadExifData(r io.Reader) (*imgExifData, error) {
 	x, err := exif.Decode(r)
 	if err != nil {
-		log.Errorln("ERROR DECODING:" + err.Error())
+		log.Errorln("ERROR DECODING: " + err.Error())
 		return nil, fmt.Errorf("Error decoding EXIF in image")
 	}
 	return &imgExifData{x}, nil

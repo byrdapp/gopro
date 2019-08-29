@@ -153,7 +153,8 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 // ExifResponse is json encoded to client
 type ExifResponse struct {
 	Data *exif.Output `json:"data,omitempty"`
-	Err  *exif.Error  `json:"err,omitempty"`
+	Err  exif.Error   `json:"err,omitempty"`
+	// Err  string       `json:"err,omitempty"`
 }
 
 // getExif recieves body with img files
@@ -177,22 +178,20 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 			var res []*ExifResponse
 			for {
 				var x ExifResponse
-				part, err := mr.NextPart()
 				// read length of files
-				if err == io.EOF {
-					log.Infoln("No more files to read")
-					break
-				}
+				part, err := mr.NextPart()
 				if err != nil {
+					if err == io.EOF {
+						log.Infoln("No more files to read")
+						break
+					}
 					x.Err.Message = err.Error()
 					x.Err.Code = http.StatusBadRequest
-
 				}
 				output, err := exif.GetOutput(part)
 				if err != nil {
 					x.Err.Message = err.Error()
 					x.Err.Code = http.StatusBadRequest
-					// errors.NewResErr(err, "Error decoding x for img: %s", http.StatusBadRequest, w, "trace")
 				}
 				x.Data = output
 				res = append(res, &x)
