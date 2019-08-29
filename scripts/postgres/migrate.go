@@ -44,7 +44,7 @@ func main() {
 
 // ExportToPostgres -
 func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
-	fbdb, err := firebase.New()
+	fbdb, err := firebase.NewFB()
 	if err != nil {
 		return nil, err
 	}
