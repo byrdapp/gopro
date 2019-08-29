@@ -31,7 +31,7 @@ type Postgres struct {
 func NewPQ() (storage.PQService, error) {
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
-		log.Fatal("Error opening postgress connstr")
+		log.Fatal("Error opening postgress connstr from environment variable")
 	}
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {

@@ -27,10 +27,9 @@ func init() {
 	flag.Parse()
 	if *local {
 		if err := godotenv.Load(); err != nil {
-			log.Fatalln(err)
+			panic(err)
 		}
 		log.Infof("Running locally with %s environment", os.Getenv("ENV"))
-
 	}
 }
 
