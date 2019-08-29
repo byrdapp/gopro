@@ -41,6 +41,7 @@ var signOut = func(w http.ResponseWriter, r *http.Request) {
 		})
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
+
 }
 
 // Credentials for at user to get JWT
@@ -149,6 +150,12 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExifResponse is json encoded to client
+type ExifResponse struct {
+	Data *exif.Output `json:"data,omitempty"`
+	Err  *exif.Error  `json:"err,omitempty"`
+}
+
 // getExif recieves body with img files
 var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
@@ -167,8 +174,9 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*exif.Output
+			var res []*ExifResponse
 			for {
+				var x ExifResponse
 				part, err := mr.NextPart()
 				// read length of files
 				if err == io.EOF {
@@ -176,20 +184,18 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if err != nil {
-					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
-					break
+					x.Err.Message = err.Error()
+					x.Err.Code = http.StatusBadRequest
+
 				}
 				output, err := exif.GetOutput(part)
 				if err != nil {
-					errors.NewResErr(err, err.Error(), 503, w)
-					break
+					x.Err.Message = err.Error()
+					x.Err.Code = http.StatusBadRequest
+					// errors.NewResErr(err, "Error decoding x for img: %s", http.StatusBadRequest, w, "trace")
 				}
-
-				if err != nil {
-					errors.NewResErr(err, "Error decoding EXIF for img: %s", http.StatusBadRequest, w, "trace")
-					break
-				}
-				res = append(res, output)
+				x.Data = output
+				res = append(res, &x)
 			}
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				errors.NewResErr(err, "Error convert exif to JSON", 503, w)

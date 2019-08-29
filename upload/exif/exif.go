@@ -15,15 +15,24 @@ var (
 
 // Output represents the final decoded EXIF data from an image
 type Output struct {
-	Date      string
-	Lng       float64
-	Lat       float64
-	Copyright string
+	Date      string  `json:"date,omitempty"`
+	Lng       float64 `json:"lng,omitempty"`
+	Lat       float64 `json:"lat,omitempty"`
+	Copyright string  `json:"copyright,omitempty"`
+}
+
+// Error is error struct to the client
+type Error struct {
+	Message string `json:"msg,omitempty"`
+	Code    int    `json:"code,omitempty"`
 }
 
 // GetOutput returns the struct *Output containing img data. Call this for each img.
 func GetOutput(r io.Reader) (*Output, error) {
 	x, err := loadExifData(r)
+	if err != nil {
+		return nil, err
+	}
 	lat, err := x.calcGeoCoordinate(exif.GPSLatitude)
 	if err != nil {
 		return nil, err
@@ -37,6 +46,9 @@ func GetOutput(r io.Reader) (*Output, error) {
 		return nil, err
 	}
 	author, err := x.getCopyright()
+	if err != nil {
+		return nil, err
+	}
 	res := &Output{
 		Lat:       lat,
 		Lng:       lng,
@@ -54,7 +66,8 @@ type imgExifData struct {
 func loadExifData(r io.Reader) (*imgExifData, error) {
 	x, err := exif.Decode(r)
 	if err != nil {
-		log.Errorln(err)
+		log.Errorln("ERROR DECODING:" + err.Error())
+		return nil, fmt.Errorf("Error decoding EXIF in image")
 	}
 	return &imgExifData{x}, nil
 }
@@ -62,6 +75,10 @@ func loadExifData(r io.Reader) (*imgExifData, error) {
 func (e *imgExifData) calcGeoCoordinate(fieldName exif.FieldName) (float64, error) {
 	tag, err := e.x.Get(fieldName)
 	if err != nil {
+		if exif.IsTagNotPresentError(err) {
+			log.Errorf("Error reading Geolocation in EXIF: %s", err)
+			return 0.0, fmt.Errorf("Error reading Geolocation: %s", err)
+		}
 		return 0.0, err
 	}
 	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
