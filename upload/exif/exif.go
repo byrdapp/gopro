@@ -21,12 +21,6 @@ type Output struct {
 	Copyright string  `json:"copyright,omitempty"`
 }
 
-// Error is error struct to the client
-type Error struct {
-	Message string `json:"msg,omitempty"`
-	Code    int    `json:"code,omitempty"`
-}
-
 // GetOutput returns the struct *Output containing img data. Call this for each img.
 func GetOutput(r io.Reader) (*Output, error) {
 	x, err := loadExifData(r)
