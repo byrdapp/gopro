@@ -30,8 +30,8 @@ type Firebase struct {
 // ! Get profile params to switch profile type (reg, media, pro)
 // ! Integrate GET's from FB to .go
 
-// New SE
-func New() (storage.FBService, error) {
+// NewFB SE
+func NewFB() (storage.FBService, error) {
 	ctx := context.Background()
 	config := &firebase.Config{
 		DatabaseURL: os.Getenv("FB_DATABASE_URL"),

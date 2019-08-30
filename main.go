@@ -42,7 +42,7 @@ func main() {
 	pq = pqsrv
 	defer pqsrv.Close()
 
-	fbsrv, err := firebase.New()
+	fbsrv, err := firebase.NewFB()
 	if err != nil {
 		log.Fatalf("Error starting firebase: %s", err)
 		return

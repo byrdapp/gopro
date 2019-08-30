@@ -17,7 +17,7 @@ const hasSSLstring = "https://res.cloudinary.com"
 // ChangeProfileUserPicture selfexplanatory
 func ChangeProfileUserPicture() error {
 	defer fmt.Println("Done")
-	db, err := firebase.New()
+	db, err := firebase.NewFB()
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +58,7 @@ func correctImageString(p *storage.FirebaseProfile) string {
 // DeleteUnusedAuthProfiles from Auth in Firebase
 func DeleteUnusedAuthProfiles() error {
 	var wg sync.WaitGroup
-	db, err := firebase.New()
+	db, err := firebase.NewFB()
 	profiles, err := db.GetAuth()
 	if err != nil {
 		return err

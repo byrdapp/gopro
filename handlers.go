@@ -31,6 +31,18 @@ import (
  * - refer to the UID when adding / getting data from PQ db
  */
 
+type errorResponse struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"msg,omitempty"`
+}
+
+func setErrorResponse(err error, code int) *errorResponse {
+	return &errorResponse{
+		Message: err.Error(),
+		Code:    code,
+	}
+}
+
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "application/json")
@@ -41,6 +53,7 @@ var signOut = func(w http.ResponseWriter, r *http.Request) {
 		})
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
+
 }
 
 // Credentials for at user to get JWT
@@ -149,7 +162,16 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExifResponse is json encoded to client
+// The struct also sets exif decoding errors to the response writer.
+type ExifResponse struct {
+	Data *exif.Output   `json:"data,omitempty"`
+	Err  *errorResponse `json:"err,omitempty"`
+}
+
 // getExif recieves body with img files
+// it attempts to fetch EXIF data from each image
+// if no exif data, the error message will be added to the response without breaking out of the loop until EOF
 var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -167,29 +189,24 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*exif.Output
+			var res []*ExifResponse
 			for {
-				part, err := mr.NextPart()
 				// read length of files
-				if err == io.EOF {
-					log.Infoln("No more files to read")
-					break
-				}
+				x := ExifResponse{}
+				part, err := mr.NextPart()
 				if err != nil {
-					errors.NewResErr(err, "Could not read file"+part.FileName(), http.StatusBadRequest, w)
-					break
+					if err == io.EOF {
+						log.Infoln("Image EXIF EOF")
+						break
+					}
+					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
 				output, err := exif.GetOutput(part)
 				if err != nil {
-					errors.NewResErr(err, err.Error(), 503, w)
-					break
+					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
-
-				if err != nil {
-					errors.NewResErr(err, "Error decoding EXIF for img: %s", http.StatusBadRequest, w, "trace")
-					break
-				}
-				res = append(res, output)
+				x.Data = output
+				res = append(res, &x)
 			}
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				errors.NewResErr(err, "Error convert exif to JSON", 503, w)

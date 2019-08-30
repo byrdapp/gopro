@@ -1,0 +1,29 @@
+name: Build Gopro
+on:
+  push:
+    branches:
+      - master
+
+# 1. Test local code
+# 2. Build docker image img:tag
+# 3. Push docker image img:tag to docker hub
+# 4. SSH into linux server
+# 5. inside server > Docker pull img:tag
+# 6. docker-compose up -d
+
+jobs:
+  review:
+    name: Review code
+    runs-on: ubuntu-latest
+    steps:
+      # - uses: actions/checkout@master ?
+      - uses: actions/checkout@master
+      - uses: actions/setup-go@v1
+        with:
+          go-version: "1.12.6" # The Go version to download (if necessary) and use.
+    # test:
+    #   needs: build
+    # deploy_to_do:
+    #   needs: [build, test]
+    # copy_to_byrd:
+    #   needs: [build, test]
