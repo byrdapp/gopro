@@ -14,5 +14,3 @@ docker-compose.yml
 *.http
 *.rsa
 *.pub
-*.jpg
-*.jpeg

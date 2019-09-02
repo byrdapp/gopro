@@ -1,8 +1,10 @@
-# name: Gopro
-# on:
-#   push:
-#     branches:
-#       - master
+name: Gopro
+on:
+  push:
+    branches:
+      - master
+    runs-on: ubuntu-latest
+    steps:
 
 # jobs:
 #   build-dev:

@@ -32,7 +32,7 @@ func TestExifReader(t *testing.T) {
 			if i == 0 {
 				continue
 			}
-			path := fmt.Sprintf("./test2/%v.jpg", i)
+			path := fmt.Sprintf("./testimgs/%v.jpg", i)
 			output, err := GetOutput(path)
 			if err != nil {
 				t.Error(err)

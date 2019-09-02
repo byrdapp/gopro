@@ -36,8 +36,6 @@ jobs:
 
       - name: Go vet
         run: go vet
-
-
     # test:
     #   needs: build
     # deploy_to_do:
