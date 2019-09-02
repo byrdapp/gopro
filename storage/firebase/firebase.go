@@ -38,6 +38,7 @@ func NewFB() (storage.FBService, error) {
 	}
 	jsonPath := "fb-" + os.Getenv("ENV") + ".json"
 	opt := option.WithCredentialsJSON(aws.GetAWSSecrets(jsonPath))
+	// opt := option.WithCredentialsJSON(p)
 	app, err := firebase.NewApp(ctx, config, opt)
 	if err != nil {
 		return nil, err
