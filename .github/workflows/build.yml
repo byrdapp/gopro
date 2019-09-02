@@ -36,6 +36,20 @@ jobs:
 
       - name: Go vet
         run: go vet
+
+      - name: Docker login
+        uses: actions/docker/login@master
+        # secrets: "DOCKER_USERNAME", "DOCKER_PASSWORD"
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Docker build img
+        uses: docker://byrdapp/gopro:latest
+      # - name: Build docker img
+      #   uses: actions/docker/cli@master
+      #   args: docker build --rm -f "Dockerfile" -t byrdapp/gopro:latest .
+      # - name: Docker push image
     # test:
     #   needs: build
     # deploy_to_do:
