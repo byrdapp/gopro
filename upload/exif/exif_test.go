@@ -28,7 +28,7 @@ type Output struct {
 func TestExifReader(t *testing.T) {
 	t.Run("Run EXIF lat lng", func(t *testing.T) {
 		exif.RegisterParsers(mknote.All...)
-		for i := 1; i < 5; i++ {
+		for i := 1; i < 4; i++ {
 			if i == 0 {
 				continue
 			}
