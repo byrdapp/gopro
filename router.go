@@ -30,7 +30,7 @@ func newServer() *Server {
 		w.WriteHeader(http.StatusTooEarly)
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
-	mux.HandleFunc("/authenticate", loginGetToken).Methods("POST")
+	// mux.HandleFunc("/authenticate", loginGetToken).Methods("POST")
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
 
 	// * Private endpoints
@@ -61,9 +61,9 @@ func newServer() *Server {
 	mux.HandleFunc("/bookings" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200"},
+		AllowedOrigins:   []string{"http://localhost:4200", "http://localhost:4201"},
 		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
+		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
 		AllowCredentials: true,
 	})
 
