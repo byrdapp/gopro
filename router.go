@@ -30,7 +30,6 @@ func newServer() *Server {
 		w.WriteHeader(http.StatusTooEarly)
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
-	// mux.HandleFunc("/authenticate", loginGetToken).Methods("POST")
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
 
 	// * Private endpoints

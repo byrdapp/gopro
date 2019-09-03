@@ -46,7 +46,7 @@ jobs:
       - name: docker build img
         uses: actions/docker/cli@master
         with:
-          args: build --rm -f "Dockerfile" -t byrdapp/gopro:latest .
+          args: build --rm -f "Dockerfile" -t byrdapp/gopro .
 
       - name: docker push
         uses: actions/docker/cli@master
