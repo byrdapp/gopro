@@ -388,5 +388,4 @@ var chargeBooking = func(w http.ResponseWriter, r *http.Request) {
 		errors.NewResErr(err, "Error encoding response", http.StatusInternalServerError, w, "trace")
 		return
 	}
-
 }
