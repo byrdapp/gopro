@@ -35,11 +35,15 @@ func newServer() *Server {
 	// * Private endpoints
 	mux.HandleFunc("/reauthenticate", isAuth(loginGetToken)).Methods("GET")
 	mux.HandleFunc("/secure", isAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"msg": "Secure msg from gopro service"}`))
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service"}`)); err != nil {
+			log.Errorln(err)
+		}
 	})).Methods("GET")
 
 	mux.HandleFunc("/admin/secure", isAdmin(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"msg": "Secure msg from gopro service to ADMINS!"}`))
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service to ADMINS!"}`)); err != nil {
+			log.Errorln(err)
+		}
 	})).Methods("GET")
 
 	mux.HandleFunc("/logoff", signOut).Methods("POST")

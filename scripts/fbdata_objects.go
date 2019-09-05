@@ -40,7 +40,7 @@ func ChangeProfileUserPicture() error {
 }
 
 func changeDetection(p *storage.FirebaseProfile) (string, bool) {
-	if contains := strings.Contains(p.UserPicture, noSSLstring); contains == true {
+	if contains := strings.Contains(p.UserPicture, noSSLstring); contains {
 		fmt.Printf("%s is without SSL\n", p.DisplayName)
 		corr := correctImageString(p)
 		return corr, contains
@@ -59,6 +59,9 @@ func correctImageString(p *storage.FirebaseProfile) string {
 func DeleteUnusedAuthProfiles() error {
 	var wg sync.WaitGroup
 	db, err := firebase.NewFB()
+	if err != nil {
+		return err
+	}
 	profiles, err := db.GetAuth()
 	if err != nil {
 		return err

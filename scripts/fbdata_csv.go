@@ -12,13 +12,13 @@ import (
 	firebase "github.com/blixenkrone/gopro/storage/firebase"
 )
 
-func createCSV(record []string, index int, info interface{}) {
-	csvWriter := CreateCSVWriterFile("media_credit_usage_dev")
-	_ = csvWriter
-	for _, val := range record {
-		record = append(record, val)
-	}
-}
+// func createCSV(record []string, index int, info interface{}) {
+// 	csvWriter := CreateCSVWriterFile("media_credit_usage_dev")
+// 	_ = csvWriter
+// 	for _, val := range record {
+// 		record = append(record, val)
+// 	}
+// }
 
 // WithdrawalsToCSV asdasd
 func WithdrawalsToCSV(db *firebase.Firebase) {
@@ -38,6 +38,9 @@ func WithdrawalsToCSV(db *firebase.Firebase) {
 func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
 	profile, err := db.GetProfile(context.Background(), val.RequestUserID)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var record []string
 	record = append(record, strconv.FormatInt(int64(index), 10))
 	record = append(record, ParseUnixAsDate(val.RequestDate))

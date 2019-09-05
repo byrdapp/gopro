@@ -187,8 +187,7 @@ func (p *Postgres) GetProByID(ctx context.Context, id string) (*storage.Professi
 	}
 	row := p.DB.QueryRowContext(ctx, `SELECT * FROM media WHERE id = $1`, sqlid)
 	err = row.Scan(&pro.ID)
-	if err != nil {
-		p.HandleRowError(err)
+	if err := p.HandleRowError(err); err != nil {
 		return nil, err
 	}
 	return &pro, nil

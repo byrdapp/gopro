@@ -66,6 +66,7 @@ func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProf
 		go func() {
 			defer wg.Done()
 			if p.IsProfessional {
+				log.Println(p)
 
 				// ! create profile with level and userUID
 				// pro := storage.Professional{

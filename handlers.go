@@ -8,7 +8,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -62,6 +61,7 @@ type Credentials struct {
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	// ? verify here, that the user is a pro user
+
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
@@ -70,7 +70,6 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
@@ -371,21 +370,22 @@ var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
 }
 
 // Response from byrd API OK/ERROR?
-var chargeBooking = func(w http.ResponseWriter, r *http.Request) {
-	// TODO: get byrd api url to charge credits
-	url := os.Getenv("ENV") + "/wht?"
-	var client http.Client
-	req, err := http.NewRequest("POST", url, r.Body)
-	if err != nil {
-		return
-	}
-	res, err := client.Do(req)
-	if err != nil {
-		return
-	}
+// var chargeBooking = func(w http.ResponseWriter, r *http.Request) {
+// 	// TODO: get byrd api url to charge credits
+// 	url := os.Getenv("ENV") + "/wht?"
+// 	var client http.Client
 
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		errors.NewResErr(err, "Error encoding response", http.StatusInternalServerError, w, "trace")
-		return
-	}
-}
+// 	req, err := http.NewRequest("POST", url, r.Body)
+// 	if err != nil {
+// 		return
+// 	}
+// 	res, err := client.Do(req)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	if err := json.NewEncoder(w).Encode(res); err != nil {
+// 		errors.NewResErr(err, "Error encoding response", http.StatusInternalServerError, w, "trace")
+// 		return
+// 	}
+// }

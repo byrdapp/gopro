@@ -3,31 +3,13 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
-	"firebase.google.com/go/auth"
-
-	"github.com/blixenkrone/gopro/utils/errors"
-
-	jwt "github.com/dgrijalva/jwt-go"
+	resErr "github.com/blixenkrone/gopro/utils/errors"
 )
 
-// Claims -
-type Claims struct {
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	FbClaims  auth.Token
-	JWTClaims jwt.StandardClaims
-	UID       string
-}
-
 const (
-	// Time current token must be below until a refresh happens
-	tokenRefreshThrottle = 10 * time.Minute
-	// How much time will the token be extended for
-	tokenExpirationTime = 30 * time.Minute
-	userToken           = "user_token"
-	isAdminClaim        = "is_admin"
+	userToken    = "user_token"
+	isAdminClaim = "is_admin"
 )
 
 var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
@@ -36,13 +18,13 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 		headerToken := r.Header.Get(userToken)
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
-			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
+			resErr.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 
 		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			errors.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
+			resErr.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
@@ -51,8 +33,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		err = fmt.Errorf("No admin rights found")
-		errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
-		return
+		resErr.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 	}
 }
 
@@ -64,13 +45,13 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
-			errors.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
+			resErr.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 		tkn, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s", err)
-			errors.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
+			resErr.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}

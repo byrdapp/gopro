@@ -30,10 +30,6 @@ func WriteColumnHeaders(columns []string, csvWriter *csv.Writer) {
 	}
 }
 
-const (
-	unixDate = "Mon Jan _2 15:04:05 MST 2006"
-)
-
 // ParseUnixAsDate asd
 func ParseUnixAsDate(val int64) string {
 	if val == 0 {
