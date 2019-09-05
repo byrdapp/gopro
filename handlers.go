@@ -26,7 +26,6 @@ import (
  * ! implement context in all server>db calls
  *
  * * New plan:
- * In PQ:
  * - Keep table "profile" or "professional" and have only UID from FB in there (at least not conflicting data from FB)
  * - refer to the UID when adding / getting data from PQ db
  */

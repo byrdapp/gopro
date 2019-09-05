@@ -1,5 +1,9 @@
-serve_local_watch:
+serve_local:
 	go run *.go -local
+
+serve_local_watch:
+	clear \
+	&& spy go run *.go -local
 
 serve_docker_local:
 	docker-compose up --build
