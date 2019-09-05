@@ -29,7 +29,7 @@ func init() {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
 		}
-		log.Infof("Running locally with %s environment", os.Getenv("ENV"))
+		log.Infof("Running locally with %s variables", os.Getenv("ENV"))
 	}
 }
 

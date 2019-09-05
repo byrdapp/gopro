@@ -53,7 +53,6 @@ var signOut = func(w http.ResponseWriter, r *http.Request) {
 		})
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
-
 }
 
 // Credentials for at user to get JWT

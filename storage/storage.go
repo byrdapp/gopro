@@ -66,9 +66,9 @@ type Booking struct {
 
 // BookingProfessional is a joined response for a booking attached to a pro user
 type BookingProfessional struct {
-	Booking
-	Professional
-	FirebaseProfile
+	Booking         `json:"booking,omitempty"`
+	Professional    `json:"professional,omitempty"`
+	FirebaseProfile `json:"fbProfile,omitempty"`
 }
 
 // FirebaseProfile defines a profile in firebsse

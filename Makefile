@@ -1,4 +1,4 @@
-serve_local:
+serve_local_watch:
 	go run *.go -local
 
 serve_docker_local:
