@@ -248,7 +248,7 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		proUID := params["uid"]
 
-		bookings, err := pq.GetBookings(r.Context(), proUID)
+		bookings, err := pq.GetBookingsByUID(r.Context(), proUID)
 		if err != nil {
 			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
@@ -279,13 +279,13 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		// * Is the date zero valued (i.e. missing or wrongly formatted)
 		tb := timeutil.NewTime(*req.DateStart, *req.DateEnd)
 		if err := tb.IsZero(); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 
 		b, err := pq.CreateBooking(r.Context(), uid, req)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 		if err := json.NewEncoder(w).Encode(b); err != nil {
