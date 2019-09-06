@@ -43,56 +43,41 @@ func main() {
 }
 
 // ExportToPostgres -
-func getProfilesFromFB() ([]*storage.Profile, error) {
-	fbdb, err := firebase.New()
+func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
+	fbdb, err := firebase.NewFB()
 	if err != nil {
 		return nil, err
 	}
-	prfs, err := fbdb.GetProfiles()
+	prfs, err := fbdb.GetProfiles(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	return prfs, nil
 }
 
-func insertProfilesSQL(sqldb postgres.Service, profiles []*storage.Profile) error {
+func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProfile) error {
 	var wg sync.WaitGroup
 	if err := sqldb.Ping(); err != nil {
 		log.Fatal(err)
 	}
-	ctx := context.Background()
+	// ctx := context.Background()
 	for _, p := range profiles {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if p.IsProfessional {
-				pro := postgres.Professional{
-					Name:        fmt.Sprintf("%s %s", p.FirstName, p.LastName),
-					DisplayName: p.DisplayName,
-					UserID:      p.UserID,
-					Email:       p.Email,
-				}
+				log.Println(p)
 
-				stats := postgres.Stats{
-					AcceptedAssignments: p.AcceptedAssignments,
-					Device:              p.Device,
-					SalesAmount:         p.SalesAmount,
-					SalesQuantity:       p.SalesQuantity,
-				}
+				// ! create profile with level and userUID
+				// pro := storage.Professional{
+				// 	ID: p.UserID,
+				// }
 
-				proID, err := sqldb.CreateProfessional(ctx, &pro)
-				if err != nil {
-					log.Errorf("Didnt create row: %s", err)
-					return
-				}
-
-				statsID, err := sqldb.CreateProStats(ctx, &stats)
-				if err != nil {
-					log.Errorf("Error with stats: %s", err)
-					return
-				}
-
-				fmt.Printf("Inserted this fellow: %s and created id in SQL: %v.\nReferenced to these statsID: %v\n", pro.DisplayName, proID, statsID)
+				// _, err := sqldb.CreateProfessional(ctx, &pro)
+				// if err != nil {
+				// 	log.Errorf("Didnt create row: %s", err)
+				// 	return
+				// }
 			}
 		}()
 		wg.Wait()

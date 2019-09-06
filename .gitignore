@@ -12,3 +12,5 @@ vendor
 docker-compose.yml
 *.sql
 *.http
+*.rsa
+*.pub

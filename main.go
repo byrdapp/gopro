@@ -2,33 +2,34 @@ package main
 
 import (
 	"flag"
+	"os"
 
-	logger "github.com/blixenkrone/gopro/utils/logger"
-
+	storage "github.com/blixenkrone/gopro/storage"
 	firebase "github.com/blixenkrone/gopro/storage/firebase"
 	postgres "github.com/blixenkrone/gopro/storage/postgres"
+	"github.com/blixenkrone/gopro/utils/logger"
 	"github.com/joho/godotenv"
 )
 
 var (
 	log = logger.NewLogger()
-	pq  postgres.Service
-	fb  firebase.Service
+	pq  storage.PQService
+	fb  storage.FBService
 
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
 	host  = flag.String("host", "", "What host are you using?")
 	// ? not yet in use
-	production = flag.Bool("production", false, "Is it production?")
+	// production = flag.Bool("production", false, "Is it production?")
 )
 
 func init() {
 	// type go run *.go -local
 	flag.Parse()
 	if *local {
-		log.Info("Running locally")
 		if err := godotenv.Load(); err != nil {
-			log.Fatalln(err)
+			panic(err)
 		}
+		log.Infof("Running locally with %s env", os.Getenv("ENV"))
 	}
 }
 
@@ -41,7 +42,7 @@ func main() {
 	pq = pqsrv
 	defer pqsrv.Close()
 
-	fbsrv, err := firebase.New()
+	fbsrv, err := firebase.NewFB()
 	if err != nil {
 		log.Fatalf("Error starting firebase: %s", err)
 		return

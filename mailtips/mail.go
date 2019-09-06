@@ -7,21 +7,22 @@ import (
 	"os"
 	"strings"
 
+	format "github.com/blixenkrone/gopro/utils/fmt"
+
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
-	"github.com/blixenkrone/gopro/slack"
 	models "github.com/blixenkrone/gopro/models"
-	"github.com/blixenkrone/gopro/utils"
+	"github.com/blixenkrone/gopro/slack"
 )
 
 // MailReq is the received Client req for mail
 type MailReq struct {
 	Recievers []*models.ProfileProps `json:"recievers"`
 	From      *models.ProfileProps   `json:"from"`
-	Subject   string                  `json:"subject"`
-	Content   string                  `json:"content"`
-	StoryIDS  []string                `json:"storyIds"`
+	Subject   string                 `json:"subject"`
+	Content   string                 `json:"content"`
+	StoryIDS  []string               `json:"storyIds"`
 }
 
 // MailHandler handles mail requests
@@ -103,7 +104,7 @@ func (req *MailReq) unwrapMediaNames() string {
 	for idx, val := range req.Recievers {
 		output[idx] = val.DisplayName
 	}
-	return utils.JoinStrings(output)
+	return format.JoinStrings(output)
 }
 
 func (req *MailReq) createMailContent(mediaCountry string, idx int) string {

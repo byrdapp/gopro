@@ -1,8 +1,8 @@
 package storage
 
-func initRedis() {
+// func initRedis() {
 
-}
+// }
 
 /**
  * SET key value expiration? -> void

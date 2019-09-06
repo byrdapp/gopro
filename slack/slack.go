@@ -1,8 +1,9 @@
 package slack
 
 import (
-	"log"
 	"os"
+
+	"github.com/blixenkrone/gopro/utils/logger"
 
 	"encoding/json"
 	"fmt"
@@ -15,13 +16,13 @@ import (
 )
 
 var (
-	logger *log.Logger
+	log = logger.NewLogger()
 )
 
 // TipRequest from FE JSON req.
 type TipRequest struct {
 	Story      *models.StoryProps   `json:"story,omitempty"`
-	Medias     []string              `json:"medias"`
+	Medias     []string             `json:"medias"`
 	Assignment *models.Assignment   `json:"assignment"`
 	Profile    *models.ProfileProps `json:"profile"`
 }
@@ -32,11 +33,13 @@ func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(tip)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	err = postTip(tip)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(201)
@@ -87,6 +90,7 @@ func (s *TipSlackMsg) Success() error {
 
 	err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), msg)
 	if err != nil {
+		log.Errorln(err)
 		return err
 	}
 	return nil

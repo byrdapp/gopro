@@ -30,31 +30,43 @@ func newServer() *Server {
 		w.WriteHeader(http.StatusTooEarly)
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
-	mux.HandleFunc("/authenticate", loginGetToken).Methods("POST")
-	mux.HandleFunc("/securion/plans", getSecurionPlans).Methods("GET")
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
 
 	// * Private endpoints
-	mux.HandleFunc("/reauthenticate", isJWTAuth(loginGetToken)).Methods("GET")
-	mux.HandleFunc("/secure", isJWTAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Secure msg from gopro service"))
+	mux.HandleFunc("/reauthenticate", isAuth(loginGetToken)).Methods("GET")
+	mux.HandleFunc("/secure", isAuth(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service"}`)); err != nil {
+			log.Errorln(err)
+		}
 	})).Methods("GET")
+
+	mux.HandleFunc("/admin/secure", isAdmin(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service to ADMINS!"}`)); err != nil {
+			log.Errorln(err)
+		}
+	})).Methods("GET")
+
 	mux.HandleFunc("/logoff", signOut).Methods("POST")
 
-	mux.HandleFunc("/mail/send", isJWTAuth(mailtips.MailHandler)).Methods("POST")
-	mux.HandleFunc("/slack/tip", isJWTAuth(slack.PostSlackMsg)).Methods("POST")
-	mux.HandleFunc("/exif", isJWTAuth(getExif)).Methods("POST")
-	mux.HandleFunc("/medias", isJWTAuth(getMedias)).Methods("GET")
-	mux.HandleFunc("/media/{id}", isJWTAuth(getMediaByID)).Methods("GET")
-	mux.HandleFunc("/media", isJWTAuth(createMedia)).Methods("POST")
+	mux.HandleFunc("/mail/send", isAuth(mailtips.MailHandler)).Methods("POST")
+	mux.HandleFunc("/slack/tip", isAuth(slack.PostSlackMsg)).Methods("POST")
+	mux.HandleFunc("/exif", isAuth(getExif)).Methods("POST")
+	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
 
-	mux.HandleFunc("/pro/{id}", isJWTAuth(getProProfile)).Methods("GET")
-	mux.HandleFunc("/stats/{id}", isJWTAuth(getProStats)).Methods("GET")
+	mux.HandleFunc("/auth/profile/token", isAuth(decodeTokenGetProfile)).Methods("GET")
+	mux.HandleFunc("/profile/{id}", isAuth(getProProfile)).Methods("GET")
+
+	mux.HandleFunc("/booking/{uid}", isAuth(getBookingsByUID)).Methods("GET")
+	mux.HandleFunc("/booking/{proUID}", isAuth(createBooking)).Methods("POST")
+	mux.HandleFunc("/booking/{bookingID}", isAuth(updateBooking)).Methods("PUT")
+	mux.HandleFunc("/booking/{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
+	mux.HandleFunc("/bookings" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200"},
+		AllowedOrigins:   []string{"http://localhost:4200", "http://localhost:4201"},
 		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token", "pro_token"},
+		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
 		AllowCredentials: true,
 	})
 

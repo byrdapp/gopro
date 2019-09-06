@@ -1,0 +1,44 @@
+name: deploy gopro
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  development:
+    name: development deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build app as Go 1.13
+
+  production:
+    needs: [development, test]
+
+
+#         # uses: actions/setup-go@v1
+#         with:
+#           go-version: 1.13
+#         id: go
+
+#         # env:
+#         # ENV: development
+#         # POSTGRES: ${{ secrets.POSTGRES }}
+#       - name: Check out code into the Go module directory
+#         uses: actions/checkout@v1
+
+#       - name: Get dependencies
+#         run: |
+#           go get -v -t -d ./...
+#           if [ -f go.mod ]; then
+#               curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+#               dep ensure
+#           fi
+
+#       - name: Build
+#         run: go build -v .
+#   # test:
+#   #   needs: build
+#   # deploy_to_do:
+#   #   needs: [build, test]
+#   # copy_to_byrd:
+#   #   needs: [build, test]

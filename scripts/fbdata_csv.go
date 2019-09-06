@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"log"
@@ -11,13 +12,13 @@ import (
 	firebase "github.com/blixenkrone/gopro/storage/firebase"
 )
 
-func createCSV(record []string, index int, info interface{}) {
-	csvWriter := CreateCSVWriterFile("media_credit_usage_dev")
-	_ = csvWriter
-	for _, val := range record {
-		record = append(record, val)
-	}
-}
+// func createCSV(record []string, index int, info interface{}) {
+// 	csvWriter := CreateCSVWriterFile("media_credit_usage_dev")
+// 	_ = csvWriter
+// 	for _, val := range record {
+// 		record = append(record, val)
+// 	}
+// }
 
 // WithdrawalsToCSV asdasd
 func WithdrawalsToCSV(db *firebase.Firebase) {
@@ -36,7 +37,10 @@ func WithdrawalsToCSV(db *firebase.Firebase) {
 // WriteWithdrawalsToCSV Does everything inside the loop above
 func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
-	profile, err := db.GetProfile(val.RequestUserID)
+	profile, err := db.GetProfile(context.Background(), val.RequestUserID)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var record []string
 	record = append(record, strconv.FormatInt(int64(index), 10))
 	record = append(record, ParseUnixAsDate(val.RequestDate))
@@ -54,7 +58,7 @@ func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val 
 
 // ProfilesToCSV initiates data and loops the write process
 func ProfilesToCSV(db *firebase.Firebase) {
-	prfs, err := db.GetProfiles()
+	prfs, err := db.GetProfiles(db.Context)
 	if err != nil {
 		log.Fatalf("Error initializing db %s\n", err)
 	}
@@ -74,7 +78,7 @@ func ProfilesToCSV(db *firebase.Firebase) {
 }
 
 // WriteProfilesToCSV Does everything inside the loop above
-func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.Profile) {
+func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.FirebaseProfile) {
 	alreadyCashedAmount := (profile.SalesAmount - profile.WithdrawableAmount)
 	var record []string
 	record = append(record, strconv.FormatInt(index, 10))

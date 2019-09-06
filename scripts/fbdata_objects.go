@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -16,11 +17,11 @@ const hasSSLstring = "https://res.cloudinary.com"
 // ChangeProfileUserPicture selfexplanatory
 func ChangeProfileUserPicture() error {
 	defer fmt.Println("Done")
-	db, err := firebase.New()
+	db, err := firebase.NewFB()
 	if err != nil {
 		panic(err)
 	}
-	prfs, err := db.GetProfiles()
+	prfs, err := db.GetProfiles(context.Background())
 	if err != nil {
 		return err
 	}
@@ -38,8 +39,8 @@ func ChangeProfileUserPicture() error {
 	return nil
 }
 
-func changeDetection(p *storage.Profile) (string, bool) {
-	if contains := strings.Contains(p.UserPicture, noSSLstring); contains == true {
+func changeDetection(p *storage.FirebaseProfile) (string, bool) {
+	if contains := strings.Contains(p.UserPicture, noSSLstring); contains {
 		fmt.Printf("%s is without SSL\n", p.DisplayName)
 		corr := correctImageString(p)
 		return corr, contains
@@ -47,7 +48,7 @@ func changeDetection(p *storage.Profile) (string, bool) {
 	return "", false
 }
 
-func correctImageString(p *storage.Profile) string {
+func correctImageString(p *storage.FirebaseProfile) string {
 	breakpoint := len(noSSLstring)
 	sliced := p.UserPicture[breakpoint:]
 	connected := hasSSLstring + sliced
@@ -57,7 +58,10 @@ func correctImageString(p *storage.Profile) string {
 // DeleteUnusedAuthProfiles from Auth in Firebase
 func DeleteUnusedAuthProfiles() error {
 	var wg sync.WaitGroup
-	db, err := firebase.New()
+	db, err := firebase.NewFB()
+	if err != nil {
+		return err
+	}
 	profiles, err := db.GetAuth()
 	if err != nil {
 		return err

@@ -3,131 +3,59 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
-	"firebase.google.com/go/auth"
-
-	"github.com/blixenkrone/gopro/utils/errors"
-
-	jwt "github.com/dgrijalva/jwt-go"
+	resErr "github.com/blixenkrone/gopro/utils/errors"
 )
-
-// Claims -
-type Claims struct {
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	FbClaims  auth.Token
-	JWTClaims jwt.StandardClaims
-	UID       string
-}
 
 const (
-	// Time current token must be below until a refresh happens
-	tokenRefreshThrottle = 10 * time.Minute
-	// How much time will the token be extended for
-	tokenExpirationTime = 30 * time.Minute
-	proToken            = "pro_token"
+	userToken    = "user_token"
+	isAdminClaim = "is_admin"
 )
 
-// isJWTAuth middleware requires routes to possess a JWToken
-var isJWTAuthFB = func(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		cookie, err := r.Cookie(proToken)
-		if err != nil {
-			if err == http.ErrNoCookie {
-				fmt.Printf("Error %s", err.Error())
-				// force user to relogin
-				errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
-				http.RedirectHandler("/login", http.StatusFound)
-			}
-			errors.NewResErr(err, "Error getting token", 503, w)
-			http.RedirectHandler("/login", http.StatusFound)
+		headerToken := r.Header.Get(userToken)
+		if headerToken == "" {
+			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			resErr.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
+			return
 		}
-		token, err := fb.VerifyToken(r.Context(), cookie.Value)
+
+		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			errors.NewResErr(err, "Error verifying token", http.StatusFound, w)
+			resErr.NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-		_ = token
-		// ? refresh if the token is expired but value still in cookie
-		next(w, r)
-	})
-}
-
-func isAdminAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		next(w, r)
+		if ok := fb.IsAdminClaims(token.Claims); ok {
+			next(w, r)
+			return
+		}
+		err = fmt.Errorf("No admin rights found")
+		resErr.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 	}
 }
 
-/**
- * Deprecated
- */
-func isJWTAuth(next http.HandlerFunc) http.HandlerFunc {
+var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := Claims{}
-		cookie, err := r.Cookie(proToken)
-		if err != nil {
-			if err == http.ErrNoCookie {
-				fmt.Printf("Error %s", err.Error())
-				errors.NewResErr(err, http.ErrNoCookie.Error(), http.StatusUnauthorized, w)
-			}
-			errors.NewResErr(err, "Error getting token", 503, w)
-		}
+		w.Header().Set("Content-Type", "application/json")
+		headerToken := r.Header.Get(userToken)
+		// ? verify here, that the user is a pro user
 
-		token, err := jwt.ParseWithClaims(cookie.Value, &claims.JWTClaims, func(token *jwt.Token) (interface{}, error) {
-			fmt.Println(cookie.Value)
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-				return nil, err
-			}
-			return JWTSecretMust(), nil
-		})
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				errors.NewResErr(err, "Invalid signature", 503, w)
-				return
-			}
-			errors.NewResErr(err, "Error parsing Claims for JWT", http.StatusForbidden, w)
+		if headerToken == "" {
+			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			resErr.NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-		// ? refresh if the token is expired but value still in cookie
-		// if err := claims.refreshToken(w); err != nil {
-		// 	errors.NewResErr(err, "Error refreshing token", 503, w)
-		// 	return
-		// }
-		if !token.Valid {
-			http.Error(w, "Token is not valid", http.StatusUnauthorized)
+		tkn, err := fb.VerifyToken(r.Context(), headerToken)
+		if err != nil {
+			err = fmt.Errorf("Err: %s", err)
+			resErr.NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
+			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-
+		log.Info(tkn.UID)
 		next(w, r)
 	})
-}
-
-func (c *Claims) refreshToken(w http.ResponseWriter) error {
-	// tokenRefreshThrottle := time.Now().Add(tokenRefreshThrottle).Unix()
-	// fmt.Println(c.Claims.ExpiresAt)
-	// fmt.Println(tokenRefreshThrottle)
-	// if c.Claims.ExpiresAt < tokenRefreshThrottle {
-	// 	expirationTime := time.Now().Add(tokenExpirationTime)
-	// 	c.Claims.ExpiresAt = expirationTime.Unix()
-	// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c.Claims)
-	// 	signedToken, err := token.SignedString(JWTSecretMust())
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	http.SetCookie(w, &http.Cookie{
-	// 		Name:   "pro_token",
-	// 		Value:  signedToken,
-	// 		Path:   "/",
-	// 		Secure: false,
-	// 	})
-	// 	fmt.Println("Refreshed token")
-	// 	return nil
-	// }
-	return nil
 }
