@@ -8,10 +8,13 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/blixenkrone/gopro/mail"
 	utils "github.com/blixenkrone/gopro/utils/fmt"
+	"github.com/sendgrid/sendgrid-go"
 
 	mux "github.com/gorilla/mux"
 
@@ -389,3 +392,25 @@ var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
 // 		return
 // 	}
 // }
+
+var sendMail = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-type", "application/json")
+		req := mail.RequestBody{}
+		client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API"))
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Wrong body: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		resp, err := req.SendMail(client)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}

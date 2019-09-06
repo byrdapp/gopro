@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/blixenkrone/gopro/mailtips"
-	"github.com/blixenkrone/gopro/slack"
 	mux "github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"golang.org/x/crypto/acme/autocert"
@@ -48,8 +46,7 @@ func newServer() *Server {
 
 	mux.HandleFunc("/logoff", signOut).Methods("POST")
 
-	mux.HandleFunc("/mail/send", isAuth(mailtips.MailHandler)).Methods("POST")
-	mux.HandleFunc("/slack/tip", isAuth(slack.PostSlackMsg)).Methods("POST")
+	mux.HandleFunc("/mail/send", isAuth(sendMail)).Methods("POST")
 	mux.HandleFunc("/exif", isAuth(getExif)).Methods("POST")
 	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
