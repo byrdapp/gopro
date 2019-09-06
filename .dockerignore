@@ -6,3 +6,5 @@ csv-files
 *.csv
 vendor
 .DS_Store
+docker-compose-dev.yml
+docker-compose-prod.yml

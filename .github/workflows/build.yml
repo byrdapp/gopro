@@ -89,7 +89,7 @@ jobs:
       - name: docker push
         uses: actions/docker/cli@master
         with:
-          args: push byrdapp/gopro
+          args: push byrdapp/gopro-prod
 
     # test:
     #   needs: build
