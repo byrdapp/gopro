@@ -85,12 +85,12 @@ jobs:
         uses: actions/docker/cli@master
         with:
           args: build --rm -f "Dockerfile" -t byrdapp/gopro .
+          # args: build --rm -f "Dockerfile" -t --tag byrdapp/gopro:$(date +%s)
 
       - name: docker push
         uses: actions/docker/cli@master
         with:
           args: push byrdapp/gopro-prod
-
     # test:
     #   needs: build
     # deploy_to_do:

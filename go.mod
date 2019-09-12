@@ -21,6 +21,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297
-	golang.org/x/tools/gopls v0.1.3 // indirect
+	golang.org/x/tools/gopls v0.0.0-20190910044552-dd2b5c81c578 // indirect
 	google.golang.org/api v0.10.0
 )

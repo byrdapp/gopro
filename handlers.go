@@ -72,7 +72,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		defer r.Body.Close()
+		// defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
@@ -81,7 +81,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
-			errors.NewResErr(err, "Error finding profile UID in Firebase Auth. Does the user exist?", http.StatusGone, w)
+			errors.NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
 			return
 		}
 
@@ -89,7 +89,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		claims := make(map[string]interface{})
 		isAdmin, err := fb.IsAdminUID(r.Context(), usr.UID)
 		if err != nil {
-			errors.NewResErr(err, "Error admin ref was not found", http.StatusGone, w)
+			errors.NewResErr(err, "Error admin ref was not found", http.StatusBadRequest, w)
 			return
 		}
 		claims[isAdminClaim] = isAdmin
