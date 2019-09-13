@@ -61,9 +61,10 @@ func newServer() *Server {
 	mux.HandleFunc("/bookings" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200", "http://localhost:4201"},
-		AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
+		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "https://pro.development.byrd.news", "https://pro.byrd.news"},
+		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
+
 		AllowCredentials: true,
 	})
 

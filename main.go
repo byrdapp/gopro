@@ -17,7 +17,7 @@ var (
 	fb  storage.FBService
 
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
-	host  = flag.String("host", "", "What host are you using?")
+	host  = flag.String("host", "dev.gopro.byrd.news", "What host are you using?")
 	// ? not yet in use
 	// production = flag.Bool("production", false, "Is it production?")
 )
