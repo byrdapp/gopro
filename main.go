@@ -19,13 +19,13 @@ var (
 	local = flag.Bool("local", false, "Do you want to run go run *.go?")
 	host  = flag.String("host", "dev.gopro.byrd.news", "What host are you using?")
 	// ? not yet in use
-	// production = flag.Bool("production", false, "Is it production?")
+	production = flag.Bool("production", false, "Is it production?")
 )
 
 func init() {
 	// type go run *.go -local
 	flag.Parse()
-	if *local {
+	if *local && !*production {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
 		}
@@ -48,11 +48,10 @@ func main() {
 		return
 	}
 	fb = fbsrv
-
 	// Serve on localhost with localhost certs if no host provided
 	s := newServer()
 	if *host == "" {
-		s.httpsSrv.Addr = "localhost:8085"
+		s.httpsSrv.Addr = ":8085"
 		log.Info("Serving on http://localhost:8085")
 		// if err := s.httpsSrv.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
 		if err := s.httpsSrv.ListenAndServe(); err != nil {
