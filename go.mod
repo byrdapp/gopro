@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.23.16
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
+	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/joho/godotenv v1.3.0
 	github.com/lib/pq v1.2.0

@@ -16,10 +16,11 @@ var (
 	pq  storage.PQService
 	fb  storage.FBService
 
-	local = flag.Bool("local", false, "Do you want to run go run *.go?")
-	host  = flag.String("host", "dev.gopro.byrd.news", "What host are you using?")
+	local = flag.Bool("local", false, "Do you want to run go run *.go with .env local file?")
+	host  = flag.String("host", "pro.development.byrd.news", "What host are you using (pro.byrd.news?)?")
 	// ? not yet in use
 	production = flag.Bool("production", false, "Is it production?")
+	ssl        = flag.Bool("ssl", false, "To set ssl or not?")
 )
 
 func init() {
@@ -50,11 +51,11 @@ func main() {
 	fb = fbsrv
 	// Serve on localhost with localhost certs if no host provided
 	s := newServer()
-	if *host == "" {
-		s.httpsSrv.Addr = ":8085"
-		log.Info("Serving on http://localhost:8085")
-		// if err := s.httpsSrv.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
-		if err := s.httpsSrv.ListenAndServe(); err != nil {
+	if !*ssl {
+		s.httpListenServer.Addr = ":8080"
+		log.Infof("Serving probably locally on host w. address %s", s.httpListenServer.Addr)
+		// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
+		if err := s.httpListenServer.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -66,15 +67,15 @@ func main() {
 	// Start a reg. HTTP on a new thread
 	go func() {
 		log.Info("Running http server")
-		if err := s.httpSrv.ListenAndServe(); err != nil {
+		if err := s.httpRedirectServer.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}
 	}()
 
-	// Set TLS cert
-	s.httpsSrv.TLSConfig.GetCertificate = s.certm.GetCertificate
-	log.Info("Serving on https, authenticating for https://", *host)
-	if err := s.httpsSrv.ListenAndServeTLS("", ""); err != nil {
+	s.httpListenServer.Addr = ":8080"
+	s.httpListenServer.TLSConfig.GetCertificate = s.certm.GetCertificate
+	log.Infof("Serving on a server with host: %s and address %s", *host, s.httpListenServer.Addr)
+	if err := s.httpListenServer.ListenAndServeTLS("", ""); err != nil {
 		log.Fatal(err)
 	}
 }

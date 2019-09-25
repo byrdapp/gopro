@@ -14,18 +14,27 @@ import (
 
 // Server is used in main.go
 type Server struct {
-	httpsSrv *http.Server
-	httpSrv  *http.Server
-	certm    *autocert.Manager
+	httpListenServer   *http.Server
+	httpRedirectServer *http.Server
+	certm              *autocert.Manager
 	// handlermux http.Handler
 }
 
 // Creates a new server with HTTP2 & HTTPS
 func newServer() *Server {
 	mux := mux.NewRouter()
+
+	// mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./dist/pro-app/"))))
+	// mux = mux.PathPrefix("/api/").Subrouter()
+
 	// ? Public endpoints
+	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("API GATEWAY WORKS"))
+	}).Methods("GET")
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooEarly)
+		log.Infoln("Ran test")
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
 	mux.HandleFunc("/login", loginGetToken).Methods("POST")
@@ -72,7 +81,7 @@ func newServer() *Server {
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(*host),
-		Cache:      autocert.DirCache("/certs"),
+		Cache:      autocert.DirCache("certs"),
 	}
 
 	httpsSrv := &http.Server{
@@ -94,25 +103,27 @@ func newServer() *Server {
 
 	// Create server for redirecting HTTP to HTTPS
 	httpSrv := &http.Server{
-		Addr:         ":http",
-		ReadTimeout:  httpsSrv.ReadTimeout,
-		WriteTimeout: httpsSrv.WriteTimeout,
-		IdleTimeout:  httpsSrv.IdleTimeout,
-		Handler:      m.HTTPHandler(nil),
+		Addr:           ":http",
+		ReadTimeout:    httpsSrv.ReadTimeout,
+		WriteTimeout:   httpsSrv.WriteTimeout,
+		IdleTimeout:    httpsSrv.IdleTimeout,
+		MaxHeaderBytes: 1 << 20,
+		Handler:        m.HTTPHandler(nil),
 	}
 
 	return &Server{
-		httpsSrv: httpsSrv,
-		httpSrv:  httpSrv,
-		certm:    &m,
+		httpListenServer:   httpsSrv,
+		httpRedirectServer: httpSrv,
+		certm:              &m,
 	}
 }
 
 func (s *Server) useHTTP2() error {
 	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.httpsSrv, &http2Srv)
+	err := http2.ConfigureServer(s.httpListenServer, &http2Srv)
 	if err != nil {
 		return err
 	}
+	log.Infoln("Using HTTP/2.0")
 	return nil
 }
