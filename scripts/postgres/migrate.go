@@ -73,7 +73,7 @@ func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProf
 				// 	ID: p.UserID,
 				// }
 
-				// _, err := sqldb.CreateProfessional(ctx, &pro)
+				// _, err := sqldb(ctx, &pro)
 				// if err != nil {
 				// 	log.Errorf("Didnt create row: %s", err)
 				// 	return

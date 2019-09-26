@@ -10,11 +10,11 @@ import (
 
 // PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
-	GetBookings(ctx context.Context, proID string) ([]*Booking, error)
+	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
 	UpdateBooking(ctx context.Context, b *Booking) error
 	DeleteBooking(ctx context.Context, bookingID string) error
-	GetBookingsAdmin(ctx context.Context) ([]*BookingProfessional, error)
+	GetBookingsAdmin(ctx context.Context) ([]*AdminBookings, error)
 	GetProfile(ctx context.Context, id string) (*Professional, error)
 	Close() error
 	Ping() error
@@ -64,8 +64,8 @@ type Booking struct {
 	Lat         string     `json:"lat,omitempty" sql:"lat"`
 }
 
-// BookingProfessional is a joined response for a booking attached to a pro user
-type BookingProfessional struct {
+// AdminBookings is a joined response for a booking attached to a pro user
+type AdminBookings struct {
 	Booking         `json:"booking,omitempty"`
 	Professional    `json:"professional,omitempty"`
 	FirebaseProfile `json:"fbProfile,omitempty"`

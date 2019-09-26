@@ -8,10 +8,13 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/blixenkrone/gopro/mail"
 	utils "github.com/blixenkrone/gopro/utils/fmt"
+	"github.com/sendgrid/sendgrid-go"
 
 	mux "github.com/gorilla/mux"
 
@@ -69,7 +72,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		defer r.Body.Close()
+		// defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
 			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
@@ -78,7 +81,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
-			errors.NewResErr(err, "Error finding profile UID in Firebase Auth. Does the user exist?", http.StatusGone, w)
+			errors.NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
 			return
 		}
 
@@ -86,7 +89,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		claims := make(map[string]interface{})
 		isAdmin, err := fb.IsAdminUID(r.Context(), usr.UID)
 		if err != nil {
-			errors.NewResErr(err, "Error admin ref was not found", http.StatusGone, w)
+			errors.NewResErr(err, "Error admin ref was not found", http.StatusBadRequest, w)
 			return
 		}
 		claims[isAdminClaim] = isAdmin
@@ -245,7 +248,7 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		proUID := params["uid"]
 
-		bookings, err := pq.GetBookings(r.Context(), proUID)
+		bookings, err := pq.GetBookingsByUID(r.Context(), proUID)
 		if err != nil {
 			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
@@ -276,13 +279,13 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		// * Is the date zero valued (i.e. missing or wrongly formatted)
 		tb := timeutil.NewTime(*req.DateStart, *req.DateEnd)
 		if err := tb.IsZero(); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 
 		b, err := pq.CreateBooking(r.Context(), uid, req)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 		if err := json.NewEncoder(w).Encode(b); err != nil {
@@ -389,3 +392,25 @@ var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
 // 		return
 // 	}
 // }
+
+var sendMail = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-type", "application/json")
+		req := mail.RequestBody{}
+		client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API"))
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Wrong body: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		resp, err := req.SendMail(client)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}

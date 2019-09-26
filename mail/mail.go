@@ -1,10 +1,7 @@
-package mailtips
+package mail
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"strings"
 
 	format "github.com/blixenkrone/gopro/utils/fmt"
@@ -16,8 +13,8 @@ import (
 	"github.com/blixenkrone/gopro/slack"
 )
 
-// MailReq is the received Client req for mail
-type MailReq struct {
+// RequestBody is the received Client req for mail
+type RequestBody struct {
 	Recievers []*models.ProfileProps `json:"recievers"`
 	From      *models.ProfileProps   `json:"from"`
 	Subject   string                 `json:"subject"`
@@ -25,42 +22,15 @@ type MailReq struct {
 	StoryIDS  []string               `json:"storyIds"`
 }
 
-// MailHandler handles mail requests
-// /mail/send + body
-func MailHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
-	req := MailReq{}
-	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API"))
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "Wrong body: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer r.Body.Close()
-	resp, err := req.SendMail(client)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	slack := req.createSlackMsg()
-	err = slack.Success()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-}
-
-// MailResponse returns json for each story
-type MailResponse struct {
+// Response returns json for each story
+type Response struct {
 	Receiver   string `json:"receiver"`
 	StatusCode int    `json:"statusCode"`
 }
 
 // SendMail via. sendgrid
-func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
-	var responses []*MailResponse
+func (req *RequestBody) SendMail(client *sendgrid.Client) ([]*Response, error) {
+	var responses []*Response
 	for idx, reciever := range req.Recievers {
 		from := sgmail.NewEmail(req.From.DisplayName, req.From.Email)
 		subject := req.Subject
@@ -72,17 +42,22 @@ func (req *MailReq) SendMail(client *sendgrid.Client) ([]*MailResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-		response := &MailResponse{reciever.DisplayName, resp.StatusCode}
+		response := &Response{reciever.DisplayName, resp.StatusCode}
 		responses = append(responses, response)
 		fmt.Printf("%s tipped media %s", req.From.DisplayName, response.Receiver)
 	}
 	for _, v := range responses {
 		fmt.Println(v)
 	}
+	// Create slack msg
+	slack := req.createSlackMsg()
+	if err := slack.Success(); err != nil {
+		return nil, err
+	}
 	return responses, nil
 }
 
-func (req *MailReq) linkStoryIDS() string {
+func (req *RequestBody) linkStoryIDS() string {
 	var links = make([]string, len(req.StoryIDS))
 	for i := range links {
 		links = append(links, "https://app.byrd.news/story/"+req.StoryIDS[i])
@@ -90,7 +65,8 @@ func (req *MailReq) linkStoryIDS() string {
 	return strings.Join(links, " ")
 }
 
-func (req *MailReq) createSlackMsg() *slack.TipSlackMsg {
+// CreateSlackMsg -
+func (req *RequestBody) createSlackMsg() *slack.TipSlackMsg {
 	return &slack.TipSlackMsg{
 		Text: "A new pro-tip has been made from: " + req.From.DisplayName +
 			"\nThe following medias has been tipped: " + req.unwrapMediaNames(),
@@ -99,7 +75,7 @@ func (req *MailReq) createSlackMsg() *slack.TipSlackMsg {
 	}
 }
 
-func (req *MailReq) unwrapMediaNames() string {
+func (req *RequestBody) unwrapMediaNames() string {
 	output := make([]string, len(req.Recievers))
 	for idx, val := range req.Recievers {
 		output[idx] = val.DisplayName
@@ -107,7 +83,7 @@ func (req *MailReq) unwrapMediaNames() string {
 	return format.JoinStrings(output)
 }
 
-func (req *MailReq) createMailContent(mediaCountry string, idx int) string {
+func (req *RequestBody) createMailContent(mediaCountry string, idx int) string {
 	receiverName := req.Recievers[idx].DisplayName
 	mediaCountry = strings.ToLower(mediaCountry)
 	countries := []string{"denmark", "sweden"}
