@@ -51,15 +51,6 @@ func main() {
 	fb = fbsrv
 	// Serve on localhost with localhost certs if no host provided
 	s := newServer()
-	if !*ssl {
-		s.httpListenServer.Addr = ":8080"
-		log.Infof("Serving probably locally on host w. address %s", s.httpListenServer.Addr)
-		// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
-		if err := s.httpListenServer.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	if err := s.useHTTP2(); err != nil {
 		log.Warnf("Error with HTTP2 %s", err)
 	}
@@ -72,10 +63,23 @@ func main() {
 		}
 	}()
 
-	s.httpListenServer.Addr = ":8080"
-	s.httpListenServer.TLSConfig.GetCertificate = s.certm.GetCertificate
-	log.Infof("Serving on a server with host: %s and address %s", *host, s.httpListenServer.Addr)
-	if err := s.httpListenServer.ListenAndServeTLS("", ""); err != nil {
-		log.Fatal(err)
+	if !*ssl {
+		s.httpListenServer.Addr = ":8080"
+		log.Infof("Serving probably locally on host w. address %s", s.httpListenServer.Addr)
+		// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
+		if err := s.httpListenServer.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		s.httpListenServer.Addr = ":8080"
+		s.httpListenServer.TLSConfig.GetCertificate = s.certm.GetCertificate
+		log.Infof("Serving on a server with host: %s and address %s", *host, s.httpListenServer.Addr)
+		if err := s.httpListenServer.ListenAndServeTLS("", ""); err != nil {
+			log.Fatal(err)
+		}
 	}
+
+	// TODO: Test this
+	// waitForShutdown(s.httpListenServer)
+
 }

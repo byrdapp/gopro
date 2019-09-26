@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	mux "github.com/gorilla/mux"
@@ -26,11 +30,6 @@ func newServer() *Server {
 
 	// mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./dist/pro-app/"))))
 	// mux = mux.PathPrefix("/api/").Subrouter()
-
-	// ? Public endpoints
-	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("API GATEWAY WORKS"))
-	}).Methods("GET")
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooEarly)
@@ -73,9 +72,10 @@ func newServer() *Server {
 		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "https://pro.development.byrd.news", "https://pro.byrd.news"},
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
-
-		AllowCredentials: true,
+		// AllowCredentials: true,
 	})
+
+	log.Infoln(c.Log)
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
 	m := autocert.Manager{
@@ -126,4 +126,19 @@ func (s *Server) useHTTP2() error {
 	}
 	log.Infoln("Using HTTP/2.0")
 	return nil
+}
+
+func waitForShutdown(srv *http.Server) {
+	interruptChan := make(chan os.Signal, 1)
+	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until we receive our signal.
+	<-interruptChan
+
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	log.Fatal(srv.Shutdown(ctx))
+	log.Println("Shutting down")
+	os.Exit(0)
 }
