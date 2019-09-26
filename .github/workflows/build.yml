@@ -46,12 +46,12 @@ jobs:
       - name: docker build img
         uses: actions/docker/cli@master
         with:
-          args: build --rm -f "Dockerfile" -t byrdapp/gopro:dev-$(date +%s) .
+          args: build --rm -f "Dockerfile" -t byrdapp/gopro:dev .
 
       - name: docker push
         uses: actions/docker/cli@master
         with:
-          args: push byrdapp/gopro:dev-$(date +%s)
+          args: push byrdapp/gopro:dev
   production:
     name: review and build code for prod env
     runs-on: ubuntu-latest
@@ -84,12 +84,12 @@ jobs:
       - name: docker build img
         uses: actions/docker/cli@master
         with:
-          args: build --rm -f "Dockerfile" -t byrdapp/gopro:prod-$(date +%s) .
+          args: build --rm -f "Dockerfile" -t byrdapp/gopro:prod
 
       - name: docker push
         uses: actions/docker/cli@master
         with:
-          args: push byrdapp/gopro:prod-$(date +%s)
+          args: push byrdapp/gopro:prod
     # test:
     #   needs: build
     # deploy_to_do:
