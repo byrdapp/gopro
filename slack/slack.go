@@ -47,7 +47,7 @@ func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 }
 
 func postTip(tip *TipRequest) error {
-	slackMsg := &TipSlackMsg{
+	slackMsg := &SlackMsg{
 		Text: "A new pro-tip has been made from: " + tip.Profile.DisplayName +
 			"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
 		Title:     "Story: " + tip.Story.StoryHeadline,
@@ -60,8 +60,8 @@ func postTip(tip *TipRequest) error {
 	return nil
 }
 
-// TipSlackMsg msg builder for slack msgs
-type TipSlackMsg struct {
+// SlackMsg msg builder for slack msgs
+type SlackMsg struct {
 	TitleLink, Title, Text, Footer, Pretext string
 }
 
@@ -72,7 +72,7 @@ var colors = map[string]string{
 }
 
 // Success notifies byrd when a pro guy has tipped
-func (s *TipSlackMsg) Success() error {
+func (s *SlackMsg) Success() error {
 	att := []slack.Attachment{}
 	a := slack.Attachment{
 		Pretext:   s.Pretext,

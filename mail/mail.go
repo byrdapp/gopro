@@ -66,8 +66,8 @@ func (req *RequestBody) linkStoryIDS() string {
 }
 
 // CreateSlackMsg -
-func (req *RequestBody) createSlackMsg() *slack.TipSlackMsg {
-	return &slack.TipSlackMsg{
+func (req *RequestBody) createSlackMsg() *slack.SlackMsg {
+	return &slack.SlackMsg{
 		Text: "A new pro-tip has been made from: " + req.From.DisplayName +
 			"\nThe following medias has been tipped: " + req.unwrapMediaNames(),
 		TitleLink: req.linkStoryIDS(),

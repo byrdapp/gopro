@@ -12,8 +12,6 @@ import (
 
 	"github.com/blixenkrone/gopro/storage"
 	"github.com/blixenkrone/gopro/utils/logger"
-
-	// Postgres driver
 	_ "github.com/lib/pq"
 )
 
@@ -45,9 +43,7 @@ func NewPQ() (storage.PQService, error) {
 	return &Postgres{db}, nil
 }
 
-/**
- * BOOKING ENDPOINTS
- */
+/** BOOKING ENDPOINTS */
 
 // CreateBooking is being made from the media client
 func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.Booking) (bookingID string, err error) {

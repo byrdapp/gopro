@@ -179,9 +179,11 @@ func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Toke
 	return t, nil
 }
 
-// IsAdminClaims returns token as a string. Used in admin middleware.go.
+// IsAdminClaims returns token as a string. ! Not Used in admin middleware.go.
+// ! currently not working because of method below
 func (db *Firebase) IsAdminClaims(claims map[string]interface{}) bool {
 	// The claims can be accessed on the user record.
+	log.Infoln(claims)
 	if admin, ok := claims["is_admin"]; ok {
 		if admin.(bool) {
 			return admin.(bool)

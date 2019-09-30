@@ -28,12 +28,15 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-		if ok := fb.IsAdminClaims(token.Claims); ok {
+		if ok, err := fb.IsAdminUID(r.Context(), token.UID); ok && err == nil {
 			next(w, r)
 			return
 		}
+		if err != nil {
+			http.Error(w, "Error getting admin rights", http.StatusBadRequest)
+		}
 		err = fmt.Errorf("No admin rights found")
-		resErr.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
+		resErr.NewResErr(err, err.Error(), http.StatusBadRequest, w)
 	}
 }
 
