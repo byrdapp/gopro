@@ -38,6 +38,7 @@ type errorResponse struct {
 }
 
 func setErrorResponse(err error, code int) *errorResponse {
+	log.Errorf("Error: %s\nCode: %v", err, code)
 	return &errorResponse{
 		Message: err.Error(),
 		Code:    code,
