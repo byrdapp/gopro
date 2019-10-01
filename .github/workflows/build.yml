@@ -14,8 +14,6 @@ on:
 # 7. docker-compose up -d
 
 jobs:
-  test:
-
   development:
     name: review and build code for dev env
     runs-on: ubuntu-latest
