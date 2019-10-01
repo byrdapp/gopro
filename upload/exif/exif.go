@@ -5,13 +5,17 @@ import (
 	"io"
 
 	"github.com/blixenkrone/gopro/utils/logger"
-	"github.com/davecgh/go-spew/spew"
 
 	"github.com/rwcarlsen/goexif/exif"
 )
 
 var (
 	log = logger.NewLogger()
+)
+
+// tiff.Tag struct return values as number(i.e. 0 == int)
+const (
+	exifIntVal = iota
 )
 
 // Output represents the final decoded EXIF data from an image
@@ -141,8 +145,7 @@ func (e *imgExifData) getImageFormatData() (map[exif.FieldName]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		spew.Dump(tag.Format())
-		i, err := tag.Int(0)
+		i, err := tag.Int(exifIntVal)
 		if err != nil {
 			return nil, err
 		}
