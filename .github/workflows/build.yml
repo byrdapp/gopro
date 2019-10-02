@@ -14,8 +14,8 @@ on:
 # 7. docker-compose up -d
 
 jobs:
-  review:
-    name: review and build code
+  development:
+    name: review and build code for dev env
     runs-on: ubuntu-latest
     steps:
       # - uses: actions/checkout@master ?
@@ -46,16 +46,47 @@ jobs:
       - name: docker build img
         uses: actions/docker/cli@master
         with:
-          args: build --rm -f "Dockerfile" -t byrdapp/gopro .
+          args: build --rm -f "Dockerfile" -t byrdapp/gopro:dev .
 
       - name: docker push
         uses: actions/docker/cli@master
         with:
-          args: push byrdapp/gopro
+          args: push byrdapp/gopro:dev
+  production:
+    name: review and build code for prod env
+    runs-on: ubuntu-latest
+    steps:
+      # - uses: actions/checkout@master ?
+      - name: Checkout to master
+        uses: actions/checkout@master
 
-    # test:
-    #   needs: build
-    # deploy_to_do:
-    #   needs: [build, test]
-    # copy_to_byrd:
-    #   needs: [build, test]
+      - name: Set up go v1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: "1.13" # The Go version to download (if necessary) and use.
+        id: go
+
+      - name: Go version
+        run: go version
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Go vet
+        run: go vet
+
+      - name: docker login
+        uses: actions/docker/login@master
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: docker build img
+        uses: actions/docker/cli@master
+        with:
+          args: build --rm -f "Dockerfile" -t byrdapp/gopro:prod .
+
+      - name: docker push
+        uses: actions/docker/cli@master
+        with:
+          args: push byrdapp/gopro:prod

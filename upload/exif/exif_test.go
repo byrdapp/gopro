@@ -3,6 +3,7 @@ package exif_test
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/blixenkrone/gopro/utils/logger"
@@ -13,9 +14,7 @@ import (
 	"github.com/rwcarlsen/goexif/mknote"
 )
 
-var (
-	log = logger.NewLogger()
-)
+var log = logger.NewLogger()
 
 // Output represents the final decoded EXIF data from an image
 type Output struct {
@@ -23,6 +22,8 @@ type Output struct {
 	Lng       float64
 	Lat       float64
 	Copyright string
+	FmtData   map[exif.FieldName]int
+	AllExif   *exif.Exif
 }
 
 func TestExifReader(t *testing.T) {
@@ -57,12 +58,19 @@ func GetOutput(path string) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := &Output{
+
+	// fmtData, err := x.getImageFormatData()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return &Output{
 		Lat:  lat,
 		Lng:  lng,
 		Date: date,
-	}
-	return res, nil
+		// FmtData: fmtData,
+		AllExif: x.x,
+	}, nil
 }
 
 type exifData struct {
@@ -114,4 +122,35 @@ func (e *exifData) getDateTime() (date string, err error) {
 		return date, err
 	}
 	return date, nil
+}
+
+// type imgFmtData struct {
+// 	ImageWidth  map[string]int
+// 	ImageLength map[string]int
+// 	XResolution map[string]int
+// 	YResolution map[string]int
+// }
+
+func (e *exifData) getImageFormatData() (map[exif.FieldName]int, error) {
+	var fNames = []exif.FieldName{"PixelXDimension", "PixelYDimension"}
+	var fmtData = make(map[exif.FieldName]int, len(fNames))
+
+	for _, n := range fNames {
+		fName := exif.FieldName(n)
+		tag, err := e.x.Get(fName)
+		if err != nil {
+			return nil, fmt.Errorf("Could not get FieldName tag: %s", err)
+		}
+		s, err := tag.StringVal()
+		if err != nil {
+			return nil, fmt.Errorf("Error getting value as string: %s", err)
+		}
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, fmt.Errorf("Error converting to integer: %s", err)
+		}
+		spew.Dump(val)
+		fmtData[fName] = val
+	}
+	return fmtData, nil
 }

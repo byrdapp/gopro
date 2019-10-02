@@ -12,8 +12,6 @@ import (
 
 	"github.com/blixenkrone/gopro/storage"
 	"github.com/blixenkrone/gopro/utils/logger"
-
-	// Postgres driver
 	_ "github.com/lib/pq"
 )
 
@@ -45,9 +43,7 @@ func NewPQ() (storage.PQService, error) {
 	return &Postgres{db}, nil
 }
 
-/**
- * BOOKING
- */
+/** BOOKING ENDPOINTS */
 
 // CreateBooking is being made from the media client
 func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.Booking) (bookingID string, err error) {
@@ -64,7 +60,7 @@ func (p *Postgres) CreateBooking(ctx context.Context, proUID string, b storage.B
 }
 
 // GetBookings gets all the bookings from a professional user by ID
-func (p *Postgres) GetBookings(ctx context.Context, proID string) ([]*storage.Booking, error) {
+func (p *Postgres) GetBookingsByUID(ctx context.Context, proID string) ([]*storage.Booking, error) {
 	var bookings []*storage.Booking
 	sb := qb.RunWith(p.DB)
 	rows, err := sb.Select("*").From("booking").Where("user_uid = ?", proID).OrderBy("created_at DESC").QueryContext(ctx)
@@ -113,8 +109,8 @@ func (p *Postgres) DeleteBooking(ctx context.Context, bookingID string) error {
 }
 
 // GetBookingsAdmin returns bookings sorted by created_at date with crossjoined profile uid's.
-func (p *Postgres) GetBookingsAdmin(ctx context.Context) (res []*storage.BookingProfessional, err error) {
-	query, _, err := qb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "booking.is_active", "professional.user_uid", "professional.pro_level").
+func (p *Postgres) GetBookingsAdmin(ctx context.Context) (res []*storage.AdminBookings, err error) {
+	query, _, err := qb.Select("booking.task", "booking.credits", "booking.price", "booking.created_at", "booking.is_active", "professional.id", "professional.user_uid", "professional.pro_level").
 		From("booking").
 		LeftJoin("professional ON booking.user_uid = professional.user_uid").
 		OrderBy("booking.created_at DESC", "booking.is_active DESC").
@@ -129,8 +125,8 @@ func (p *Postgres) GetBookingsAdmin(ctx context.Context) (res []*storage.Booking
 	defer rows.Close()
 
 	for rows.Next() {
-		var j storage.BookingProfessional
-		if err := rows.Scan(&j.Booking.Task, &j.Booking.Credits, &j.Booking.Price, &j.Booking.CreatedAt, &j.Booking.IsActive, &j.Professional.UserUID, &j.Professional.ProLevel); err != nil {
+		var j storage.AdminBookings
+		if err := rows.Scan(&j.Booking.Task, &j.Booking.Credits, &j.Booking.Price, &j.Booking.CreatedAt, &j.Booking.IsActive, &j.Professional.ID, &j.Professional.UserUID, &j.Professional.ProLevel); err != nil {
 			return nil, err
 		}
 		if err := p.HandleRowError(rows.Err()); err != nil {

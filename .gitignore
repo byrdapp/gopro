@@ -9,8 +9,9 @@ vendor
 .env
 .env-prod
 .dockerignore
-docker-compose.yml
 *.sql
 *.http
 *.rsa
 *.pub
+docker-compose-prod.yml
+docker-compose-dev.yml
