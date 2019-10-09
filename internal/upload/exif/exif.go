@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 
 	"github.com/rwcarlsen/goexif/exif"
 )
@@ -27,6 +27,8 @@ type Output struct {
 	Model           string  `json:"model,omitempty"`
 	PixelXDimension int     `json:"pixelXDimension,omitempty"`
 	PixelYDimension int     `json:"pixelYDimension,omitempty"`
+	MediaSize       int     `json:"mediaSize,omitempty"`
+	MediaFormat     string  `json:"mediaFormat,omitempty"`
 }
 
 // GetOutput returns the struct *Output containing img data. Call this for each img.
@@ -153,6 +155,10 @@ func (e *imgExifData) getImageFormatData() (map[exif.FieldName]int, error) {
 	}
 	return fNameVal, nil
 }
+
+// func (e *imgExifData) getMediaSize() (int, error) {
+// 	e.x.Get(exif)
+// }
 
 // ? not in use currently
 func (e *imgExifData) getExifFieldNameString(fieldName exif.FieldName) (string, error) {

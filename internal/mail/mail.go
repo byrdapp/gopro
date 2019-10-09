@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	format "github.com/blixenkrone/gopro/utils/fmt"
+	format "github.com/blixenkrone/gopro/pkg/fmt"
 
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
 	models "github.com/blixenkrone/gopro/models"
-	"github.com/blixenkrone/gopro/slack"
+	"github.com/blixenkrone/gopro/internal/slack"
 )
 
 // RequestBody is the received Client req for mail

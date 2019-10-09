@@ -3,7 +3,7 @@ package utils
 import (
 	"os"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
 var log = logger.NewLogger()

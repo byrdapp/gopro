@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 
 	"github.com/davecgh/go-spew/spew"
 

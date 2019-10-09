@@ -1,6 +1,6 @@
 serve_local_dev:
 	clear \
-	&& go run *.go -local -host="" -production=false
+	&& go run cmd/gopro/main.go -local -production=false
 
 serve_local_watch_dev:
 	clear \

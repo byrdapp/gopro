@@ -10,8 +10,8 @@ import (
 
 	squirrel "github.com/Masterminds/squirrel"
 
-	"github.com/blixenkrone/gopro/storage"
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/internal/storage"
+	"github.com/blixenkrone/gopro/pkg/logger"
 	_ "github.com/lib/pq"
 )
 

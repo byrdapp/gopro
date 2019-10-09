@@ -1,9 +1,11 @@
-package main
+package server
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -12,25 +14,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blixenkrone/gopro/mail"
-	utils "github.com/blixenkrone/gopro/utils/fmt"
+	"github.com/blixenkrone/gopro/internal/mail"
+	utils "github.com/blixenkrone/gopro/pkg/fmt"
 	"github.com/sendgrid/sendgrid-go"
 
 	mux "github.com/gorilla/mux"
 
-	storage "github.com/blixenkrone/gopro/storage"
-	exif "github.com/blixenkrone/gopro/upload/exif"
-	"github.com/blixenkrone/gopro/utils/errors"
-	timeutil "github.com/blixenkrone/gopro/utils/time"
+	storage "github.com/blixenkrone/gopro/internal/storage"
+	exif "github.com/blixenkrone/gopro/internal/upload/exif"
+	"github.com/blixenkrone/gopro/pkg/errors"
+	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
-
-/**
- * ! implement context in all server>db calls
- *
- * * New plan:
- * - Keep table "profile" or "professional" and have only UID from FB in there (at least not conflicting data from FB)
- * - refer to the UID when adding / getting data from PQ db
- */
 
 type errorResponse struct {
 	Code    int    `json:"code,omitempty"`
@@ -49,7 +43,7 @@ var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "application/json")
 		http.SetCookie(w, &http.Cookie{
-			Name:   "pro_token",
+			Name:   "user_token",
 			Value:  "",
 			MaxAge: 0,
 		})
@@ -170,6 +164,12 @@ type ExifResponse struct {
 	Err  *errorResponse `json:"err,omitempty"`
 }
 
+const (
+	B  = 1
+	KB = B << 10
+	MB = KB << 10
+)
+
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
@@ -206,6 +206,18 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
+
+				// get file size
+				r := bufio.NewReader(part)
+				r.Size()
+
+				// get image format
+				_, format, err := image.DecodeConfig(part)
+				if err != nil {
+					x.Err = setErrorResponse(err, http.StatusBadRequest)
+				}
+				output.MediaFormat = format
+
 				x.Data = output
 				res = append(res, &x)
 			}
