@@ -1,21 +1,20 @@
 package server
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
-	"image"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blixenkrone/gopro/internal/mail"
-	utils "github.com/blixenkrone/gopro/pkg/fmt"
+	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/sendgrid/sendgrid-go"
 
 	mux "github.com/gorilla/mux"
@@ -164,15 +163,11 @@ type ExifResponse struct {
 	Err  *errorResponse `json:"err,omitempty"`
 }
 
-const (
-	B  = 1
-	KB = B << 10
-	MB = KB << 10
-)
-
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
+
+var wg sync.WaitGroup
 var getExif = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -202,25 +197,20 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 					}
 					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
-				output, err := exif.GetOutput(part)
-				if err != nil {
-					x.Err = setErrorResponse(err, http.StatusBadRequest)
-				}
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					output, err := exif.GetOutput(part)
+					if err != nil {
+						x.Err = setErrorResponse(err, http.StatusBadRequest)
+					}
 
-				// get file size
-				r := bufio.NewReader(part)
-				r.Size()
-
-				// get image format
-				_, format, err := image.DecodeConfig(part)
-				if err != nil {
-					x.Err = setErrorResponse(err, http.StatusBadRequest)
-				}
-				output.MediaFormat = format
-
-				x.Data = output
-				res = append(res, &x)
+					x.Data = output
+					res = append(res, &x)
+				}()
+				wg.Wait()
 			}
+
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
 				return
@@ -325,7 +315,7 @@ var updateBooking = func(w http.ResponseWriter, r *http.Request) {
 
 		b.ID = bookingID
 		b.Task = r.FormValue("task")
-		b.IsActive, err = utils.ParseBool(r.FormValue("isActive"))
+		b.IsActive, err = conversion.ParseBool(r.FormValue("isActive"))
 		if err != nil {
 			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return

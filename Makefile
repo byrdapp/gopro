@@ -2,9 +2,9 @@ serve_local_dev:
 	clear \
 	&& go run cmd/gopro/main.go -local -production=false
 
-serve_local_watch_dev:
+watch_serve_local:
 	clear \
-	&& spy go run *.go -local -host="" -production=false
+	&& spy go run cmd/gopro/main.go -local -production=false
 
 deployment_dev:
 	docker build --rm -f "Dockerfile" -t byrdapp/gopro:latest . \

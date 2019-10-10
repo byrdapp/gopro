@@ -1,10 +1,15 @@
 package exif
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 
+	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/logger"
+
+	_ "image/jpeg"
+	_ "image/png"
 
 	"github.com/rwcarlsen/goexif/exif"
 )
@@ -27,8 +32,8 @@ type Output struct {
 	Model           string  `json:"model,omitempty"`
 	PixelXDimension int     `json:"pixelXDimension,omitempty"`
 	PixelYDimension int     `json:"pixelYDimension,omitempty"`
-	MediaSize       int     `json:"mediaSize,omitempty"`
-	MediaFormat     string  `json:"mediaFormat,omitempty"`
+	MediaSize       uint64  `json:"mediaSize,omitempty"`
+	// MediaFormat     string  `json:"mediaFormat,omitempty"`
 }
 
 // GetOutput returns the struct *Output containing img data. Call this for each img.
@@ -57,10 +62,13 @@ func GetOutput(r io.Reader) (*Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error getting camera model: %s", err)
 	}
-
 	fmtMap, err := x.getImageFormatData()
 	if err != nil {
 		return nil, fmt.Errorf("Error getting img fmt data: %s", err)
+	}
+	mediaSize, err := x.getFileSize(r)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting media filesize")
 	}
 
 	return &Output{
@@ -71,6 +79,8 @@ func GetOutput(r io.Reader) (*Output, error) {
 		PixelXDimension: fmtMap[exif.PixelXDimension],
 		PixelYDimension: fmtMap[exif.PixelYDimension],
 		Copyright:       author,
+		MediaSize:       mediaSize,
+		// ? do this MediaFormat:     mediaFmt,
 	}, nil
 }
 
@@ -118,7 +128,7 @@ func (e *imgExifData) getDateTime() (d int64, err error) {
 	if err != nil {
 		return d, err
 	}
-	d = t.UTC().Unix()
+	d = conversion.UnixNanoToMillis(t)
 	return d, nil
 }
 
@@ -156,12 +166,24 @@ func (e *imgExifData) getImageFormatData() (map[exif.FieldName]int, error) {
 	return fNameVal, nil
 }
 
-// func (e *imgExifData) getMediaSize() (int, error) {
-// 	e.x.Get(exif)
-// }
+// get file size
+func (e *imgExifData) getFileSize(r io.Reader) (ui uint64, err error) {
+	br := bufio.NewReader(r)
+	ui, err = conversion.CalculateFileSize(br.Size())
+	if err != nil {
+		return 0, err
+	}
+	return ui, err
+}
 
-// ? not in use currently
-func (e *imgExifData) getExifFieldNameString(fieldName exif.FieldName) (string, error) {
-	tag, _ := e.x.Get(fieldName)
-	return tag.StringVal()
+// get image fmt
+// ! switch between image and video - evt create struct input
+func (e *imgExifData) getMediaFmt(r io.Reader) (fmt string, err error) {
+	// _, fmt, err = image.DecodeConfig(r)
+	// if err != nil {
+	// 	log.Errorln(err)
+	// 	return "", err
+	// }
+	fmt = ".jpeg"
+	return fmt, err
 }
