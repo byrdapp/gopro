@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -10,22 +10,33 @@ import (
 	"syscall"
 	"time"
 
+	storage "github.com/blixenkrone/gopro/internal/storage"
+	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
+	"github.com/blixenkrone/gopro/internal/storage/postgres"
+	"github.com/blixenkrone/gopro/pkg/logger"
 	mux "github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
 )
 
+var (
+	log  = logger.NewLogger()
+	pq   storage.PQService
+	fb   storage.FBService
+	host = "pro.development.byrd.news"
+)
+
 // Server is used in main.go
 type Server struct {
-	httpListenServer   *http.Server
-	httpRedirectServer *http.Server
-	certm              *autocert.Manager
+	HttpListenServer   *http.Server
+	HttpRedirectServer *http.Server
+	CertM              *autocert.Manager
 	// handlermux http.Handler
 }
 
 // Creates a new server with HTTP2 & HTTPS
-func newServer() *Server {
+func NewServer() *Server {
 	mux := mux.NewRouter()
 
 	// mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./dist/pro-app/"))))
@@ -80,7 +91,7 @@ func newServer() *Server {
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*host),
+		HostPolicy: autocert.HostWhitelist(host),
 		Cache:      autocert.DirCache("certs"),
 	}
 
@@ -112,15 +123,32 @@ func newServer() *Server {
 	}
 
 	return &Server{
-		httpListenServer:   httpsSrv,
-		httpRedirectServer: httpSrv,
-		certm:              &m,
+		HttpListenServer:   httpsSrv,
+		HttpRedirectServer: httpSrv,
+		CertM:              &m,
 	}
 }
 
-func (s *Server) useHTTP2() error {
+func (s *Server) InitDB() error {
+	pqsrv, err := postgres.NewPQ()
+	if err != nil {
+		log.Fatalf("POSTGRESQL err: %s", err)
+		return err
+	}
+	pq = pqsrv
+
+	fbsrv, err := firebase.NewFB()
+	if err != nil {
+		log.Fatalf("Error starting firebase: %s", err)
+		return err
+	}
+	fb = fbsrv
+	return nil
+}
+
+func (s *Server) UseHTTP2() error {
 	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.httpListenServer, &http2Srv)
+	err := http2.ConfigureServer(s.HttpListenServer, &http2Srv)
 	if err != nil {
 		return err
 	}
@@ -128,17 +156,18 @@ func (s *Server) useHTTP2() error {
 	return nil
 }
 
-func waitForShutdown(srv *http.Server) {
+func (s *Server) WaitForShutdown() {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	defer pq.Close()
 	// Block until we receive our signal.
 	<-interruptChan
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	log.Fatal(srv.Shutdown(ctx))
+	log.Fatal(s.HttpListenServer.Shutdown(ctx))
 	log.Println("Shutting down")
 	os.Exit(0)
 }

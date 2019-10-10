@@ -3,14 +3,13 @@ package slack
 import (
 	"os"
 
-	"github.com/blixenkrone/gopro/utils/logger"
-
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
 	models "github.com/blixenkrone/gopro/models"
+	"github.com/blixenkrone/gopro/pkg/logger"
 
 	"github.com/nlopes/slack"
 )

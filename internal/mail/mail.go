@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	format "github.com/blixenkrone/gopro/utils/fmt"
+	"github.com/blixenkrone/gopro/pkg/conversion"
 
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
+	"github.com/blixenkrone/gopro/internal/slack"
 	models "github.com/blixenkrone/gopro/models"
-	"github.com/blixenkrone/gopro/slack"
 )
 
 // RequestBody is the received Client req for mail
@@ -80,7 +80,7 @@ func (req *RequestBody) unwrapMediaNames() string {
 	for idx, val := range req.Recievers {
 		output[idx] = val.DisplayName
 	}
-	return format.JoinStrings(output)
+	return conversion.JoinStrings(output)
 }
 
 func (req *RequestBody) createMailContent(mediaCountry string, idx int) string {

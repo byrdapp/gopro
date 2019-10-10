@@ -7,8 +7,8 @@ require (
 	github.com/Masterminds/squirrel v1.1.0
 	github.com/aws/aws-sdk-go v1.23.16
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dustin/go-humanize v1.0.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
-	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/joho/godotenv v1.3.0
 	github.com/lib/pq v1.2.0
@@ -22,6 +22,5 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297
-	golang.org/x/tools/gopls v0.0.0-20190910044552-dd2b5c81c578 // indirect
 	google.golang.org/api v0.10.0
 )

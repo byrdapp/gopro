@@ -13,5 +13,9 @@ vendor
 *.http
 *.rsa
 *.pub
+*.jpg
+*.jpeg
+*.png
+*.yml
 docker-compose-prod.yml
 docker-compose-dev.yml

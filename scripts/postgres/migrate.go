@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 
 	"github.com/joho/godotenv"
 
-	"github.com/blixenkrone/gopro/storage"
-	firebase "github.com/blixenkrone/gopro/storage/firebase"
-	postgres "github.com/blixenkrone/gopro/storage/postgres"
+	"github.com/blixenkrone/gopro/internal/storage"
+	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
+	postgres "github.com/blixenkrone/gopro/internal/storage/postgres"
 )
 
 var log = logger.NewLogger()

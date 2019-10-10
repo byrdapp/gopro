@@ -1,10 +1,10 @@
-package main
+package server
 
 import (
 	"fmt"
 	"net/http"
 
-	resErr "github.com/blixenkrone/gopro/utils/errors"
+	resErr "github.com/blixenkrone/gopro/pkg/errors"
 )
 
 const (

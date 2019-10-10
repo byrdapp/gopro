@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
 const (

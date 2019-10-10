@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/blixenkrone/gopro/storage"
-	aws "github.com/blixenkrone/gopro/storage/aws"
+	"github.com/blixenkrone/gopro/internal/storage"
+	aws "github.com/blixenkrone/gopro/internal/storage/aws"
 
-	"github.com/blixenkrone/gopro/utils/logger"
+	"github.com/blixenkrone/gopro/pkg/logger"
 
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
