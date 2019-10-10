@@ -136,7 +136,6 @@ func (s *Server) InitDB() error {
 		return err
 	}
 	pq = pqsrv
-	defer pqsrv.Close()
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {
@@ -157,17 +156,18 @@ func (s *Server) UseHTTP2() error {
 	return nil
 }
 
-func waitForShutdown(srv *http.Server) {
+func (s *Server) WaitForShutdown() {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	defer pq.Close()
 	// Block until we receive our signal.
 	<-interruptChan
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	log.Fatal(srv.Shutdown(ctx))
+	log.Fatal(s.HttpListenServer.Shutdown(ctx))
 	log.Println("Shutting down")
 	os.Exit(0)
 }
