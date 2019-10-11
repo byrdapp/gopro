@@ -1,9 +1,10 @@
 package exif
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/logger"
@@ -32,7 +33,7 @@ type Output struct {
 	Model           string  `json:"model,omitempty"`
 	PixelXDimension int     `json:"pixelXDimension,omitempty"`
 	PixelYDimension int     `json:"pixelYDimension,omitempty"`
-	MediaSize       uint64  `json:"mediaSize,omitempty"`
+	MediaSize       float64 `json:"mediaSize,omitempty"`
 	// MediaFormat     string  `json:"mediaFormat,omitempty"`
 }
 
@@ -66,7 +67,7 @@ func GetOutput(r io.Reader) (*Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error getting img fmt data: %s", err)
 	}
-	mediaSize, err := x.getFileSize(r)
+	size, err := x.getFileSize(r)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting media filesize")
 	}
@@ -79,7 +80,7 @@ func GetOutput(r io.Reader) (*Output, error) {
 		PixelXDimension: fmtMap[exif.PixelXDimension],
 		PixelYDimension: fmtMap[exif.PixelYDimension],
 		Copyright:       author,
-		MediaSize:       mediaSize,
+		MediaSize:       size,
 		// ? do this MediaFormat:     mediaFmt,
 	}, nil
 }
@@ -167,13 +168,20 @@ func (e *imgExifData) getImageFormatData() (map[exif.FieldName]int, error) {
 }
 
 // get file size
-func (e *imgExifData) getFileSize(r io.Reader) (ui uint64, err error) {
-	br := bufio.NewReader(r)
-	ui, err = conversion.CalculateFileSize(br.Size())
+func (e *imgExifData) getFileSize(r io.Reader) (float64, error) {
+	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
 	}
-	return ui, err
+	var buf bytes.Buffer
+	n, err := buf.Write(b)
+	if err != nil {
+		return 0, err
+	}
+	log.Info(n)
+	size := conversion.FileSizeBytesToFloat(n)
+	log.Info(size)
+	return size, nil
 }
 
 // get image fmt
