@@ -178,9 +178,7 @@ func (e *imgExifData) getFileSize(r io.Reader) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	log.Info(n)
 	size := conversion.FileSizeBytesToFloat(n)
-	log.Info(size)
 	return size, nil
 }
 
