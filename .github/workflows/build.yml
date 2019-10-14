@@ -18,7 +18,6 @@ jobs:
     name: review and build code for dev env
     runs-on: ubuntu-latest
     steps:
-      # - uses: actions/checkout@master ?
       - name: Checkout to master
         uses: actions/checkout@master
 
