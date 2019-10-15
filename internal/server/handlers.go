@@ -10,10 +10,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
-	exif "github.com/blixenkrone/gopro/internal/exif"
+	exif "github.com/blixenkrone/gopro/pkg/exif"
 	"github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/pkg/conversion"
@@ -23,8 +22,6 @@ import (
 	mux "github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 )
-
-var wg sync.WaitGroup
 
 type errorResponse struct {
 	Code    int    `json:"code,omitempty"`
@@ -106,7 +103,6 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		var err error
 		clientToken := r.Header.Get(userToken)
-		defer r.Body.Close()
 		if clientToken == "" {
 			err = fmt.Errorf("No header token from client")
 			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
@@ -122,6 +118,7 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
 			return
 		}
+
 		if err := json.NewEncoder(w).Encode(profile); err != nil {
 			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
@@ -198,9 +195,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					spew.Dump(err)
 					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
-				// wg.Add(1)
-				// go func() {
-				// 	defer wg.Done()
 				output, err := exif.GetOutput(part)
 				if err != nil {
 					x.Err = setErrorResponse(err, http.StatusBadRequest)
@@ -208,8 +202,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 
 				x.Data = output
 				res = append(res, &x)
-				// }()
-				// wg.Wait()
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {

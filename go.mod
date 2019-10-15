@@ -7,6 +7,7 @@ require (
 	github.com/Masterminds/squirrel v1.1.0
 	github.com/aws/aws-sdk-go v1.25.11
 	github.com/davecgh/go-spew v1.1.1
+	github.com/giorgisio/goav v0.1.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/joho/godotenv v1.3.0
