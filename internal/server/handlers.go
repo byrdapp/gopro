@@ -13,17 +13,18 @@ import (
 	"sync"
 	"time"
 
+	exif "github.com/blixenkrone/gopro/internal/exif"
 	"github.com/blixenkrone/gopro/internal/mail"
-	"github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/sendgrid/sendgrid-go"
-
-	mux "github.com/gorilla/mux"
-
 	storage "github.com/blixenkrone/gopro/internal/storage"
-	exif "github.com/blixenkrone/gopro/internal/upload/exif"
+	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/errors"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
+	"github.com/davecgh/go-spew/spew"
+	mux "github.com/gorilla/mux"
+	"github.com/sendgrid/sendgrid-go"
 )
+
+var wg sync.WaitGroup
 
 type errorResponse struct {
 	Code    int    `json:"code,omitempty"`
@@ -167,8 +168,7 @@ type ExifResponse struct {
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
 
-var wg sync.WaitGroup
-var getExif = func(w http.ResponseWriter, r *http.Request) {
+var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
@@ -195,20 +195,21 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 						log.Infoln("Image EXIF EOF")
 						break
 					}
+					spew.Dump(err)
 					x.Err = setErrorResponse(err, http.StatusBadRequest)
 				}
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					output, err := exif.GetOutput(part)
-					if err != nil {
-						x.Err = setErrorResponse(err, http.StatusBadRequest)
-					}
+				// wg.Add(1)
+				// go func() {
+				// 	defer wg.Done()
+				output, err := exif.GetOutput(part)
+				if err != nil {
+					x.Err = setErrorResponse(err, http.StatusBadRequest)
+				}
 
-					x.Data = output
-					res = append(res, &x)
-				}()
-				wg.Wait()
+				x.Data = output
+				res = append(res, &x)
+				// }()
+				// wg.Wait()
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -216,6 +217,20 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
+}
+
+var exifVideo = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		// Parse media type to get type of media
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+		spew.Dump(mediaType)
+		spew.Dump(params)
 	}
 }
 

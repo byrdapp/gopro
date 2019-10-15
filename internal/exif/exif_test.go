@@ -29,11 +29,12 @@ type Output struct {
 func TestExifReader(t *testing.T) {
 	t.Run("Run EXIF lat lng", func(t *testing.T) {
 		exif.RegisterParsers(mknote.All...)
-		for i := 1; i < 4; i++ {
+		for i := 1; i < 5; i++ {
 			if i == 0 {
 				continue
 			}
-			path := fmt.Sprintf("./testimgs/%v.jpg", i)
+			// path := fmt.Sprintf("./testmedia/%v.jpg", i)
+			path := "./testmedia/thumb.jpg"
 			output, err := GetOutput(path)
 			if err != nil {
 				t.Error(err)
