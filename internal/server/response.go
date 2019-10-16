@@ -29,7 +29,6 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 	if len(stackTraced) > 0 {
 		build.traced = stackTraced[0]
 	}
-
 	if build.traced == "trace" {
 		stackErr := build.errStackTraced()
 		log.Errorf("Error stacktraced: %as", stackErr)

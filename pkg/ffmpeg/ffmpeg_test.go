@@ -38,15 +38,15 @@ func TestFFMPEGVideo(t *testing.T) {
 
 func TestVideoLoad(t *testing.T) {
 	t.Run("ffmpeg bash", func(t *testing.T) {
-		// full cmd: ffmpeg -i in.mp4 -ss 00:00:08 -vframes 1 out.png -f ffmetadata -map_metadata 0 metadata.txt
+		// full cmd: $ ffmpeg -i in.mp4 -ss 00:00:08 -vframes 1 out.png -f ffmetadata -map_metadata 0 metadata.txt
 		var err error
-		// var tt time.Time
 		file := "./video/in.mp4"
 		output := "./video/tmp/output"
 		ffmpeg, err := exec.LookPath("ffmpeg")
 		if err != nil {
 			t.Log(err)
 		}
+		// test cmd: $ go test -v pkg/ffmpeg/ffmpeg_test.go
 		cmd := exec.Command(ffmpeg, "-y", "-i", file, "-ss", "00:00:08", "-vframes", "1", output+".png", "-f", "ffmetadata", "-map_metadata", "0", output+".txt")
 		t.Log(cmd.String())
 
