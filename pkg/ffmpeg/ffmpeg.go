@@ -1,16 +1,7 @@
 package ffmpeg
 
-import (
-	"time"
-)
-
 type location struct {
 	// lat, lng float64
-}
-
-type VideoOutput struct {
-	CreationTime time.Time `tag:"creation_time"`
-	Location     location  `tag:"location"`
 }
 
 func LoadVideo() {}

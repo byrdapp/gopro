@@ -15,7 +15,7 @@
 
 		// signedToken, err := token.SignedString(JWTKeyPrivate())
 		// if err != nil {
-		// 	errors.NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
+		// 	NewResErr(err, "Could not sign token", http.StatusInternalServerError, w)
 		// 	return
 		// }
 
@@ -35,7 +35,7 @@
 		<!-- token, err := jwt.ParseWithClaims(cookie.Value, &claims.JWTClaims, func(token *jwt.Token) (interface{}, error) {
 			fmt.Println(cookie.Value)
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+				NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 				return nil, err
 			}
 			return JWTKeyPublic(), nil
@@ -45,7 +45,7 @@
 ### Considering using PostForm for this:
 #### Create booking
 	// if err := r.ParseForm(); err != nil {
-		// 	errors.NewResErr(err, err.Error(), 503, w)
+		// 	NewResErr(err, err.Error(), 503, w)
 		// 	return
 		// }
 
