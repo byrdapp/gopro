@@ -1,9 +1,0 @@
-;FFMETADATA1
-major_brand=qt  
-minor_version=0
-compatible_brands=qt  
-creation_time=2019-09-24T17:35:51.000000Z
-com.apple.quicktime.artwork=ÿØÿà
-com.apple.quicktime.is-montage=iMovie
-com.apple.quicktime.location.ISO6709=+55.6808+012.5772/
-encoder=Lavf58.29.100

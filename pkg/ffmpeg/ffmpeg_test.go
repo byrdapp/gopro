@@ -26,6 +26,28 @@ func TestFFMPEGVideo(t *testing.T) {
 	// })
 }
 
+func TestMetadata(t *testing.T) {
+	t.Run("metadata loading", func(t *testing.T) {
+		// full cmd: $ ffmpeg -i in.mp4 -ss 00:00:08 -vframes 1 out.png -f ffmetadata -map_metadata 0 metadata.txt
+		f, err := os.Open("./video/in.mp4")
+		if err != nil {
+			t.Log(err)
+		}
+
+		ffile, err := ffmpeg.NewFile(f)
+		if err != nil {
+			t.Log(err)
+		}
+
+		out, err := ffile.CreateVideoOutput()
+		if err != nil {
+			t.Log(err)
+		}
+
+		spew.Dump(out)
+
+	})
+}
 func TestVideoLoad(t *testing.T) {
 	t.Run("ffmpeg bash", func(t *testing.T) {
 		// full cmd: $ ffmpeg -i in.mp4 -ss 00:00:08 -vframes 1 out.png -f ffmetadata -map_metadata 0 metadata.txt
