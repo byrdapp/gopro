@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,15 +12,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/blixenkrone/gopro/pkg/ffmpeg"
+
 	"github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	exif "github.com/blixenkrone/gopro/pkg/exif"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
-	"github.com/davecgh/go-spew/spew"
 	mux "github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 )
+
+var JSONEncodingError = errors.New("Error converting exif to JSON")
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -191,30 +195,48 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
-				NewResErr(err, "Error converting exif to JSON", http.StatusInternalServerError, w)
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
 				return
 			}
 		}
 	}
 }
 
+type VideoExif struct {
+	// ExifResponse *ExifResponse
+	Thumbnail *ffmpeg.VideoOutput
+}
+
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		// Parse media type to get type of media
-		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		// var vx VideoExif
+		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
-		spew.Dump(mediaType)
-		spew.Dump(params)
-		var buf bytes.Buffer
-		_, err = io.ReadFull(r.Body, buf.Bytes())
+		w.Header().Set("Content-Type", mediaType)
+		file, err := ffmpeg.NewFile(r.Body)
 		if err != nil {
-			NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
+		out, err := file.CreateVideoOutput()
+		if err != nil {
+			NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
+			return
+		}
+		defer r.Body.Close()
+		defer file.RemoveFile()
+
+		if err := file.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := json.NewEncoder(w).Encode(out); err != nil {
+			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
+		}
+
 	}
 }
 

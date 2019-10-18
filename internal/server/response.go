@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -30,8 +29,10 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 		build.traced = stackTraced[0]
 	}
 	if build.traced == "trace" {
-		stackErr := build.errStackTraced()
-		log.Errorf("Error stacktraced: %as", stackErr)
+		build.errStackTraced()
+	}
+	if build.traced == "err" {
+		log.Error(err)
 	}
 	if err := build.ErrorResponse(); err != nil {
 		log.Errorf("Internal error: %s", err)
@@ -39,26 +40,32 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 	return build
 }
 
-// ErrorImbedded returns a responsebuilder interface, that will act as a errorresponse, if other responses are present i.e:
-// {
-// err: {msg:.., code: xxxx}, <- this
-// data: {data},
-// }
+type errResponse struct {
+	Code      int    `json:"code"`
+	ClientMsg string `json:"msg"`
+}
+
+func (r *ErrResponseBuilder) ErrorResponse() error {
+	r.w.Header().Set("Content-Type", "application/json")
+	errRes := &errResponse{
+		Code:      r.Code,
+		ClientMsg: r.ClientMsg,
+	}
+	r.w.WriteHeader(r.Code)
+	return json.NewEncoder(r.w).Encode(errRes)
+}
+
+func (r *ErrResponseBuilder) errStackTraced() {
+	// The `errors.Cause` function returns the originally wrapped error, which we can then type assert to its original struct type
+	err := errors.WithStack(r.err)
+	log.Errorf("originated: %+v", err)
+}
+
+// Imbed errors in the response JSON
 func (r *ErrResponseBuilder) ErrorImbedded(err error, msg string, code int) *ErrResponseBuilder {
 	return &ErrResponseBuilder{
 		Code:      code,
 		ClientMsg: msg,
 		err:       err,
 	}
-}
-
-func (r *ErrResponseBuilder) ErrorResponse() error {
-	r.w.Header().Set("Content-Type", "application/json")
-	r.w.WriteHeader(r.Code)
-	return json.NewEncoder(r.w).Encode(r.ClientMsg)
-}
-
-func (r *ErrResponseBuilder) errStackTraced() error {
-	err := errors.WithStack(r.err)
-	return fmt.Errorf("Cause: %s", errors.Cause(err))
 }
