@@ -1,11 +1,10 @@
 package conversion
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dustin/go-humanize"
 )
 
 // JoinStrings join strings
@@ -19,15 +18,15 @@ func ParseBool(stringValToBool string) (bool, error) {
 }
 
 const (
-	B  = 1
-	KB = B << 10
-	MB = KB << 10
+	B       = 1
+	KB      = B >> 10
+	MB      = KB >> 10
+	byteVal = 1024
 )
 
-func CalculateFileSize(byteSize int) (ui uint64, err error) {
-	str := strconv.Itoa(byteSize)
-	ui, err = humanize.ParseBytes(str)
-	return ui, err
+func FileSizeBytesToFloat(byteSize int) float64 {
+	size := float64(byteSize) / (math.Pow(byteVal, 2))
+	return math.Floor(size*100) / 100 // no magic number
 }
 
 func UnixNanoToMillis(t time.Time) int64 {

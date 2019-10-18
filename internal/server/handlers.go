@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,33 +11,17 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/blixenkrone/gopro/internal/mail"
-	"github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/sendgrid/sendgrid-go"
-
-	mux "github.com/gorilla/mux"
-
 	storage "github.com/blixenkrone/gopro/internal/storage"
-	exif "github.com/blixenkrone/gopro/internal/upload/exif"
-	"github.com/blixenkrone/gopro/pkg/errors"
+	"github.com/blixenkrone/gopro/pkg/conversion"
+	exif "github.com/blixenkrone/gopro/pkg/exif"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
+	"github.com/davecgh/go-spew/spew"
+	mux "github.com/gorilla/mux"
+	"github.com/sendgrid/sendgrid-go"
 )
-
-type errorResponse struct {
-	Code    int    `json:"code,omitempty"`
-	Message string `json:"msg,omitempty"`
-}
-
-func setErrorResponse(err error, code int) *errorResponse {
-	log.Errorf("Error: %s\nCode: %v", err, code)
-	return &errorResponse{
-		Message: err.Error(),
-		Code:    code,
-	}
-}
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -63,19 +48,19 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-			errors.NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
+			NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
 		// defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
 
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
-			errors.NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
+			NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
 			return
 		}
 
@@ -83,18 +68,18 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		claims := make(map[string]interface{})
 		isAdmin, err := fb.IsAdminUID(r.Context(), usr.UID)
 		if err != nil {
-			errors.NewResErr(err, "Error admin ref was not found", http.StatusBadRequest, w)
+			NewResErr(err, "Error admin ref was not found", http.StatusBadRequest, w)
 			return
 		}
 		claims[isAdminClaim] = isAdmin
 		signedToken, err := fb.CreateCustomTokenWithClaims(r.Context(), usr.UID, claims)
 		if err != nil {
-			errors.NewResErr(err, "Error creating token!", http.StatusInternalServerError, w, "trace")
+			NewResErr(err, "Error creating token!", http.StatusInternalServerError, w, "trace")
 			return
 		}
 
 		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
-			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -105,24 +90,24 @@ var decodeTokenGetProfile = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		var err error
 		clientToken := r.Header.Get(userToken)
-		defer r.Body.Close()
 		if clientToken == "" {
 			err = fmt.Errorf("No header token from client")
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 		fbtoken, err := fb.VerifyToken(r.Context(), clientToken)
 		if err != nil {
-			errors.NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
+			NewResErr(err, "No token provided in headers", http.StatusBadRequest, w)
 			return
 		}
 		profile, err := fb.GetProfile(r.Context(), fbtoken.UID)
 		if err != nil {
-			errors.NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
+			NewResErr(err, "Error getting profile", http.StatusInternalServerError, w)
 			return
 		}
+
 		if err := json.NewEncoder(w).Encode(profile); err != nil {
-			errors.NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
+			NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -149,26 +134,25 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("content-type", "application/json")
 	medias, err := fb.GetProfiles(r.Context())
 	if err != nil {
-		errors.NewResErr(err, "Error finding media profiles", http.StatusFound, w)
+		NewResErr(err, "Error finding media profiles", http.StatusFound, w)
 	}
 	if err := json.NewEncoder(w).Encode(medias); err != nil {
-		errors.NewResErr(err, "JSON Encoding failed", 500, w)
+		NewResErr(err, "JSON Encoding failed", 500, w)
 	}
 }
 
 // ExifResponse is json encoded to client
 // The struct also sets exif decoding errors to the response writer.
 type ExifResponse struct {
-	Data *exif.Output   `json:"data,omitempty"`
-	Err  *errorResponse `json:"err,omitempty"`
+	Data *exif.Output        `json:"data,omitempty"`
+	Err  *ErrResponseBuilder `json:"err,omitempty"`
 }
 
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
 
-var wg sync.WaitGroup
-var getExif = func(w http.ResponseWriter, r *http.Request) {
+var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
 		w.Header().Set("Content-Type", "multipart/form-data")
@@ -178,7 +162,7 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			errors.NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
 			return
 		}
 
@@ -195,26 +179,41 @@ var getExif = func(w http.ResponseWriter, r *http.Request) {
 						log.Infoln("Image EXIF EOF")
 						break
 					}
-					x.Err = setErrorResponse(err, http.StatusBadRequest)
+					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
 				}
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					output, err := exif.GetOutput(part)
-					if err != nil {
-						x.Err = setErrorResponse(err, http.StatusBadRequest)
-					}
+				output, err := exif.GetOutput(part)
+				if err != nil {
+					x.Err = x.Err.ErrorImbedded(err, err.Error(), 401)
+				}
 
-					x.Data = output
-					res = append(res, &x)
-				}()
-				wg.Wait()
+				x.Data = output
+				res = append(res, &x)
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
-				errors.NewResErr(err, "Error convert exif to JSON", 503, w)
+				NewResErr(err, "Error converting exif to JSON", http.StatusInternalServerError, w)
 				return
 			}
+		}
+	}
+}
+
+var exifVideo = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		// Parse media type to get type of media
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+		spew.Dump(mediaType)
+		spew.Dump(params)
+		var buf bytes.Buffer
+		_, err = io.ReadFull(r.Body, buf.Bytes())
+		if err != nil {
+			NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+			return
 		}
 	}
 }
@@ -231,11 +230,11 @@ var getProProfile = func(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	pro, err := fb.GetProfile(r.Context(), params["id"])
 	if err != nil {
-		errors.NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+		NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
 		return
 	}
 	if err := json.NewEncoder(w).Encode(pro); err != nil {
-		errors.NewResErr(err, "Error parsing to JSON", 503, w)
+		NewResErr(err, "Error parsing to JSON", 503, w)
 		return
 	}
 }
@@ -253,12 +252,12 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 
 		bookings, err := pq.GetBookingsByUID(r.Context(), proUID)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 
 		if err := json.NewEncoder(w).Encode(bookings); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 	}
@@ -274,7 +273,7 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		log.Infoln(uid)
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			errors.NewResErr(err, "Error reading body", http.StatusBadRequest, w)
+			NewResErr(err, "Error reading body", http.StatusBadRequest, w)
 			return
 		}
 		defer r.Body.Close()
@@ -282,17 +281,17 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		// * Is the date zero valued (i.e. missing or wrongly formatted)
 		tb := timeutil.NewTime(*req.DateStart, *req.DateEnd)
 		if err := tb.IsZero(); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
+			NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 
 		b, err := pq.CreateBooking(r.Context(), uid, req)
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
+			NewResErr(err, err.Error(), http.StatusBadRequest, w, "trace")
 			return
 		}
 		if err := json.NewEncoder(w).Encode(b); err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -309,7 +308,7 @@ var updateBooking = func(w http.ResponseWriter, r *http.Request) {
 		bookingID, ok := params["bookingID"]
 		if !ok {
 			err := fmt.Errorf("No booking ID provided")
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 
@@ -317,17 +316,17 @@ var updateBooking = func(w http.ResponseWriter, r *http.Request) {
 		b.Task = r.FormValue("task")
 		b.IsActive, err = conversion.ParseBool(r.FormValue("isActive"))
 		if err != nil {
-			errors.NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 
 		if err := pq.UpdateBooking(r.Context(), &b); err != nil {
-			errors.NewResErr(err, "Error inserting record", http.StatusInternalServerError, w, "trace")
+			NewResErr(err, "Error inserting record", http.StatusInternalServerError, w, "trace")
 			return
 		}
 
 		if err := json.NewEncoder(w).Encode(&b); err != nil {
-			errors.NewResErr(err, "Error returning response", http.StatusInternalServerError, w)
+			NewResErr(err, "Error returning response", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -340,11 +339,11 @@ var deleteBooking = func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		bookingID := params["bookingID"]
 		if err := pq.DeleteBooking(r.Context(), bookingID); err != nil {
-			errors.NewResErr(err, "Error inserting record", http.StatusInternalServerError, w, "trace")
+			NewResErr(err, "Error inserting record", http.StatusInternalServerError, w, "trace")
 			return
 		}
 		if err := json.NewEncoder(w).Encode(&bookingID); err != nil {
-			errors.NewResErr(err, "Error sending response", http.StatusInternalServerError, w)
+			NewResErr(err, "Error sending response", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -356,20 +355,20 @@ var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		profiles, err := pq.GetBookingsAdmin(r.Context())
 		if err != nil {
-			errors.NewResErr(err, "Error getting value in database", http.StatusInternalServerError, w, "trace")
+			NewResErr(err, "Error getting value in database", http.StatusInternalServerError, w, "trace")
 			return
 		}
 		for _, p := range profiles {
 			fbprofile, err := fb.GetProfile(r.Context(), p.Professional.UserUID)
 			if err != nil {
-				errors.NewResErr(err, "Error getting value in database", http.StatusInternalServerError, w, "trace")
+				NewResErr(err, "Error getting value in database", http.StatusInternalServerError, w, "trace")
 				return
 			}
 			p.FirebaseProfile = *fbprofile
 		}
 
 		if err := json.NewEncoder(w).Encode(&profiles); err != nil {
-			errors.NewResErr(err, "Error sending response", http.StatusInternalServerError, w)
+			NewResErr(err, "Error sending response", http.StatusInternalServerError, w)
 			return
 		}
 	}
@@ -391,7 +390,7 @@ var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
 // 	}
 
 // 	if err := json.NewEncoder(w).Encode(res); err != nil {
-// 		errors.NewResErr(err, "Error encoding response", http.StatusInternalServerError, w, "trace")
+// 		NewResErr(err, "Error encoding response", http.StatusInternalServerError, w, "trace")
 // 		return
 // 	}
 // }

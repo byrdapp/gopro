@@ -15,6 +15,7 @@ vendor
 *.pub
 *.jpg
 *.jpeg
+*.mp4
 *.png
 *.yml
 docker-compose-prod.yml
