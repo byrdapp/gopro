@@ -180,7 +180,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
-						log.Infoln("Image EXIF EOF")
 						break
 					}
 					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)

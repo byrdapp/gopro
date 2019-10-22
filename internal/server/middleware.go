@@ -48,14 +48,13 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-		tkn, err := fb.VerifyToken(r.Context(), headerToken)
+		_, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s", err)
 			NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-		log.Info(tkn.UID)
 		next(w, r)
 	})
 }

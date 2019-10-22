@@ -46,6 +46,24 @@ func NewFile(r io.Reader) (FileGenerator, error) {
 	return &File{file}, nil
 }
 
+func (f *File) CreateVideoOutput() (*VideoOutput, error) {
+	// thumbnail, err := f.makeThumbnail()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	meta, err := f.execMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	return &VideoOutput{
+		Metadata: meta,
+		// Thumbnail: thumbnail,
+	}, nil
+
+}
+
 func (f *File) execThumbnail() (thumbnail []byte, err error) {
 	// full cmd: $ ffmpeg -i in.mp4 -ss 00:00:08 -vframes 1 out.png -f ffmetadata -map_metadata 0 metadata.txt
 	output := "./video/tmp/output"
@@ -100,24 +118,6 @@ func (f *File) execMetadata() (string, error) {
 
 }
 
-func (f *File) CreateVideoOutput() (*VideoOutput, error) {
-	// thumbnail, err := f.makeThumbnail()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	meta, err := f.execMetadata()
-	if err != nil {
-		return nil, err
-	}
-
-	return &VideoOutput{
-		Metadata: meta,
-		// Thumbnail: thumbnail,
-	}, nil
-
-}
-
 func (f *File) makeThumbnail() (thumb []byte, err error) {
 	thumb, err = f.execThumbnail()
 	if err != nil {
@@ -129,9 +129,11 @@ func (f *File) makeThumbnail() (thumb []byte, err error) {
 func (f *File) Close() error {
 	return f.File.Close()
 }
+
 func (f *File) RemoveFile() error {
 	return os.Remove(f.File.Name())
 }
+
 func (f *File) FileName() string {
 	return f.File.Name()
 }
