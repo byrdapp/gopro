@@ -25,6 +25,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
 			return
 		}
+
 		if ok, err := fb.IsAdminUID(r.Context(), token.UID); ok && err == nil {
 			next(w, r)
 			return

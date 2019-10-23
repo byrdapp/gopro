@@ -47,7 +47,6 @@ type Credentials struct {
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	// ? verify here, that the user is a pro user
-
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
 		var creds Credentials
@@ -55,7 +54,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		// defer r.Body.Close()
+		defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
 			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
