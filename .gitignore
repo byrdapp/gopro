@@ -21,3 +21,5 @@ vendor
 docker-compose-prod.yml
 docker-compose-dev.yml
 *.txt
+
+*_test.go
