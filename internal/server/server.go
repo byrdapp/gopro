@@ -113,18 +113,19 @@ func NewServer() *Server {
 	}
 
 	// Create server for redirecting HTTP to HTTPS
-	httpSrv := &http.Server{
-		Addr:           ":http",
-		ReadTimeout:    httpsSrv.ReadTimeout,
-		WriteTimeout:   httpsSrv.WriteTimeout,
-		IdleTimeout:    httpsSrv.IdleTimeout,
-		MaxHeaderBytes: 1 << 20,
-		// Handler:        m.HTTPHandler(nil),
-	}
+	// httpSrv := &http.Server{
+	// 	Addr:           ":http",
+	// 	ReadTimeout:    httpsSrv.ReadTimeout,
+	// 	WriteTimeout:   httpsSrv.WriteTimeout,
+	// 	IdleTimeout:    httpsSrv.IdleTimeout,
+	// 	MaxHeaderBytes: 1 << 20,
+	// 	Handler:        mux,
+	// 	// Handler:        m.HTTPHandler(nil),
+	// }
 
 	return &Server{
-		HttpListenServer:   httpsSrv,
-		HttpRedirectServer: httpSrv,
+		HttpListenServer: httpsSrv,
+		// HttpRedirectServer: httpSrv,
 		// CertM:              &m,
 	}
 }

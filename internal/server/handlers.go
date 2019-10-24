@@ -69,7 +69,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if isPro, err := fb.IsProfessional(r.Context(), usr.UID); !isPro || err != nil {
-			NewResErr(err, err.Error(), http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusUnauthorized, w)
 			return
 		}
 

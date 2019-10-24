@@ -9,7 +9,7 @@ import (
 
 // ResponseBuilder builds custom errors to a http response writer
 type ErrResponseBuilder struct {
-	Code      int    `json:"code"`
+	Status    int    `json:"status"`
 	ClientMsg string `json:"msg"`
 	w         http.ResponseWriter
 	err       error
@@ -18,9 +18,9 @@ type ErrResponseBuilder struct {
 
 // NewResErr constructs and executes an err struct.
 // Set stackTraced = "trace" to show error stack.
-func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTraced ...string) *ErrResponseBuilder {
+func NewResErr(err error, msg string, statusCode int, w http.ResponseWriter, stackTraced ...string) *ErrResponseBuilder {
 	build := &ErrResponseBuilder{
-		Code:      code,
+		Status:    statusCode,
 		ClientMsg: msg,
 		w:         w,
 		err:       err,
@@ -41,17 +41,17 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 }
 
 type errResponse struct {
-	Code      int    `json:"code"`
+	Status    int    `json:"status"`
 	ClientMsg string `json:"msg"`
 }
 
 func (r *ErrResponseBuilder) ErrorResponse() error {
 	r.w.Header().Set("Content-Type", "application/json")
 	errRes := &errResponse{
-		Code:      r.Code,
+		Status:    r.Status,
 		ClientMsg: r.ClientMsg,
 	}
-	r.w.WriteHeader(r.Code)
+	r.w.WriteHeader(r.Status)
 	return json.NewEncoder(r.w).Encode(errRes)
 }
 
@@ -64,7 +64,7 @@ func (r *ErrResponseBuilder) errStackTraced() {
 // Imbed errors in the response JSON
 func (r *ErrResponseBuilder) ErrorImbedded(err error, msg string, code int) *ErrResponseBuilder {
 	return &ErrResponseBuilder{
-		Code:      code,
+		Status:    code,
 		ClientMsg: msg,
 		err:       err,
 	}

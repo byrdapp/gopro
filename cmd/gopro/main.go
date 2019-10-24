@@ -40,11 +40,11 @@ func main() {
 	}
 
 	// Start a reg. HTTP on a new thread
-	go func() {
-		if err := s.HttpRedirectServer.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	// go func() {
+	// 	if err := s.HttpRedirectServer.ListenAndServe(); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }()
 
 	s.HttpListenServer.Addr = ":8080"
 	log.Infof("Serving on host w. address %s", s.HttpListenServer.Addr)
