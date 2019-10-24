@@ -49,6 +49,7 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	// ? verify here, that the user is a pro user
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
+		var err error
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 			NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
@@ -64,6 +65,11 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
 			NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
+			return
+		}
+
+		if isPro, err := fb.IsProfessional(r.Context(), usr.UID); !isPro || err != nil {
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
 			return
 		}
 

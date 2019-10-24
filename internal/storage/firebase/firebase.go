@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/blixenkrone/gopro/internal/storage"
 	aws "github.com/blixenkrone/gopro/internal/storage/aws"
 
@@ -180,7 +182,7 @@ func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Toke
 }
 
 // IsAdminClaims returns token as a string. ! Not Used in admin middleware.go.
-// ! currently not working because of method below
+// ! currently not in use because of method below
 func (db *Firebase) IsAdminClaims(claims map[string]interface{}) bool {
 	// The claims can be accessed on the user record.
 	log.Infoln(claims)
@@ -205,4 +207,19 @@ func (db *Firebase) IsAdminUID(ctx context.Context, uid string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// IsAdminUID will return true if the uid is found in the admin fb storage
+// It's being called in loginCreateToken handler
+func (db *Firebase) IsProfessional(ctx context.Context, uid string) (isPro bool, err error) {
+	var profile storage.FirebaseProfile
+	path := os.Getenv("ENV") + "/profiles"
+	ref := db.Client.NewRef(path).Child(uid)
+	if err := ref.Get(ctx, &profile); err != nil {
+		return false, err
+	}
+	if !profile.IsProfessional {
+		return false, errors.Errorf("User %s is not a professional", profile.DisplayName)
+	}
+	return true, nil
 }
