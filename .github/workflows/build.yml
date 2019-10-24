@@ -57,8 +57,8 @@ jobs:
       # - name: Go test
       #   run: go test ./...
 
-      - name: Go vet
-        run: go vet
+      - name: Go vet cmd
+        run: go vet cmd/gopro/main.go
 
       - name: Login to DockerHub Registry
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
