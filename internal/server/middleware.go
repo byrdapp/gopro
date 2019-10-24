@@ -43,7 +43,6 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
 		// ? verify here, that the user is a pro user
-
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
 			NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)

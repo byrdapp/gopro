@@ -7,7 +7,7 @@ watch_serve_local:
 	&& spy go run cmd/gopro/main.go -local -production=false
 
 deployment_dev:
-	docker build --rm -f "Dockerfile" -t byrdapp/gopro:latest . \
+	docker build --rm -f "Dockerfile" -t byrdapp/gopro:dev . \
 	&& docker push byrdapp/gopro
 
 build_docker_tag:

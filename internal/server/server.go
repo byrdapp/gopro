@@ -21,10 +21,9 @@ import (
 )
 
 var (
-	log  = logger.NewLogger()
-	pq   storage.PQService
-	fb   storage.FBService
-	host = "pro.development.byrd.news"
+	log = logger.NewLogger()
+	pq  storage.PQService
+	fb  storage.FBService
 )
 
 // Server is used in main.go
@@ -90,11 +89,11 @@ func NewServer() *Server {
 	log.Infoln(c.Log)
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(host),
-		Cache:      autocert.DirCache("certs"),
-	}
+	// m := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist(host),
+	// 	Cache:      autocert.DirCache("certs"),
+	// }
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
@@ -120,13 +119,13 @@ func NewServer() *Server {
 		WriteTimeout:   httpsSrv.WriteTimeout,
 		IdleTimeout:    httpsSrv.IdleTimeout,
 		MaxHeaderBytes: 1 << 20,
-		Handler:        m.HTTPHandler(nil),
+		// Handler:        m.HTTPHandler(nil),
 	}
 
 	return &Server{
 		HttpListenServer:   httpsSrv,
 		HttpRedirectServer: httpSrv,
-		CertM:              &m,
+		// CertM:              &m,
 	}
 }
 
