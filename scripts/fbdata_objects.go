@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/blixenkrone/gopro/storage"
-	firebase "github.com/blixenkrone/gopro/storage/firebase"
+	"github.com/blixenkrone/gopro/internal/storage"
+	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
 )
 
 const noSSLstring = "http://res.cloudinary.com"
@@ -18,6 +18,7 @@ const hasSSLstring = "https://res.cloudinary.com"
 func ChangeProfileUserPicture() error {
 	defer fmt.Println("Done")
 	db, err := firebase.NewFB()
+
 	if err != nil {
 		panic(err)
 	}
