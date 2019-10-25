@@ -48,5 +48,4 @@ func main() {
 
 	// * runs until os.SIGTERM happens
 	s.WaitForShutdown()
-
 }
