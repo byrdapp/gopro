@@ -14,12 +14,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/gopro/pkg/ffmpeg"
+	exif "github.com/blixenkrone/gopro/internal/exif"
+	image "github.com/blixenkrone/gopro/internal/exif/image"
+	video "github.com/blixenkrone/gopro/internal/exif/video"
 
 	"github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/pkg/conversion"
-	exif "github.com/blixenkrone/gopro/pkg/exif"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 	mux "github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
@@ -189,7 +190,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					}
 					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
 				}
-				output, err := exif.GetOutput(part)
+				output, err := image.ReadImage(part)
 				if err != nil {
 					x.Err = x.Err.ErrorImbedded(err, err.Error(), 401)
 				}
@@ -206,35 +207,34 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type VideoExif struct {
-	ExifResponse
-	Thumbnail *ffmpeg.VideoOutput
-}
-
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		// var vx VideoExif
+		var res ExifResponse
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
 		w.Header().Set("Content-Type", mediaType)
-		file, err := ffmpeg.NewFile(r.Body)
+		video, err := video.ReadVideo(r.Body)
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
-		out, err := file.CreateVideoOutput()
+		defer r.Body.Close()
+
+		out, err := video.CreateVideoExifOutput()
 		if err != nil {
-			NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
+			// NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
+			res.Err = res.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
 			return
 		}
-		defer r.Body.Close()
-		defer file.RemoveFile()
 
-		if err := file.Close(); err != nil {
-			log.Fatal(err)
+		defer r.Body.Close()
+		defer video.File.RemoveFile()
+
+		if err := video.File.Close(); err != nil {
+			log.Errorln(err)
 		}
 
 		if err := json.NewEncoder(w).Encode(out); err != nil {
