@@ -21,5 +21,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191021144547-ec77196f6094
+	golang.org/x/tools v0.0.0-20190506145303-2d16b83fe98c
 	google.golang.org/api v0.11.0
 )

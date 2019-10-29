@@ -207,7 +207,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 }
 
 type VideoExif struct {
-	// ExifResponse *ExifResponse
+	ExifResponse
 	Thumbnail *ffmpeg.VideoOutput
 }
 

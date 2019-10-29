@@ -1,13 +1,16 @@
 package ffmpeg
 
 import (
+	"golang.org/x/tools/present"
 	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 
+	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/logger"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 )
@@ -15,13 +18,15 @@ import (
 var log = logger.NewLogger()
 
 type VideoOutput struct {
-	Thumbnail []byte `json:"thumbnail"`
-	Size      int    `json:"mediaSize"`
-	Metadata  string `json:"metadata"`
+	Thumbnail       []byte  `json:"thumbnail,omitempty"`
+	MediaSize       float64 `json:"mediaSize"`
+	PixelXDimension int     `json:"pixelXDimension,omitempty"`
+	PixelYDimension int     `json:"pixelYDimension,omitempty"`
+	// exif.Output
 }
 
 type File struct {
-	File *os.File
+	file *os.File
 }
 
 type FileGenerator interface {
@@ -29,6 +34,7 @@ type FileGenerator interface {
 	Close() error
 	RemoveFile() error
 	FileName() string
+	FileSize() (size float64, err error)
 }
 
 func NewFile(r io.Reader) (FileGenerator, error) {
@@ -52,14 +58,21 @@ func (f *File) CreateVideoOutput() (*VideoOutput, error) {
 	// 	return nil, err
 	// }
 
-	meta, err := f.execMetadata()
+	// meta, err := f.execMetadata()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	size, err := f.FileSize()
 	if err != nil {
 		return nil, err
 	}
 
 	return &VideoOutput{
-		Metadata: meta,
+
+		// Metadata: meta,
 		// Thumbnail: thumbnail,
+		MediaSize: size,
 	}, nil
 
 }
@@ -72,13 +85,13 @@ func (f *File) execThumbnail() (thumbnail []byte, err error) {
 	if err != nil {
 		return nil, errors.New("error finding exec path")
 	}
-	finfo, err := f.File.Stat()
+	finfo, err := f.file.Stat()
 	if err != nil {
 		return nil, err
 	}
-	log.Info(f.File.Name())
+	log.Info(f.file.Name())
 	log.Info(finfo.Size())
-	fileName := f.File.Name()
+	fileName := f.file.Name()
 	// test cmd: $ go test -v pkg/ffmpeg/ffmpeg_test.go
 	cmd := exec.Command(ffmpeg, "-report", "-y", "-i", fileName, "-ss", "00:00:04", "-vframes", "1", output+".png")
 	log.Info(cmd.String())
@@ -126,14 +139,28 @@ func (f *File) makeThumbnail() (thumb []byte, err error) {
 	return thumb, err
 }
 
+func (f *File) videoHeightWidth() {
+	present.
+
+}
+
 func (f *File) Close() error {
-	return f.File.Close()
+	return f.file.Close()
 }
 
 func (f *File) RemoveFile() error {
-	return os.Remove(f.File.Name())
+	return os.Remove(f.file.Name())
 }
 
 func (f *File) FileName() string {
-	return f.File.Name()
+	return f.file.Name()
+}
+
+func (f *File) FileSize() (size float64, err error) {
+	fInfo, err := f.file.Stat()
+	if err != nil {
+		return size, err
+	}
+	size = conversion.FileSizeBytesToFloat(int(fInfo.Size()))
+	return size, err
 }

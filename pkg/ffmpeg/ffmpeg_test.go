@@ -4,9 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/blixenkrone/gopro/pkg/ffmpeg"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // VideoOutput -
