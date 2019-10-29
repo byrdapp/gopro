@@ -1,7 +1,6 @@
 package ffmpeg
 
 import (
-	"golang.org/x/tools/present"
 	"bytes"
 	"io"
 	"io/ioutil"
@@ -140,7 +139,6 @@ func (f *File) makeThumbnail() (thumb []byte, err error) {
 }
 
 func (f *File) videoHeightWidth() {
-	present.
 
 }
 
