@@ -30,38 +30,38 @@ type imgExifData struct {
 }
 
 // GetOutput returns the struct *Output containing img data. Call this for each img.
-func ReadImage(r io.Reader) (*exif.Output, error) {
+func ReadImage(r io.Reader) *exif.Output {
 	x, err := loadExifData(r)
 	if err != nil {
-		return nil, fmt.Errorf("Error loading exif: %s", err)
+		err = fmt.Errorf("Error loading exif: %s", err)
 	}
 	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting lat data: %s", err)
+		err = fmt.Errorf("Error getting lat data: %s", err)
 	}
 	lng, err := x.calcGeoCoordinate(goexif.GPSLongitude)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting lng data: %s", err)
+		err = fmt.Errorf("Error getting lng data: %s", err)
 	}
 	date, err := x.getDateTime()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting datetime: %s", err)
+		err = fmt.Errorf("Error getting datetime: %s", err)
 	}
 	author, err := x.getCopyright()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting copyright: %s", err)
+		err = fmt.Errorf("Error getting copyright: %s", err)
 	}
 	model, err := x.getCameraModel()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting camera model: %s", err)
+		err = fmt.Errorf("Error getting camera model: %s", err)
 	}
 	fmtMap, err := x.getImageFormatData()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting img fmt data: %s", err)
+		err = fmt.Errorf("Error getting img fmt data: %s", err)
 	}
 	size, err := x.getFileSize(r)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting media filesize")
+		err = fmt.Errorf("Error getting media filesize")
 	}
 
 	return &exif.Output{
@@ -73,8 +73,9 @@ func ReadImage(r io.Reader) (*exif.Output, error) {
 		PixelYDimension: fmtMap[goexif.PixelYDimension],
 		Copyright:       author,
 		MediaSize:       size,
+		ExifError:       err.Error(),
 		// ? do this MediaFormat:     mediaFmt,
-	}, nil
+	}
 }
 
 // loadExifData request exif data for image

@@ -10,7 +10,12 @@ type Output struct {
 	PixelXDimension int     `json:"pixelXDimension,omitempty"`
 	PixelYDimension int     `json:"pixelYDimension,omitempty"`
 	MediaSize       float64 `json:"mediaSize,omitempty"`
+	ExifError       *ExifError
 	// MediaFormat     string  `json:"mediaFormat,omitempty"`
+}
+
+type ExifError struct {
+	Error map[string]interface{} `json:"error"`
 }
 
 // type ExifReader interface {
