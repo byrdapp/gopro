@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"io"
 	"os/exec"
+	"regexp"
+	"strconv"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
@@ -15,13 +17,15 @@ import (
 
 var log = logger.NewLogger()
 
-// type Output struct {
-// 	exif *exif.Output
-// }
+const (
+	width  = "width"
+	height = "height"
+)
+
+type VideoDimension int
 
 type videoExifData struct {
 	File fileinfo.FileGenerator
-	x    *exif.Output
 }
 
 func ReadVideo(r io.Reader) (*videoExifData, error) {
@@ -31,12 +35,11 @@ func ReadVideo(r io.Reader) (*videoExifData, error) {
 	}
 
 	return &videoExifData{
-		// x: &exif.Output{},
 		File: f,
 	}, nil
 }
 
-func (o *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
+func (v *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
 	// TODO:
 	// thumbnail, err := f.makeThumbnail()
 	// if err != nil {
@@ -49,18 +52,52 @@ func (o *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
 	// 	return nil, err
 	// }
 
-	size, err := o.File.FileSize()
+	size, err := v.File.FileSize()
+	if err != nil {
+		return nil, err
+	}
+
+	wh, err := v.videoWidthHeight()
 	if err != nil {
 		return nil, err
 	}
 
 	return &exif.Output{
-		MediaSize: size,
+		MediaSize:       size,
+		PixelXDimension: int(wh[width]),
+		PixelYDimension: int(wh[height]),
 	}, nil
 }
 
-func (v *videoExifData) videoHeightWidth() (interface{}, error) {
-	return nil, nil
+// map represents height and width as string values i.e: hw["width"].
+func (v *videoExifData) videoWidthHeight() (wh map[string]VideoDimension, err error) {
+	wh = make(map[string]VideoDimension)
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		return nil, errors.New("error finding exec path for ffprobe")
+	}
+	cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", v.File.FileName())
+	b, err := cmd.Output()
+	regex := `[0-9]*`
+	findxRegex := regexp.MustCompile(regex)
+	matched, err := regexp.Match(regex, b)
+	if err != nil {
+		return nil, errors.Wrap(err, "regex failed to match")
+	}
+	if matched {
+		arr := []string{width, height}
+		str := findxRegex.FindAllString(string(b), -1)
+		for i := range arr {
+			intvals, err := strconv.Atoi(str[i])
+			if err != nil {
+				err = errors.Wrapf(err, "strconv in wh loop failed at pos %v with video val %s", i, str[i])
+			}
+			wh[arr[i]] = VideoDimension(intvals)
+		}
+	} else {
+		return nil, errors.New("error finding valid string match for video width/height")
+	}
+	return wh, err
 }
 
 func (v *videoExifData) makeThumbnail() (thumb []byte, err error) {
@@ -122,5 +159,13 @@ func (v *videoExifData) execMetadata() (string, error) {
 	}
 	spew.Dump(stderr)
 	return string(""), nil
+}
 
+// TODO: For later use maybe?
+func execCmd(path string, arg ...string) (*exec.Cmd, error) {
+	pathcmd, err := exec.LookPath(path)
+	if err != nil {
+		return nil, errors.Errorf("error finding exec path for %s", path)
+	}
+	return exec.Command(pathcmd, arg...), nil
 }

@@ -240,7 +240,6 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
 		}
-
 	}
 }
 
