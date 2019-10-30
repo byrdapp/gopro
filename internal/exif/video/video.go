@@ -88,7 +88,7 @@ func (v *videoExifData) videoWidthHeight() (wh map[string]VideoDimension, err er
 		arr := []string{width, height}
 		str := findxRegex.FindAllString(string(b), -1)
 		for i := range arr {
-			intvals, err := strconv.Atoi(str[i])
+			intvals, err := strconv.Atoi(arr[i])
 			if err != nil {
 				err = errors.Wrapf(err, "strconv in wh loop failed at pos %v with video val %s", i, str[i])
 			}
