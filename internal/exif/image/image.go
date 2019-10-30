@@ -73,7 +73,6 @@ func ReadImage(r io.Reader) *exif.Output {
 		PixelYDimension: fmtMap[goexif.PixelYDimension],
 		Copyright:       author,
 		MediaSize:       size,
-		ExifError:       err.Error(),
 		// ? do this MediaFormat:     mediaFmt,
 	}
 }
