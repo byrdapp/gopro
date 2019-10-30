@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -10,7 +9,7 @@ import (
 
 // ResponseBuilder builds custom errors to a http response writer
 type ErrResponseBuilder struct {
-	Code      int    `json:"code"`
+	Status    int    `json:"status"`
 	ClientMsg string `json:"msg"`
 	w         http.ResponseWriter
 	err       error
@@ -19,9 +18,9 @@ type ErrResponseBuilder struct {
 
 // NewResErr constructs and executes an err struct.
 // Set stackTraced = "trace" to show error stack.
-func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTraced ...string) *ErrResponseBuilder {
+func NewResErr(err error, msg string, statusCode int, w http.ResponseWriter, stackTraced ...string) *ErrResponseBuilder {
 	build := &ErrResponseBuilder{
-		Code:      code,
+		Status:    statusCode,
 		ClientMsg: msg,
 		w:         w,
 		err:       err,
@@ -30,8 +29,10 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 		build.traced = stackTraced[0]
 	}
 	if build.traced == "trace" {
-		stackErr := build.errStackTraced()
-		log.Errorf("Error stacktraced: %as", stackErr)
+		build.errStackTraced()
+	}
+	if build.traced == "err" {
+		log.Error(err)
 	}
 	if err := build.ErrorResponse(); err != nil {
 		log.Errorf("Internal error: %s", err)
@@ -39,26 +40,32 @@ func NewResErr(err error, msg string, code int, w http.ResponseWriter, stackTrac
 	return build
 }
 
-// ErrorImbedded returns a responsebuilder interface, that will act as a errorresponse, if other responses are present i.e:
-// {
-// err: {msg:.., code: xxxx}, <- this
-// data: {data},
-// }
-func (r *ErrResponseBuilder) ErrorImbedded(err error, msg string, code int) *ErrResponseBuilder {
-	return &ErrResponseBuilder{
-		Code:      code,
-		ClientMsg: msg,
-		err:       err,
-	}
+type errResponse struct {
+	Status    int    `json:"status"`
+	ClientMsg string `json:"msg"`
 }
 
 func (r *ErrResponseBuilder) ErrorResponse() error {
 	r.w.Header().Set("Content-Type", "application/json")
-	r.w.WriteHeader(r.Code)
-	return json.NewEncoder(r.w).Encode(r.ClientMsg)
+	errRes := &errResponse{
+		Status:    r.Status,
+		ClientMsg: r.ClientMsg,
+	}
+	r.w.WriteHeader(r.Status)
+	return json.NewEncoder(r.w).Encode(errRes)
 }
 
-func (r *ErrResponseBuilder) errStackTraced() error {
+func (r *ErrResponseBuilder) errStackTraced() {
+	// The `errors.Cause` function returns the originally wrapped error, which we can then type assert to its original struct type
 	err := errors.WithStack(r.err)
-	return fmt.Errorf("Cause: %s", errors.Cause(err))
+	log.Errorf("originated: %+v", err)
+}
+
+// Imbed errors in the response JSON
+func (r *ErrResponseBuilder) ErrorImbedded(err error, msg string, code int) *ErrResponseBuilder {
+	return &ErrResponseBuilder{
+		Status:    code,
+		ClientMsg: msg,
+		err:       err,
+	}
 }

@@ -39,13 +39,6 @@ func main() {
 		log.Fatalf("Error with DB %s", err)
 	}
 
-	// Start a reg. HTTP on a new thread
-	go func() {
-		if err := s.HttpRedirectServer.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
 	s.HttpListenServer.Addr = ":8080"
 	log.Infof("Serving on host w. address %s", s.HttpListenServer.Addr)
 	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
@@ -55,5 +48,4 @@ func main() {
 
 	// * runs until os.SIGTERM happens
 	s.WaitForShutdown()
-
 }

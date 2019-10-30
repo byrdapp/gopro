@@ -6,13 +6,14 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/blixenkrone/gopro/internal/exif"
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/logger"
 
 	_ "image/jpeg"
 	_ "image/png"
 
-	"github.com/rwcarlsen/goexif/exif"
+	goexif "github.com/rwcarlsen/goexif/exif"
 )
 
 var (
@@ -24,30 +25,21 @@ const (
 	exifIntVal = iota
 )
 
-// Output represents the final decoded EXIF data from an image
-type Output struct {
-	Date            int64   `json:"date,omitempty"`
-	Lat             float64 `json:"lat,omitempty"`
-	Lng             float64 `json:"lng,omitempty"`
-	Copyright       string  `json:"copyright,omitempty"`
-	Model           string  `json:"model,omitempty"`
-	PixelXDimension int     `json:"pixelXDimension,omitempty"`
-	PixelYDimension int     `json:"pixelYDimension,omitempty"`
-	MediaSize       float64 `json:"mediaSize,omitempty"`
-	// MediaFormat     string  `json:"mediaFormat,omitempty"`
+type imgExifData struct {
+	x *goexif.Exif
 }
 
 // GetOutput returns the struct *Output containing img data. Call this for each img.
-func GetOutput(r io.Reader) (*Output, error) {
+func ReadImage(r io.Reader) (*exif.Output, error) {
 	x, err := loadExifData(r)
 	if err != nil {
 		return nil, fmt.Errorf("Error loading exif: %s", err)
 	}
-	lat, err := x.calcGeoCoordinate(exif.GPSLatitude)
+	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting lat data: %s", err)
 	}
-	lng, err := x.calcGeoCoordinate(exif.GPSLongitude)
+	lng, err := x.calcGeoCoordinate(goexif.GPSLongitude)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting lng data: %s", err)
 	}
@@ -72,26 +64,22 @@ func GetOutput(r io.Reader) (*Output, error) {
 		return nil, fmt.Errorf("Error getting media filesize")
 	}
 
-	return &Output{
+	return &exif.Output{
 		Lat:             lat,
 		Lng:             lng,
 		Date:            date,
 		Model:           model,
-		PixelXDimension: fmtMap[exif.PixelXDimension],
-		PixelYDimension: fmtMap[exif.PixelYDimension],
+		PixelXDimension: fmtMap[goexif.PixelXDimension],
+		PixelYDimension: fmtMap[goexif.PixelYDimension],
 		Copyright:       author,
 		MediaSize:       size,
 		// ? do this MediaFormat:     mediaFmt,
 	}, nil
 }
 
-type imgExifData struct {
-	x *exif.Exif
-}
-
 // loadExifData request exif data for image
 func loadExifData(r io.Reader) (*imgExifData, error) {
-	x, err := exif.Decode(r)
+	x, err := goexif.Decode(r)
 	if err != nil {
 		log.Errorln("ERROR DECODING: " + err.Error())
 		return nil, fmt.Errorf("Error decoding EXIF in image")
@@ -99,10 +87,10 @@ func loadExifData(r io.Reader) (*imgExifData, error) {
 	return &imgExifData{x}, nil
 }
 
-func (e *imgExifData) calcGeoCoordinate(fieldName exif.FieldName) (float64, error) {
+func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, error) {
 	tag, err := e.x.Get(fieldName)
 	if err != nil {
-		if exif.IsTagNotPresentError(err) {
+		if goexif.IsTagNotPresentError(err) {
 			log.Errorf("Error reading Geolocation in EXIF: %s", err)
 			return 0.0, fmt.Errorf("Error reading Geolocation: %s", err)
 		}
@@ -134,7 +122,7 @@ func (e *imgExifData) getDateTime() (d int64, err error) {
 }
 
 func (e *imgExifData) getCopyright() (author string, err error) {
-	tag, err := e.x.Get(exif.Copyright)
+	tag, err := e.x.Get(goexif.Copyright)
 	if err != nil {
 		return author, err
 	}
@@ -142,7 +130,7 @@ func (e *imgExifData) getCopyright() (author string, err error) {
 }
 
 func (e *imgExifData) getCameraModel() (model string, err error) {
-	n := exif.FieldName(exif.Model)
+	n := goexif.FieldName(goexif.Model)
 	tag, err := e.x.Get(n)
 	if err != nil {
 		return model, err
@@ -150,9 +138,9 @@ func (e *imgExifData) getCameraModel() (model string, err error) {
 	return tag.StringVal()
 }
 
-func (e *imgExifData) getImageFormatData() (map[exif.FieldName]int, error) {
-	var fNames = []exif.FieldName{exif.PixelXDimension, exif.PixelYDimension}
-	var fNameVal = make(map[exif.FieldName]int, len(fNames))
+func (e *imgExifData) getImageFormatData() (map[goexif.FieldName]int, error) {
+	var fNames = []goexif.FieldName{goexif.PixelXDimension, goexif.PixelYDimension}
+	var fNameVal = make(map[goexif.FieldName]int, len(fNames))
 	for _, n := range fNames {
 		tag, err := e.x.Get(n)
 		if err != nil {

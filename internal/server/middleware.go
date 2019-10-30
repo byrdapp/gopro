@@ -25,6 +25,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			NewResErr(err, "Token could not be verified, or the token is expired.", http.StatusUnauthorized, w)
 			return
 		}
+
 		if ok, err := fb.IsAdminUID(r.Context(), token.UID); ok && err == nil {
 			next(w, r)
 			return
@@ -42,20 +43,25 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
 		// ? verify here, that the user is a pro user
-
 		if headerToken == "" {
 			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
 			NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
-		tkn, err := fb.VerifyToken(r.Context(), headerToken)
+		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
 			err = fmt.Errorf("Err: %s", err)
 			NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-		log.Info(tkn.UID)
+
+		if isPro, err := fb.IsProfessional(r.Context(), token.UID); !isPro || err != nil {
+			NewResErr(err, err.Error(), http.StatusUnauthorized, w)
+			http.RedirectHandler("/login", http.StatusFound)
+			return
+		}
+
 		next(w, r)
 	})
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,15 +12,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
+	exif "github.com/blixenkrone/gopro/internal/exif"
+	image "github.com/blixenkrone/gopro/internal/exif/image"
+	video "github.com/blixenkrone/gopro/internal/exif/video"
+
 	"github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/pkg/conversion"
-	exif "github.com/blixenkrone/gopro/pkg/exif"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
-	"github.com/davecgh/go-spew/spew"
 	mux "github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 )
+
+var JSONEncodingError = errors.New("Error converting exif to JSON")
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -43,15 +48,15 @@ type Credentials struct {
 
 var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 	// ? verify here, that the user is a pro user
-
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
+		var err error
 		var creds Credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 			NewResErr(err, "Error decoding JSON from request body", http.StatusBadRequest, w)
 			return
 		}
-		// defer r.Body.Close()
+		defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
 			err := fmt.Errorf("Missing email or password in credentials")
 			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
@@ -61,6 +66,11 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 		usr, err := fb.GetProfileByEmail(r.Context(), creds.Email)
 		if err != nil {
 			NewResErr(err, "Error finding authentication for profile. Is the email/password correct, and does the user exist?", http.StatusBadRequest, w)
+			return
+		}
+
+		if isPro, err := fb.IsProfessional(r.Context(), usr.UID); !isPro || err != nil {
+			NewResErr(err, err.Error(), http.StatusUnauthorized, w)
 			return
 		}
 
@@ -176,12 +186,11 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
-						log.Infoln("Image EXIF EOF")
 						break
 					}
 					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
 				}
-				output, err := exif.GetOutput(part)
+				output, err := image.ReadImage(part)
 				if err != nil {
 					x.Err = x.Err.ErrorImbedded(err, err.Error(), 401)
 				}
@@ -191,7 +200,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
-				NewResErr(err, "Error converting exif to JSON", http.StatusInternalServerError, w)
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
 				return
 			}
 		}
@@ -200,21 +209,38 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		// Parse media type to get type of media
-		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		var res ExifResponse
+		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
-		spew.Dump(mediaType)
-		spew.Dump(params)
-		var buf bytes.Buffer
-		_, err = io.ReadFull(r.Body, buf.Bytes())
+		w.Header().Set("Content-Type", mediaType)
+		video, err := video.ReadVideo(r.Body)
 		if err != nil {
-			NewResErr(err, "Error getting result for professional", http.StatusNotFound, w)
+			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
+		defer r.Body.Close()
+
+		out, err := video.CreateVideoExifOutput()
+		if err != nil {
+			// NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
+			res.Err = res.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		defer r.Body.Close()
+		defer video.File.RemoveFile()
+
+		if err := video.File.Close(); err != nil {
+			log.Errorln(err)
+		}
+
+		if err := json.NewEncoder(w).Encode(out); err != nil {
+			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
+		}
+
 	}
 }
 

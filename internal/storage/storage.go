@@ -36,6 +36,7 @@ type FBService interface {
 	CreateCustomTokenWithClaims(ctx context.Context, uid string, claims map[string]interface{}) (string, error)
 	IsAdminClaims(claims map[string]interface{}) bool
 	IsAdminUID(ctx context.Context, uid string) (bool, error)
+	IsProfessional(ctx context.Context, uid string) (bool, error)
 	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 

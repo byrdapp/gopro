@@ -4,15 +4,17 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
-	cloud.google.com/go/bigquery v1.1.0 // indirect
+	cloud.google.com/go/bigquery v1.2.0 // indirect
 	cloud.google.com/go/firestore v1.0.0 // indirect
-	cloud.google.com/go/storage v1.1.1 // indirect
+	cloud.google.com/go/storage v1.1.2 // indirect
 	firebase.google.com/go v3.9.0+incompatible
+	github.com/3d0c/gmf v0.0.0-20190724130615-f4b5acb7db5c
 	github.com/Masterminds/squirrel v1.1.0
-	github.com/aws/aws-sdk-go v1.25.13
+	github.com/aws/aws-sdk-go v1.25.21
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dhowden/tag v0.0.0-20190519100835-db0c67e351b1
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
-	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
+	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1 // indirect
@@ -30,13 +32,12 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.4.0 // indirect
 	go.opencensus.io v0.22.1 // indirect
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
-	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf
+	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191010194322-b09406accb47 // indirect
-	golang.org/x/tools v0.0.0-20191015211201-9c6d90b5a7d0 // indirect
-	google.golang.org/api v0.11.0
+	golang.org/x/sys v0.0.0-20191028164358-195ce5e7f934 // indirect
+	golang.org/x/tools v0.0.0-20191029041327-9cc4af7d6b2c // indirect
+	google.golang.org/api v0.13.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect

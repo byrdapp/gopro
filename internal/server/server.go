@@ -21,10 +21,9 @@ import (
 )
 
 var (
-	log  = logger.NewLogger()
-	pq   storage.PQService
-	fb   storage.FBService
-	host = "pro.development.byrd.news"
+	log = logger.NewLogger()
+	pq  storage.PQService
+	fb  storage.FBService
 )
 
 // Server is used in main.go
@@ -66,7 +65,7 @@ func NewServer() *Server {
 	mux.HandleFunc("/logoff", signOut).Methods("POST")
 
 	mux.HandleFunc("/mail/send", isAuth(sendMail)).Methods("POST")
-	mux.HandleFunc("/exif/images", isAuth(exifImages)).Methods("POST")
+	mux.HandleFunc("/exif/image", isAuth(exifImages)).Methods("POST")
 	mux.HandleFunc("/exif/video", isAuth(exifVideo)).Methods("POST")
 	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
@@ -90,11 +89,11 @@ func NewServer() *Server {
 	log.Infoln(c.Log)
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(host),
-		Cache:      autocert.DirCache("certs"),
-	}
+	// m := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist(host),
+	// 	Cache:      autocert.DirCache("certs"),
+	// }
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
@@ -114,19 +113,20 @@ func NewServer() *Server {
 	}
 
 	// Create server for redirecting HTTP to HTTPS
-	httpSrv := &http.Server{
-		Addr:           ":http",
-		ReadTimeout:    httpsSrv.ReadTimeout,
-		WriteTimeout:   httpsSrv.WriteTimeout,
-		IdleTimeout:    httpsSrv.IdleTimeout,
-		MaxHeaderBytes: 1 << 20,
-		Handler:        m.HTTPHandler(nil),
-	}
+	// httpSrv := &http.Server{
+	// 	Addr:           ":http",
+	// 	ReadTimeout:    httpsSrv.ReadTimeout,
+	// 	WriteTimeout:   httpsSrv.WriteTimeout,
+	// 	IdleTimeout:    httpsSrv.IdleTimeout,
+	// 	MaxHeaderBytes: 1 << 20,
+	// 	Handler:        mux,
+	// 	// Handler:        m.HTTPHandler(nil),
+	// }
 
 	return &Server{
-		HttpListenServer:   httpsSrv,
-		HttpRedirectServer: httpSrv,
-		CertM:              &m,
+		HttpListenServer: httpsSrv,
+		// HttpRedirectServer: httpSrv,
+		// CertM:              &m,
 	}
 }
 
