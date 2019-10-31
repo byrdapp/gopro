@@ -1,10 +1,12 @@
-package exif
+package image
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/pkg/errors"
 
 	"github.com/blixenkrone/gopro/internal/exif"
 	"github.com/blixenkrone/gopro/pkg/conversion"
@@ -29,39 +31,50 @@ type imgExifData struct {
 	x *goexif.Exif
 }
 
-// GetOutput returns the struct *Output containing img data. Call this for each img.
+// GetOutput returns the struct *Output containing img data.
+// This will always complete but the errors from missing/broken exif will follow.
 func ReadImage(r io.Reader) *exif.Output {
+	xErr := &exif.Output{ExifErrors: make(map[string]string)}
+
 	x, err := loadExifData(r)
 	if err != nil {
-		err = fmt.Errorf("Error loading exif: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("load", err)
 	}
 	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
-		err = fmt.Errorf("Error getting lat data: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("lat", err)
 	}
 	lng, err := x.calcGeoCoordinate(goexif.GPSLongitude)
 	if err != nil {
-		err = fmt.Errorf("Error getting lng data: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("lng", err)
 	}
 	date, err := x.getDateTime()
 	if err != nil {
-		err = fmt.Errorf("Error getting datetime: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("date", err)
 	}
 	author, err := x.getCopyright()
 	if err != nil {
-		err = fmt.Errorf("Error getting copyright: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("copyright", err)
 	}
 	model, err := x.getCameraModel()
 	if err != nil {
-		err = fmt.Errorf("Error getting camera model: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("model", err)
 	}
-	fmtMap, err := x.getImageFormatData()
+	dimensions, err := x.getImageDimensions()
 	if err != nil {
-		err = fmt.Errorf("Error getting img fmt data: %s", err)
+		err = errors.Cause(err)
+		xErr.MissingExif("dimension", err)
 	}
 	size, err := x.getFileSize(r)
 	if err != nil {
-		err = fmt.Errorf("Error getting media filesize")
+		err = errors.Cause(err)
+		xErr.MissingExif("fileSize", err)
 	}
 
 	return &exif.Output{
@@ -69,10 +82,11 @@ func ReadImage(r io.Reader) *exif.Output {
 		Lng:             lng,
 		Date:            date,
 		Model:           model,
-		PixelXDimension: fmtMap[goexif.PixelXDimension],
-		PixelYDimension: fmtMap[goexif.PixelYDimension],
+		PixelXDimension: dimensions[goexif.PixelXDimension],
+		PixelYDimension: dimensions[goexif.PixelYDimension],
 		Copyright:       author,
 		MediaSize:       size,
+		ExifErrors:      xErr.ExifErrors,
 		// ? do this MediaFormat:     mediaFmt,
 	}
 }
@@ -82,7 +96,7 @@ func loadExifData(r io.Reader) (*imgExifData, error) {
 	x, err := goexif.Decode(r)
 	if err != nil {
 		log.Errorln("ERROR DECODING: " + err.Error())
-		return nil, fmt.Errorf("Error decoding EXIF in image")
+		return nil, errors.Wrap(err, "loading exif error")
 	}
 	return &imgExifData{x}, nil
 }
@@ -138,7 +152,7 @@ func (e *imgExifData) getCameraModel() (model string, err error) {
 	return tag.StringVal()
 }
 
-func (e *imgExifData) getImageFormatData() (map[goexif.FieldName]int, error) {
+func (e *imgExifData) getImageDimensions() (map[goexif.FieldName]int, error) {
 	var fNames = []goexif.FieldName{goexif.PixelXDimension, goexif.PixelYDimension}
 	var fNameVal = make(map[goexif.FieldName]int, len(fNames))
 	for _, n := range fNames {

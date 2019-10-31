@@ -188,12 +188,10 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					if err == io.EOF {
 						break
 					}
-					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
+					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+					break
 				}
-				output, err := image.ReadImage(part)
-				if err != nil {
-					x.Err = x.Err.ErrorImbedded(err, err.Error(), 401)
-				}
+				output := image.ReadImage(part)
 
 				x.Data = output
 				res = append(res, &x)
@@ -225,7 +223,6 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 
 		out, err := video.CreateVideoExifOutput()
 		if err != nil {
-			// NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
 			res.Err = res.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -240,6 +237,76 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
 		}
+	}
+}
+
+type ClientReq struct {
+	Geoloc           map[string]int `json:"_geoloc"`
+	IsHash           bool           `json:"isHash"`
+	StoryHeadline    string         `json:"storyHeadline"`
+	StoryDescription string         `json:"storyDescription"`
+	Media            []*media       `json:"media"`
+}
+
+type Upload struct {
+	ClientReq,
+	ArrayBuffer string `json:"arrBuffer"`
+}
+
+type media struct {
+	Geoloc         map[string]int `json:"_geoloc"`
+	MediaDate      int64          `json:"mediaDate"`
+	MediaExtension string         `json:"mediaExtension"`
+	MediaType      string         `json:"mediaType"`
+	MediaDevice    string         `json:"mediaDevice"`
+	IsVerified     bool           `json:"isVerified"`
+	MediaWidth     int            `json:"mediaWidth"`
+	MediaHeight    int            `json:"mediaHeight"`
+	MediaSize      float64        `json:"mediaSize"`
+}
+
+var uploadByrdAPIRequest = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "multipart/form-data")
+		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
+		defer cancel()
+
+		// Parse media type to get type of media
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+
+		if strings.HasPrefix(mediaType, "multipart/") {
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
+			for {
+				part, err := mr.NextPart()
+				// defer part.Close()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					log.Error(err)
+					break
+				}
+				fileName := part.FormName()
+				formVal := r.FormValue(fileName)
+				log.Info(formVal)
+			}
+
+			if err != nil {
+				NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+				return
+			}
+
+			if err := json.NewEncoder(w).Encode([]byte("hello")); err != nil {
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+				return
+			}
+		}
+
 	}
 }
 

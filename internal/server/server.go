@@ -67,6 +67,8 @@ func NewServer() *Server {
 	mux.HandleFunc("/mail/send", isAuth(sendMail)).Methods("POST")
 	mux.HandleFunc("/exif/image", isAuth(exifImages)).Methods("POST")
 	mux.HandleFunc("/exif/video", isAuth(exifVideo)).Methods("POST")
+	mux.HandleFunc("/upload/byrd", uploadByrdAPIRequest).Methods("POST")
+
 	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
 

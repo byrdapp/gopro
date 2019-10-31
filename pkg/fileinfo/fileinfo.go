@@ -66,3 +66,10 @@ func (f *File) FileSize() (size float64, err error) {
 	size = conversion.FileSizeBytesToFloat(int(fInfo.Size()))
 	return size, err
 }
+
+func (f *File) EncodeExif(metaTag, value string) error {
+	// Handle file types
+
+	return nil
+
+}
