@@ -1,4 +1,4 @@
-package fileinfo
+package file
 
 import (
 	"io"
@@ -23,11 +23,26 @@ type FileGenerator interface {
 	FileStat() (os.FileInfo, error)
 }
 
+func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
+	// rd := io.LimitReader(r, limit)
+	rd := io.LimitReader(r, 1000)
+	b, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return nil, err
+	}
+	return writeTmpFile(b)
+
+}
+
 func NewFile(r io.Reader) (FileGenerator, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
+	return writeTmpFile(b)
+}
+
+func writeTmpFile(b []byte) (FileGenerator, error) {
 	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating tmp file")

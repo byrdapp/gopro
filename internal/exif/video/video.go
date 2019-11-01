@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	exif "github.com/blixenkrone/gopro/internal/exif"
-	"github.com/blixenkrone/gopro/pkg/fileinfo"
+	"github.com/blixenkrone/gopro/pkg/file"
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
@@ -23,11 +23,11 @@ const (
 )
 
 type videoExifData struct {
-	File fileinfo.FileGenerator
+	File file.FileGenerator
 }
 
 func ReadVideo(r io.Reader) (*videoExifData, error) {
-	f, err := fileinfo.NewFile(r)
+	f, err := file.NewFile(r)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,8 @@ func ReadVideo(r io.Reader) (*videoExifData, error) {
 	}, nil
 }
 
-func (v *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
+func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
+	xErr := &exif.Output{ExifErrors: make(map[string]string)}
 	// TODO:
 	// thumbnail, err := f.makeThumbnail()
 	// if err != nil {
@@ -52,23 +53,27 @@ func (v *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
 
 	size, err := v.File.FileSize()
 	if err != nil {
-		return nil, err
+		err = errors.Cause(err)
+		xErr.MissingExif("filesize", err)
 	}
 
-	wh, err := v.videoWidthHeight()
-	if err != nil {
-		return nil, err
-	}
+	// wh, err := v.videoWidthHeight()
+	// if err != nil {
+	// 	xErr.MissingExif("dimension", err)
+	// }
 
 	return &exif.Output{
-		MediaSize:       size,
-		PixelXDimension: wh[width],
-		PixelYDimension: wh[height],
-	}, nil
+		MediaSize: size,
+		// PixelXDimension: wh[width],
+		// PixelYDimension: wh[height],
+		ExifErrors: xErr.ExifErrors,
+	}
 }
 
 // map represents height and width as string values i.e: hw["width"].
 func (v *videoExifData) videoWidthHeight() (wh map[string]int, err error) {
+	fileSize, _ := v.File.FileSize()
+	log.Info(fileSize)
 	wh = make(map[string]int)
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
@@ -76,7 +81,9 @@ func (v *videoExifData) videoWidthHeight() (wh map[string]int, err error) {
 	}
 	cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", v.File.FileName())
 	output, err := cmd.Output()
-	log.Info(output)
+	if err != nil {
+		return nil, errors.Wrap(err, "error exec cmd ffprobe width height")
+	}
 	regex := `[0-9]*`
 	findxRegex := regexp.MustCompile(regex)
 	matched, err := regexp.Match(regex, output)

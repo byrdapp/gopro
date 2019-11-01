@@ -150,17 +150,9 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ExifResponse is json encoded to client
-// The struct also sets exif decoding errors to the response writer.
-type ExifResponse struct {
-	Data *exif.Output        `json:"data,omitempty"`
-	Err  *ErrResponseBuilder `json:"err,omitempty"`
-}
-
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
-
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -206,7 +198,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		var res ExifResponse
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
@@ -218,26 +209,20 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
-		defer r.Body.Close()
 
-		out, err := video.CreateVideoExifOutput()
-		if err != nil {
-			res.Err = res.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
-			return
-		}
+		out := video.CreateVideoExifOutput()
 
 		defer func() {
-			// if err := r.Body.Close(); err != nil {
-			// 	log.Error(err)
-			// }
-			// if err := video.File.RemoveFile(); err != nil {
-			// 	log.Error(err)
-			// }
+			if err := r.Body.Close(); err != nil {
+				log.Error(err)
+			}
+			if err := video.File.Close(); err != nil {
+				log.Errorln(err)
+			}
+			if err := video.File.RemoveFile(); err != nil {
+				log.Error(err)
+			}
 		}()
-
-		if err := video.File.Close(); err != nil {
-			log.Errorln(err)
-		}
 
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
