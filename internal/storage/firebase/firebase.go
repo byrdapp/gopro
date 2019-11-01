@@ -89,12 +89,20 @@ func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 }
 
 // GetWithdrawals - this guy
-func (db *Firebase) GetWithdrawals() ([]*storage.Withdrawals, error) {
-	p := os.Getenv("ENV") + "/transactions"
+func (db *Firebase) GetWithdrawals(ctx context.Context) ([]*storage.Withdrawals, error) {
+	p := os.Getenv("ENV") + "/withdrawals"
 	wd := []*storage.Withdrawals{}
 	ref := db.Client.NewRef(p)
-	if err := ref.Get(db.Context, wd); err != nil {
-		return nil, err
+	res, err := ref.OrderByKey().GetOrdered(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting ordered error")
+	}
+	for _, r := range res {
+		w := &storage.Withdrawals{}
+		if err := r.Unmarshal(w); err != nil {
+			return nil, errors.Wrap(err, "unmarshall struct error")
+		}
+		wd = append(wd, w)
 	}
 	return wd, nil
 }
@@ -127,15 +135,15 @@ func (db *Firebase) GetProfiles(ctx context.Context) ([]*storage.FirebaseProfile
 	ref := db.Client.NewRef(path)
 	res, err := ref.OrderByKey().GetOrdered(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reference error")
 	}
 	fmt.Printf("Path: %s\n", ref.Path)
 	for _, r := range res {
-		var p *storage.FirebaseProfile
+		var p storage.FirebaseProfile
 		if err := r.Unmarshal(&p); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "unmarshall struct error")
 		}
-		prfs = append(prfs, p)
+		prfs = append(prfs, &p)
 	}
 	return prfs, nil
 }

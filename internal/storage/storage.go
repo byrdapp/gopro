@@ -27,7 +27,7 @@ type FBService interface {
 	GetTransactions() ([]*Transaction, error)
 	// ! dont update anything from the API - only scripting
 	UpdateData(uid string, prop string, value string) error
-	GetWithdrawals() ([]*Withdrawals, error)
+	GetWithdrawals(ctx context.Context) ([]*Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
 	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
@@ -121,9 +121,9 @@ type Transaction struct {
 // Withdrawals ..
 type Withdrawals struct {
 	// CashoutDetails       string `json:"cashoutDetails,omitempty"`
-	RequestAmount        int64  `json:"requestAmount,omitempty"`
+	RequestAmount        int    `json:"requestAmount,omitempty"`
 	RequestCompleted     bool   `json:"requestCompleted,omitempty"`
-	RequestCompletedDate int64  `json:"requestCompletedDate,omitempty"`
+	RequestCompletedDate int    `json:"requestCompletedDate,omitempty"`
 	RequestUserID        string `json:"requestUser,omitempty"`
 	RequestDate          int64  `json:"requestDate,omitempty"`
 }

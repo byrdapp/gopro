@@ -1,15 +1,17 @@
-package scripts
+package main
 
 import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
+	"time"
 
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
+	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/joho/godotenv"
 )
 
 // func createCSV(record []string, index int, info interface{}) {
@@ -20,24 +22,45 @@ import (
 // 	}
 // }
 
-// WithdrawalsToCSV asdasd
-func WithdrawalsToCSV(db *firebase.Firebase) {
-	withdrawals, err := db.GetWithdrawals()
+var (
+	log = logger.NewLogger()
+	fb  storage.FBService
+)
+
+func main() {
+	if err := godotenv.Load(); err != nil {
+		panic(err)
+	}
+
+	fbsrv, err := firebase.NewFB()
 	if err != nil {
-		log.Fatalf("Error initializing db %s\n", err)
+		log.Fatalf("Error starting firebase: %s", err)
+	}
+	fb = fbsrv
+	// WithdrawalsToCSV()
+	ProfilesToCSV()
+}
+
+// WithdrawalsToCSV asdasd
+func WithdrawalsToCSV() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*40)
+	defer cancel()
+	withdrawals, err := fb.GetWithdrawals(ctx)
+	if err != nil {
+		log.Fatalf("error getting withdrawals %s\n", err)
 	}
 
 	csvWriter := CreateCSVWriterFile("withdrawals_not_completed_" + os.Getenv("ENV") + ".csv")
 	for idx, wd := range withdrawals {
-		writeWithdrawalsToCSV(db, csvWriter, idx, wd)
+		writeWithdrawalsToCSV(csvWriter, idx, wd)
 	}
 	defer fmt.Println("Done writing CSV!")
 }
 
 // WriteWithdrawalsToCSV Does everything inside the loop above
-func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val *storage.Withdrawals) {
+func writeWithdrawalsToCSV(w *csv.Writer, index int, val *storage.Withdrawals) {
 	fmt.Println("The userID: ", val.RequestUserID)
-	profile, err := db.GetProfile(context.Background(), val.RequestUserID)
+	profile, err := fb.GetProfile(context.Background(), val.RequestUserID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,8 +68,8 @@ func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val 
 	record = append(record, strconv.FormatInt(int64(index), 10))
 	record = append(record, ParseUnixAsDate(val.RequestDate))
 	record = append(record, profile.DisplayName)
-	record = append(record, strconv.FormatInt(val.RequestAmount, 10))
-	record = append(record, ParseUnixAsDate(val.RequestCompletedDate))
+	record = append(record, strconv.FormatInt(int64(val.RequestAmount), 10))
+	record = append(record, ParseUnixAsDate(int64(val.RequestCompletedDate)))
 	record = append(record, "Udbetalt? : "+strconv.FormatBool(val.RequestCompleted))
 	err = w.Write(record)
 	if err != nil {
@@ -57,14 +80,14 @@ func writeWithdrawalsToCSV(db *firebase.Firebase, w *csv.Writer, index int, val 
 }
 
 // ProfilesToCSV initiates data and loops the write process
-func ProfilesToCSV(db *firebase.Firebase) {
-	prfs, err := db.GetProfiles(db.Context)
+func ProfilesToCSV() {
+	prfs, err := fb.GetProfiles(context.Background())
 	if err != nil {
-		log.Fatalf("Error initializing db %s\n", err)
+		log.Fatalf("Error getting profiles from db %s\n", err)
 	}
 
 	csvWriter := CreateCSVWriterFile("profile_withdrawable_" + os.Getenv("ENV") + ".csv")
-	rowNames := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+	rowNames := []string{"#", "dName", "fullName", "email", "pro user", "# of sales", "withdrawable amount", "already withdrawed", "total revenue", ""}
 	WriteColumnHeaders(rowNames, csvWriter)
 
 	index := int64(1)
@@ -77,7 +100,7 @@ func ProfilesToCSV(db *firebase.Firebase) {
 	defer fmt.Println("Done writing CSV!")
 }
 
-// WriteProfilesToCSV Does everything inside the loop above
+// writeProfilesToCSV Does everything inside the loop above
 func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.FirebaseProfile) {
 	alreadyCashedAmount := (profile.SalesAmount - profile.WithdrawableAmount)
 	var record []string
@@ -97,4 +120,37 @@ func writeProfilesToCSV(csvWriter *csv.Writer, index int64, profile *storage.Fir
 	}
 	fmt.Printf("\n----\nConverting key: %v with profileName: %v\n", index, profile.DisplayName)
 	csvWriter.Flush()
+}
+
+// CreateCSVWriterFile asd
+func CreateCSVWriterFile(fileName string) *csv.Writer {
+	file, err := os.Create(fileName)
+	if err != nil {
+		log.Println(err)
+	}
+	w := csv.NewWriter(file)
+	return w
+}
+
+// WriteColumnHeaders sizes of columns
+func WriteColumnHeaders(columns []string, csvWriter *csv.Writer) {
+	err := csvWriter.Write(columns)
+	if err != nil {
+		log.Fatalf("Error writing columns %s", err)
+	}
+}
+
+// ParseUnixAsDate asd
+func ParseUnixAsDate(val int64) string {
+	if val == 0 {
+		return "%"
+	}
+	date := time.Unix((val / 1000), 0)
+	fmt.Println(date)
+	return date.UTC().String()
+}
+
+// ParseFloatUnixDate float64 instead of int64
+func ParseFloatUnixDate(t *time.Time) string {
+	return t.UTC().String()
 }
