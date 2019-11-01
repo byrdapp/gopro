@@ -1,5 +1,7 @@
 package exif
 
+// type MediaDimension int
+
 // Output represents the final decoded EXIF data from an image
 type Output struct {
 	Date            int64             `json:"date,omitempty"`

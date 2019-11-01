@@ -22,8 +22,6 @@ const (
 	height = "height"
 )
 
-type VideoDimension int
-
 type videoExifData struct {
 	File fileinfo.FileGenerator
 }
@@ -47,7 +45,7 @@ func (v *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
 	// }
 
 	// TODO:
-	// meta, err := f.execMetadata()
+	// _, err := v.execMetadata()
 	// if err != nil {
 	// 	return nil, err
 	// }
@@ -64,39 +62,47 @@ func (v *videoExifData) CreateVideoExifOutput() (*exif.Output, error) {
 
 	return &exif.Output{
 		MediaSize:       size,
-		PixelXDimension: int(wh[width]),
-		PixelYDimension: int(wh[height]),
+		PixelXDimension: wh[width],
+		PixelYDimension: wh[height],
 	}, nil
 }
 
 // map represents height and width as string values i.e: hw["width"].
-func (v *videoExifData) videoWidthHeight() (wh map[string]VideoDimension, err error) {
-	wh = make(map[string]VideoDimension)
+func (v *videoExifData) videoWidthHeight() (wh map[string]int, err error) {
+	wh = make(map[string]int)
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
 		return nil, errors.New("error finding exec path for ffprobe")
 	}
 	cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", v.File.FileName())
-	b, err := cmd.Output()
+	output, err := cmd.Output()
+	log.Info(output)
 	regex := `[0-9]*`
 	findxRegex := regexp.MustCompile(regex)
-	matched, err := regexp.Match(regex, b)
+	matched, err := regexp.Match(regex, output)
 	if err != nil {
 		return nil, errors.Wrap(err, "regex failed to match")
 	}
 	if matched {
+		log.Infof("matched %s", v.File.FileName())
+		// width always comes first
+		dimensions := findxRegex.FindAllString(string(output), -1)
+		log.Infof("%s", dimensions)
 		arr := []string{width, height}
-		str := findxRegex.FindAllString(string(b), -1)
 		for i := range arr {
-			intvals, err := strconv.Atoi(arr[i])
 			if err != nil {
-				err = errors.Wrapf(err, "strconv in wh loop failed at pos %v with video val %s", i, str[i])
+				err = errors.Wrapf(err, "str conv in wh loop failed at pos %v with video val %s", i, dimensions[i])
 			}
-			wh[arr[i]] = VideoDimension(intvals)
+			dimension, err := strconv.Atoi(dimensions[i])
+			if err != nil {
+				log.Error(errors.Wrap(err, "dimension strconv failed"))
+			}
+			wh[arr[i]] = dimension
 		}
 	} else {
 		return nil, errors.New("error finding valid string match for video width/height")
 	}
+	spew.Dump(wh)
 	return wh, err
 }
 
@@ -147,17 +153,18 @@ func (v *videoExifData) execMetadata() (string, error) {
 		return "", errors.New("error finding exec path")
 	}
 	cmd := exec.Command(ffmpeg, "-report", "-y", "-i", v.File.FileName(), "-f", "ffmetadata", "-map_metadata", "0", output+".txt")
-	spew.Dump(cmd.String())
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	// spew.Dump(cmd.String())
+	// var out bytes.Buffer
+	// var stderr bytes.Buffer
+	// cmd.Stdout = &out
+	// cmd.Stderr = &stderr
 
 	err = cmd.Run()
 	if err != nil {
 		return "", errors.Wrap(err, "error exec output")
 	}
-	spew.Dump(stderr)
+	// spew.Dump(stderr)
+	spew.Dump(cmd.Output())
 	return string(""), nil
 }
 

@@ -12,18 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/sendgrid/sendgrid-go"
 
 	exif "github.com/blixenkrone/gopro/internal/exif"
 	image "github.com/blixenkrone/gopro/internal/exif/image"
 	video "github.com/blixenkrone/gopro/internal/exif/video"
-
-	"github.com/blixenkrone/gopro/internal/mail"
+	mail "github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/pkg/conversion"
+	conversion "github.com/blixenkrone/gopro/pkg/conversion"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
-	mux "github.com/gorilla/mux"
-	"github.com/sendgrid/sendgrid-go"
 )
 
 var JSONEncodingError = errors.New("Error converting exif to JSON")
@@ -179,10 +178,10 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*ExifResponse
+			var res []*exif.Output
 			for {
 				// read length of files
-				x := ExifResponse{}
+				var x exif.Output
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
@@ -193,7 +192,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 				}
 				output := image.ReadImage(part)
 
-				x.Data = output
+				x = *output
 				res = append(res, &x)
 			}
 
@@ -227,8 +226,14 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		defer r.Body.Close()
-		defer video.File.RemoveFile()
+		defer func() {
+			// if err := r.Body.Close(); err != nil {
+			// 	log.Error(err)
+			// }
+			// if err := video.File.RemoveFile(); err != nil {
+			// 	log.Error(err)
+			// }
+		}()
 
 		if err := video.File.Close(); err != nil {
 			log.Errorln(err)
@@ -246,11 +251,6 @@ type ClientReq struct {
 	StoryHeadline    string         `json:"storyHeadline"`
 	StoryDescription string         `json:"storyDescription"`
 	Media            []*media       `json:"media"`
-}
-
-type Upload struct {
-	ClientReq,
-	ArrayBuffer string `json:"arrBuffer"`
 }
 
 type media struct {

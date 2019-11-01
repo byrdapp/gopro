@@ -2,7 +2,6 @@ package image
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -105,10 +104,10 @@ func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, er
 	tag, err := e.x.Get(fieldName)
 	if err != nil {
 		if goexif.IsTagNotPresentError(err) {
-			log.Errorf("Error reading Geolocation in EXIF: %s", err)
-			return 0.0, fmt.Errorf("Error reading Geolocation: %s", err)
+			return 0.0, err
 		}
-		return 0.0, err
+
+		return 0.0, errors.WithMessagef(err, "error getting location coordinates from %s", fieldName)
 	}
 	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
 	fVals := make(map[string]float64, len(ratVals))
