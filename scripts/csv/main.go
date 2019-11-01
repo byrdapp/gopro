@@ -50,7 +50,7 @@ func WithdrawalsToCSV() {
 		log.Fatalf("error getting withdrawals %s\n", err)
 	}
 
-	csvWriter := CreateCSVWriterFile("withdrawals_not_completed_" + os.Getenv("ENV") + ".csv")
+	csvWriter := CreateCSVWriterFile("withdrawals_" + os.Getenv("ENV") + ".csv")
 	for idx, wd := range withdrawals {
 		writeWithdrawalsToCSV(csvWriter, idx, wd)
 	}
