@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bufio"
 	"io"
 	"io/ioutil"
 	"os"
@@ -34,10 +35,22 @@ func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
 
 }
 
+// Read whole file at once
 func NewFile(r io.Reader) (FileGenerator, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
+	}
+	return writeTmpFile(b)
+}
+
+// Read file buffered as scanner ! not tested !
+func NewFileBuffer(r *bufio.Scanner) (FileGenerator, error) {
+	var b []byte
+	for r.Scan() {
+		if err := r.Err(); err != nil {
+			return nil, err
+		}
 	}
 	return writeTmpFile(b)
 }

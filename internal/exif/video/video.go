@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
@@ -15,7 +16,10 @@ import (
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
-var log = logger.NewLogger()
+var (
+	log = logger.NewLogger()
+	mut sync.RWMutex
+)
 
 const (
 	width  = "width"
@@ -57,32 +61,36 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 		xErr.MissingExif("filesize", err)
 	}
 
-	// wh, err := v.videoWidthHeight()
-	// if err != nil {
-	// 	xErr.MissingExif("dimension", err)
-	// }
+	wh, err := v.videoWidthHeight()
+	if err != nil {
+		xErr.MissingExif("dimension", err)
+	}
 
 	return &exif.Output{
-		MediaSize: size,
-		// PixelXDimension: wh[width],
-		// PixelYDimension: wh[height],
-		ExifErrors: xErr.ExifErrors,
+		MediaSize:       size,
+		PixelXDimension: wh[width],
+		PixelYDimension: wh[height],
+		ExifErrors:      xErr.ExifErrors,
 	}
 }
 
 // map represents height and width as string values i.e: hw["width"].
 func (v *videoExifData) videoWidthHeight() (wh map[string]int, err error) {
-	fileSize, _ := v.File.FileSize()
-	log.Info(fileSize)
+	fileSize, err := v.File.FileSize()
+	if err != nil {
+		return nil, err
+	}
 	wh = make(map[string]int)
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
 		return nil, errors.New("error finding exec path for ffprobe")
 	}
+
+	log.Infof("filesize: %v, filename: %s", fileSize, v.File.FileName())
 	cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", v.File.FileName())
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "error exec cmd ffprobe width height")
+		return nil, errors.Wrap(err, "error exec cmd ffprobe width/height")
 	}
 	regex := `[0-9]*`
 	findxRegex := regexp.MustCompile(regex)
@@ -129,12 +137,11 @@ func (v *videoExifData) execThumbnail() (thumbnail []byte, err error) {
 	if err != nil {
 		return nil, errors.New("error finding exec path")
 	}
-	finfo, err := v.File.FileStat()
+	fsize, err := v.File.FileSize()
 	if err != nil {
-		return nil, err
+		return nil, errors.Cause(err)
 	}
-	log.Info(v.File.FileName())
-	log.Info(finfo.Size())
+	log.Infof("size: %d, name: %s", fsize, v.File.FileName())
 	fileName := v.File.FileName()
 	// test cmd: $ go test -v pkg/ffmpeg/ffmpeg_test.go
 	cmd := exec.Command(ffmpeg, "-report", "-y", "-i", fileName, "-ss", "00:00:04", "-vframes", "1", output+".png")
