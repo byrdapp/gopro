@@ -204,6 +204,7 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", mediaType)
+
 		video, err := video.ReadVideo(r.Body)
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
@@ -213,13 +214,13 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		out := video.CreateVideoExifOutput()
 
 		defer func() {
-			if err := r.Body.Close(); err != nil {
+			if err := video.File.RemoveFile(); err != nil {
 				log.Error(err)
 			}
 			if err := video.File.Close(); err != nil {
 				log.Errorln(err)
 			}
-			if err := video.File.RemoveFile(); err != nil {
+			if err := r.Body.Close(); err != nil {
 				log.Error(err)
 			}
 		}()

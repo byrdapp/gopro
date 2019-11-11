@@ -84,11 +84,9 @@ func NewServer() *Server {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "https://pro.development.byrd.news", "https://pro.byrd.news"},
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "Set-Cookie", "user_token"},
+		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
 		// AllowCredentials: true,
 	})
-
-	log.Infoln(c.Log)
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
 	// m := autocert.Manager{

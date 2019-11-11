@@ -1,11 +1,14 @@
 package exif
 
-import "github.com/blixenkrone/gopro/pkg/logger"
+import (
+	"github.com/blixenkrone/gopro/pkg/logger"
+)
 
 // type MediaDimension int
 
 // Output represents the final decoded EXIF data from an image
 type Output struct {
+	// File            file.FileGenerator
 	Date            int64             `json:"date,omitempty"`
 	Lat             float64           `json:"lat,omitempty"`
 	Lng             float64           `json:"lng,omitempty"`
@@ -26,8 +29,15 @@ func (o *Output) MissingExif(errType string, err error) {
 	o.ExifErrors[errType] = err.Error()
 }
 
-// type ExifReader interface {
-// 	VideoFile() (*Output, error)
-// 	ReadImage(r io.Reader) (*Output, error)
-// 	imageReader(r io.Reader) (*Output, error)
-// }
+func (o *Output) MediaType() (mediaType *string) {
+	// TODO: handle this stuff
+	switch o.Copyright {
+	case "image":
+		*mediaType = "image"
+	case "video":
+		*mediaType = "video"
+	default:
+		mediaType = nil
+	}
+	return mediaType
+}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -14,6 +15,8 @@ import (
 type File struct {
 	file *os.File
 }
+
+var mut = sync.Mutex{}
 
 type FileGenerator interface {
 	File() *os.File
@@ -60,8 +63,17 @@ func writeTmpFile(b []byte) (FileGenerator, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating tmp file")
 	}
+
+	mut.Lock()
 	if _, err = file.Write(b); err != nil {
 		return nil, errors.Wrap(err, "error writing to tmp file")
+	}
+	mut.Unlock()
+	if err := file.Chmod(0777); err != nil {
+		return nil, errors.Wrap(err, "error chmod tmp file")
+	}
+	if err := file.Sync(); err != nil {
+		return nil, errors.Wrap(err, "error sync tmp file")
 	}
 	return &File{file}, nil
 }
