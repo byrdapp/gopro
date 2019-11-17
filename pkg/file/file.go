@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"sync"
 
 	"github.com/pkg/errors"
 
@@ -16,8 +15,6 @@ type File struct {
 	file *os.File
 }
 
-var mut = sync.Mutex{}
-
 type FileGenerator interface {
 	File() *os.File
 	Close() error
@@ -25,6 +22,7 @@ type FileGenerator interface {
 	FileName() string
 	FileSize() (size float64, err error)
 	FileStat() (os.FileInfo, error)
+	WriteFile(data []byte) (*File, error)
 }
 
 func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
@@ -58,24 +56,22 @@ func NewFileBuffer(r *bufio.Scanner) (FileGenerator, error) {
 	return writeTmpFile(b)
 }
 
-func writeTmpFile(b []byte) (FileGenerator, error) {
+func writeTmpFile(data []byte) (FileGenerator, error) {
 	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating tmp file")
 	}
-
-	mut.Lock()
-	if _, err = file.Write(b); err != nil {
+	if err := ioutil.WriteFile(file.Name(), data, 0777); err != nil {
 		return nil, errors.Wrap(err, "error writing to tmp file")
 	}
-	mut.Unlock()
-	if err := file.Chmod(0777); err != nil {
-		return nil, errors.Wrap(err, "error chmod tmp file")
-	}
-	if err := file.Sync(); err != nil {
-		return nil, errors.Wrap(err, "error sync tmp file")
-	}
 	return &File{file}, nil
+}
+
+func (f *File) WriteFile(data []byte) (*File, error) {
+	if err := ioutil.WriteFile(f.file.Name(), data, 0777); err != nil {
+		return nil, errors.Wrap(err, "error writing to tmp file")
+	}
+	return f, nil
 }
 
 func (f *File) File() *os.File {

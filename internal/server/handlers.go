@@ -212,13 +212,12 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		out := video.CreateVideoExifOutput()
-
 		defer func() {
-			if err := video.File.RemoveFile(); err != nil {
-				log.Error(err)
-			}
 			if err := video.File.Close(); err != nil {
 				log.Errorln(err)
+			}
+			if err := video.File.RemoveFile(); err != nil {
+				log.Error(err)
 			}
 			if err := r.Body.Close(); err != nil {
 				log.Error(err)

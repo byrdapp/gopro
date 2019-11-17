@@ -22,6 +22,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
+	github.com/nareix/joy4 v0.0.0-20181022032202-3ddbc8f9d431
 	github.com/nlopes/slack v0.6.0
 	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.7.0

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	exif "github.com/blixenkrone/gopro/internal/exif"
@@ -50,8 +51,8 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 	// if err != nil {
 	// 	return nil, err
 	// }
-
 	size, err := v.File.FileSize()
+
 	if err != nil {
 		err = errors.Cause(err)
 		xErr.MissingExif("filesize", err)
@@ -61,10 +62,12 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 	if err != nil {
 		xErr.MissingExif("metacmd", err)
 	}
+	spew.Dump(meta)
 
 	geo, err := v.parseLocation(meta.Format.Tags.Location)
 	if err != nil {
 		xErr.MissingExif("geo", err)
+		log.Errorf("cause: %s", errors.Cause(err))
 	}
 
 	return &exif.Output{
@@ -101,14 +104,24 @@ type ffprobeTags struct {
 	Location     string    `json:"location,omitempty"`
 }
 
+// func (v *videoExifData) ffprobeVideoMeta() ([]byte, error) {
+// 	ffmpeg, _ := exec.LookPath("ffmpeg")
+
+// 	cmd := exec.Command(ffmpeg, "-i", v.File.FileName(), "-c:v", "copy", "-movflags", "faststart", "-strict", "-2", "-moov_size", "bytes", "-hide_banner")
+// 	log.Info(cmd.String())
+// 	out, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return nil, errors.Wrapf(err, "error cmd stdout: %s", out)
+// 	}
+// 	return out, nil
+// }
+
 func (v *videoExifData) ffprobeVideoMeta() (*ffprobeOutput, error) {
-	if err := v.File.File().Sync(); err != nil {
-		return nil, errors.New("error syncing file")
-	}
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
 		return nil, errors.New("error finding exec path for ffprobe")
 	}
+
 	cmd := exec.Command(ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-hide_banner", v.File.FileName())
 	log.Info(cmd.String())
 	out, err := cmd.CombinedOutput()
@@ -140,7 +153,6 @@ func (v *videoExifData) parseLocation(input string) (geo map[string]float64, err
 		if err != nil {
 			return nil, errors.Errorf("error parsing %s as float", coordinates[i])
 		}
-		log.Info(f)
 		geo[coordinates[i]] = f
 	}
 	return geo, nil
