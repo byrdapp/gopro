@@ -18,3 +18,6 @@ build_docker_tag:
 	echo "building pro api with tag: ${tag}" \
 	&& docker build --rm -f "Dockerfile" -t byrdapp/gopro:${tag} . \
 	&& docker push byrdapp/gopro:${tag}
+
+eval_dev_manager:
+	eval $(docker-machine env manager1)
