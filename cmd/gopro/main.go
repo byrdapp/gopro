@@ -9,11 +9,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// ssl        = flag.Bool("ssl", false, "To set ssl or not?")
 var (
 	local      = flag.Bool("local", false, "Do you want to run go run *.go with .env local file?")
 	production = flag.Bool("production", false, "Is it production?")
-	// ssl        = flag.Bool("ssl", false, "To set ssl or not?")
-	log = logger.NewLogger()
+	log        = logger.NewLogger()
 )
 
 func init() {
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	if err := s.InitDB(); err != nil {
-		log.Fatalf("Error with DB %s", err)
+		log.Fatalf("Error initializing DB %s", err)
 	}
 
 	s.HttpListenServer.Addr = ":8080"
