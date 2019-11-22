@@ -13,8 +13,4 @@ FROM scratch
 COPY --from=builder /go/app/main/ /app/
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# VOLUME ["/certs"]
-
-EXPOSE 8080
-
 ENTRYPOINT [ "/app/main" ]
