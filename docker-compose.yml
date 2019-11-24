@@ -1,0 +1,77 @@
+version: "3.7"
+services:
+  frontend:
+    image: byrdapp/pro-app:dev
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-network
+      # - traefik.port=80
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+      - traefik.http.routers.frontend.rule=PathPrefix(`/`)
+
+      # TLS
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=httpschallenge
+      - traefik.http.routers.frontend.rule=Host(`pro.dev.byrd.news`)
+      - traefik.http.middlewares.frontend.redirectscheme.scheme=https
+
+      - traefik.http.middlewares.frontend.retry.attempts=4
+    networks:
+      - traefik-network
+    depends_on:
+      - backend
+
+  backend:
+    image: byrdapp/gopro:dev
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-network
+      - traefik.http.routers.backend.entrypoints=backend
+      - traefik.http.routers.backend.rule=Host(`pro.dev.api.byrd.news`) && PathPrefix(`/`)
+      - traefik.http.services.backend.loadbalancer.server.port=3000
+    env_file:
+      - .env
+    command:
+      - production=false
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    depends_on:
+      - reverse-proxy
+
+  reverse-proxy:
+    image: traefik:v2.0.5
+    networks:
+      - traefik-network
+    labels:
+      - traefik.docker.network=traefik-network
+      - traefik.enable=true
+    command:
+      - --log.level=DEBUG
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.backend.address=:3000
+      - --certificatesresolvers.httpschallenge.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.httpschallenge.acme.httpchallenge=true
+      - --certificatesresolvers.httpschallenge.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.httpschallenge.acme.email=simon@byrd.news
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3000:3000"
+      - "8080:8080"
+    volumes:
+      - letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+networks:
+  traefik-network:
+    name: traefik-network
+    # driver: overlay Swarm
+
+volumes:
+  letsencrypt:
