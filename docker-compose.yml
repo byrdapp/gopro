@@ -7,12 +7,11 @@ services:
       - traefik.docker.network=traefik-network
       # - traefik.port=80
       - traefik.http.services.frontend.loadbalancer.server.port=80
-      - traefik.http.routers.frontend.rule=PathPrefix(`/`)
+      - traefik.http.routers.frontend.rule=Host(`pro.dev.byrd.news`)
 
       # TLS
       - traefik.http.routers.frontend.entrypoints=websecure
       - traefik.http.routers.frontend.tls.certresolver=httpschallenge
-      - traefik.http.routers.frontend.rule=Host(`pro.dev.byrd.news`)
       - traefik.http.middlewares.frontend.redirectscheme.scheme=https
 
       - traefik.http.middlewares.frontend.retry.attempts=4
@@ -27,7 +26,7 @@ services:
       - traefik.enable=true
       - traefik.docker.network=traefik-network
       - traefik.http.routers.backend.entrypoints=backend
-      - traefik.http.routers.backend.rule=Host(`pro.dev.api.byrd.news`) && PathPrefix(`/`)
+      - traefik.http.routers.backend.rule=Host(`pro.dev.byrd.news`) && PathPrefix(`/api`)
       - traefik.http.services.backend.loadbalancer.server.port=3000
     env_file:
       - .env
