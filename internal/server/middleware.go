@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -41,16 +43,17 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		headerToken := r.Header.Get(userToken)
 		// ? verify here, that the user is a pro user
 		if headerToken == "" {
-			err := fmt.Errorf("Headertoken value must not be empty or: '%s'", headerToken)
+			err := errors.Errorf("header token empty or wrong format: '%s'", headerToken)
 			NewResErr(err, "No token or wrong token value provided", http.StatusUnauthorized, w)
 			return
 		}
 		token, err := fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			err = fmt.Errorf("Err: %s", err)
+			err := errors.Cause(err)
 			NewResErr(err, "Error verifying token or token has expired", http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return

@@ -1,7 +1,9 @@
+.idea
 .vscode
 config
 assets
 certs
+letsencrypt
 *.csv
 main
 vendor
@@ -17,9 +19,8 @@ vendor
 *.jpeg
 *.mp4
 *.png
-*.yml
-docker-compose-prod.yml
-docker-compose-dev.yml
 *.txt
 
 *_test.go
+*.zip
+*.xml

@@ -1,6 +1,7 @@
-package fileinfo
+package file
 
 import (
+	"bufio"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,21 +22,56 @@ type FileGenerator interface {
 	FileName() string
 	FileSize() (size float64, err error)
 	FileStat() (os.FileInfo, error)
+	WriteFile(data []byte) (*File, error)
 }
 
+func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
+	// rd := io.LimitReader(r, limit)
+	rd := io.LimitReader(r, 1000)
+	b, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return nil, err
+	}
+	return writeTmpFile(b)
+
+}
+
+// Read whole file at once
 func NewFile(r io.Reader) (FileGenerator, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
+	return writeTmpFile(b)
+}
+
+// Read file buffered as scanner ! not tested !
+func NewFileBuffer(r *bufio.Scanner) (FileGenerator, error) {
+	var b []byte
+	for r.Scan() {
+		if err := r.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return writeTmpFile(b)
+}
+
+func writeTmpFile(data []byte) (FileGenerator, error) {
 	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating tmp file")
 	}
-	if _, err = file.Write(b); err != nil {
+	if err := ioutil.WriteFile(file.Name(), data, 0777); err != nil {
 		return nil, errors.Wrap(err, "error writing to tmp file")
 	}
 	return &File{file}, nil
+}
+
+func (f *File) WriteFile(data []byte) (*File, error) {
+	if err := ioutil.WriteFile(f.file.Name(), data, 0777); err != nil {
+		return nil, errors.Wrap(err, "error writing to tmp file")
+	}
+	return f, nil
 }
 
 func (f *File) File() *os.File {
@@ -65,4 +101,11 @@ func (f *File) FileSize() (size float64, err error) {
 	}
 	size = conversion.FileSizeBytesToFloat(int(fInfo.Size()))
 	return size, err
+}
+
+func (f *File) EncodeExif(metaTag, value string) error {
+	// Handle file types
+
+	return nil
+
 }

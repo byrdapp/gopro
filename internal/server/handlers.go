@@ -12,18 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/sendgrid/sendgrid-go"
 
 	exif "github.com/blixenkrone/gopro/internal/exif"
 	image "github.com/blixenkrone/gopro/internal/exif/image"
 	video "github.com/blixenkrone/gopro/internal/exif/video"
-
-	"github.com/blixenkrone/gopro/internal/mail"
+	mail "github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/pkg/conversion"
+	conversion "github.com/blixenkrone/gopro/pkg/conversion"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
-	mux "github.com/gorilla/mux"
-	"github.com/sendgrid/sendgrid-go"
 )
 
 var JSONEncodingError = errors.New("Error converting exif to JSON")
@@ -151,17 +150,9 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ExifResponse is json encoded to client
-// The struct also sets exif decoding errors to the response writer.
-type ExifResponse struct {
-	Data *exif.Output        `json:"data,omitempty"`
-	Err  *ErrResponseBuilder `json:"err,omitempty"`
-}
-
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
-
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -179,23 +170,21 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*ExifResponse
+			var res []*exif.Output
 			for {
 				// read length of files
-				x := ExifResponse{}
+				var x exif.Output
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
 						break
 					}
-					x.Err = x.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
+					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+					break
 				}
-				output, err := image.ReadImage(part)
-				if err != nil {
-					x.Err = x.Err.ErrorImbedded(err, err.Error(), 401)
-				}
+				output := image.ReadImage(part)
 
-				x.Data = output
+				x = *output
 				res = append(res, &x)
 			}
 
@@ -209,36 +198,98 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		var res ExifResponse
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
 		w.Header().Set("Content-Type", mediaType)
+
 		video, err := video.ReadVideo(r.Body)
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
 		}
-		defer r.Body.Close()
 
-		out, err := video.CreateVideoExifOutput()
-		if err != nil {
-			// NewResErr(err, "error writing video output", http.StatusInternalServerError, w, "err")
-			res.Err = res.Err.ErrorImbedded(err, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		defer r.Body.Close()
-		defer video.File.RemoveFile()
-
-		if err := video.File.Close(); err != nil {
-			log.Errorln(err)
-		}
+		out := video.CreateVideoExifOutput()
+		defer func() {
+			if err := video.File.Close(); err != nil {
+				log.Errorln(err)
+			}
+			if err := video.File.RemoveFile(); err != nil {
+				log.Error(err)
+			}
+			if err := r.Body.Close(); err != nil {
+				log.Error(err)
+			}
+		}()
 
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
+		}
+	}
+}
+
+type ClientReq struct {
+	Geoloc           map[string]int `json:"_geoloc"`
+	IsHash           bool           `json:"isHash"`
+	StoryHeadline    string         `json:"storyHeadline"`
+	StoryDescription string         `json:"storyDescription"`
+	Media            []*media       `json:"media"`
+}
+
+type media struct {
+	Geoloc         map[string]int `json:"_geoloc"`
+	MediaDate      int64          `json:"mediaDate"`
+	MediaExtension string         `json:"mediaExtension"`
+	MediaType      string         `json:"mediaType"`
+	MediaDevice    string         `json:"mediaDevice"`
+	IsVerified     bool           `json:"isVerified"`
+	MediaWidth     int            `json:"mediaWidth"`
+	MediaHeight    int            `json:"mediaHeight"`
+	MediaSize      float64        `json:"mediaSize"`
+}
+
+var uploadByrdAPIRequest = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "multipart/form-data")
+		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
+		defer cancel()
+
+		// Parse media type to get type of media
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+
+		if strings.HasPrefix(mediaType, "multipart/") {
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
+			for {
+				part, err := mr.NextPart()
+				// defer part.Close()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					log.Error(err)
+					break
+				}
+				fileName := part.FormName()
+				formVal := r.FormValue(fileName)
+				log.Info(formVal)
+			}
+
+			if err != nil {
+				NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+				return
+			}
+
+			if err := json.NewEncoder(w).Encode([]byte("hello")); err != nil {
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+				return
+			}
 		}
 
 	}
