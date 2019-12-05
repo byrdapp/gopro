@@ -10,7 +10,7 @@ jobs:
     name: test code
     steps:
       - name: Go vet
-        run: go vet $PWD/cmd/gopro/main.go
+        run: go vet cmd/gopro/main.go
 
       # - name: Go test
       #   run: go test
