@@ -4,67 +4,67 @@ on:
     branches:
       - master
 
-# 1. Test local code
-# 1a. Clone it to company repo
-# 2. Build docker image img:tag
-# 3. Push docker image img:tag to docker hub
-# 4. SSH into linux server
-# 5. copy/paste/replace local docker-compose.yml on linux server (it's gitignored)
-# 6. inside server > Docker pull img:tag
-# 7. docker-compose up -d
-
 jobs:
-  development:
-    name: review and build code for dev env
+  test:
     runs-on: ubuntu-latest
+    name: test code
+    needs: build
+    steps:
+      - name: CI dependency
+
+      - name: Go vet
+        run: go vet cmd/gopro/main.go
+
+      - name: Go test
+        run: go test ./...
+
+  build:
+    name: build code
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      GO_VERSION: 1.13
+
     steps:
       - name: Checkout to master
         uses: actions/checkout@master
 
-      - name: Set up go v1.13
+      - name: Set up go with version $GO_VERSION
         uses: actions/setup-go@v1
         with:
-          go-version: "1.13" # The Go version to download (if necessary) and use.
+          go-version: $GO_VERSION # The Go version to download (if necessary) and use.
         id: go
 
-      # - name: Go test
-      #   run: go test ./...
-
-      - name: Go vet cmd
-        run: go vet cmd/gopro/main.go
-
-      - name: Login to DockerHub Registry
+      - name: Login to DockerHub registry
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-      - name: Build the Docker image
-        run: docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-      - name: Push the Docker image to the registry
-        run: docker push byrdapp/pro-app:dev
 
-  production:
-    name: review and build code for prod env
+      - name: Build the Docker image
+        run: |
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+
+      - name: Push the Docker image to the registry
+        run: |
+          docker push byrdapp/pro-app:dev
+          docker push byrdapp/pro-app:prod
+
+  deploy:
+    name: deploy code
     runs-on: ubuntu-latest
+    needs: [build, test]
     steps:
-      # - uses: actions/checkout@master ?
-      - name: Checkout to master
-        uses: actions/checkout@master
-
-      - name: Set up go v1.13
-        uses: actions/setup-go@v1
-        with:
-          go-version: "1.13" # The Go version to download (if necessary) and use.
-        id: go
-
-      # - name: Go test
-      #   run: go test ./...
-
-      - name: Go vet cmd
-        run: go vet cmd/gopro/main.go
-
-      - name: Login to DockerHub Registry
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-
-      - name: Build the Docker image
-        run: docker build --rm -f "Dockerfile" -t byrdapp/gopro:prod .
-
-      - name: Push the Docker image to the registry
-        run: docker push byrdapp/gopro:prod
+      - continue-on-error: false
+      # Deploy to swarm
+      # - name: Docker Swarm Deploy
+      #   uses: sagebind/docker-swarm-deploy-action@1.0.0
+      #   with:
+      #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
+  # slack:
+  #   - name: CI dependency
+  #     needs: [build, test, deploy]
+  #     - name: Notify slack
+  #       env:
+  #         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  #       uses: pullreminders/slack-action@master
+  #       with:
+  #         args: '{\"channel\":\"#deployments\",\"Deployment\":\"Byrd pro app was deployed\"}'
