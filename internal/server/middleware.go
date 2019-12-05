@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	userToken    = "user_token"
-	isAdminClaim = "is_admin"
+	userToken = "user_token"
+	// isAdminClaim = "is_admin"
 )
 
 var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
@@ -64,7 +64,6 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
-
 		next(w, r)
 	})
 }
