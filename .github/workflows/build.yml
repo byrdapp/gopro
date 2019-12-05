@@ -5,10 +5,19 @@ on:
       - master
 
 jobs:
-  test:
+  init:
     runs-on: ubuntu-latest
     name: test code
     steps:
+      - name: Checkout to master
+        uses: actions/checkout@master
+
+      - name: Set up go with version $GO_VERSION
+        uses: actions/setup-go@v1
+        with:
+          go-version: $GO_VERSION # The Go version to download (if necessary) and use.
+        id: go
+
       - name: Go vet
         run: go vet cmd/gopro/main.go
 
@@ -23,15 +32,6 @@ jobs:
       GO_VERSION: 1.13
 
     steps:
-      - name: Checkout to master
-        uses: actions/checkout@master
-
-      - name: Set up go with version $GO_VERSION
-        uses: actions/setup-go@v1
-        with:
-          go-version: $GO_VERSION # The Go version to download (if necessary) and use.
-        id: go
-
       - name: Login to DockerHub registry
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
