@@ -5,55 +5,55 @@ on:
       - master
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    name: test code
-    env:
-      GO_VERSION: 1.13
+  # setup:
+  #   runs-on: ubuntu-latest
+  #   name: test code
+  #   env:
+  #     GO_VERSION: 1.13
 
-    steps:
-      - name: Check out master branch
-        uses: actions/checkout@master
+  #   steps:
+  #     - name: Check out master branch
+  #       uses: actions/checkout@master
 
-      - name: Verify Go version
-        run: echo Go runnning on $GO_VERSION
+  #     - name: Verify Go version
+  #       run: echo Go runnning on $GO_VERSION
 
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13 # The Go version to download (if necessary) and use.
-        id: go
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v1
+  #       with:
+  #         go-version: 1.13 # The Go version to download (if necessary) and use.
+  #       id: go
 
-      - name: Go vet
-        run: go vet cmd/gopro/main.go
+  #     - name: Go vet
+  #       run: go vet cmd/gopro/main.go
 
-      - name: List Files
-        run: ls -alrt $GITHUB_WORKSPACE
+  #     - name: List Files
+  #       run: ls -alrt $GITHUB_WORKSPACE
 
-      # - name: Go test
-      #   run: go test
+  #     # - name: Go test
+  #     #   run: go test
 
-  build:
-    name: build code
-    needs: setup
-    runs-on: ubuntu-latest
+  # build:
+  #   name: build code
+  #   needs: setup
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out master branch
-        uses: actions/checkout@master
+  #   steps:
+  #     - name: Check out master branch
+  #       uses: actions/checkout@master
 
-      - name: Login to DockerHub registry
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+  #     - name: Login to DockerHub registry
+  #       run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
-      - name: Build the Docker image
-        run: |
-          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+  #     - name: Build the Docker image
+  #       run: |
+  #         docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
+  #         docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
 
-      - name: Push the Docker image to the registry
-        run: |
-          docker push byrdapp/pro-app:dev
-          docker push byrdapp/pro-app:prod
+  #     - name: Push the Docker image to the registry
+  #       run: |
+  #         docker push byrdapp/pro-app:dev
+  #         docker push byrdapp/pro-app:prod
   # deploy:
   #   name: deploy code
   #   runs-on: ubuntu-latest
