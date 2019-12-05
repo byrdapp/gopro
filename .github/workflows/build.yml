@@ -8,14 +8,14 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     name: test code
-    env:
-      GO_VERSION: 1.13
 
     steps:
       - name: Checkout to master
         uses: actions/checkout@master
 
       - name: Set up go with version $GO_VERSION
+        env:
+          GO_VERSION: 1.13
         uses: actions/setup-go@v1
         with:
           go-version: $GO_VERSION # The Go version to download (if necessary) and use.
