@@ -12,7 +12,7 @@ jobs:
       GO_VERSION: 1.13
 
     steps:
-      - name: Checkout to master
+      - name: Check out master branch
         uses: actions/checkout@master
 
       - name: Verify Go version
@@ -27,6 +27,9 @@ jobs:
       - name: Go vet
         run: go vet cmd/gopro/main.go
 
+      - name: List Files
+        run: ls -alrt $GITHUB_WORKSPACE
+
       # - name: Go test
       #   run: go test
 
@@ -36,6 +39,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
+
       - name: Login to DockerHub registry
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
