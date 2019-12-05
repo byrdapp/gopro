@@ -10,8 +10,6 @@ jobs:
     name: test code
     needs: build
     steps:
-      - name: CI dependency
-
       - name: Go vet
         run: go vet cmd/gopro/main.go
 
