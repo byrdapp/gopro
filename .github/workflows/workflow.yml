@@ -1,4 +1,4 @@
-name: gopro build/test flow
+name: Byrd pro API CI/CD workflow
 on:
   push:
     branches:
@@ -49,6 +49,7 @@ jobs:
         run: |
           docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
           docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+
       - name: Push the Docker image to the registry
         run: |
           docker push byrdapp/pro-app:dev
@@ -64,12 +65,14 @@ jobs:
   #   uses: sagebind/docker-swarm-deploy-action@1.0.0
   #   with:
   #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
-  # slack:
-  #   - name: CI dependency
-  #     needs: [build, test, deploy]
-  #     - name: Notify slack
-  #       env:
-  #         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-  #       uses: pullreminders/slack-action@master
-  #       with:
-  #         args: '{\"channel\":\"#deployments\",\"Deployment\":\"Byrd pro app was deployed\"}'
+  slack:
+    name: Notify on slack
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
+        uses: pullreminders/slack-action@master
+        with:
+          args: '{\"channel\":\"#deployments\",\"Deployment\":\"Byrd pro app was deployed\"}'
