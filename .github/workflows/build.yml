@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@master
 
       - name: Verify Go version
-        run: echo Go runnning on ${{ GO_VERSION }}
+        run: echo Go runnning on $GO_VERSION
 
       - name: Set up go with version $GO_VERSION
         uses: actions/setup-go@v1
