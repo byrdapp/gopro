@@ -18,7 +18,7 @@ jobs:
       - name: Verify Go version
         run: echo Go runnning on $GO_VERSION
 
-      - name: Set up go with version $GO_VERSION
+      - name: Set up Go
         uses: actions/setup-go@v1
         with:
           go-version: $GO_VERSION # The Go version to download (if necessary) and use.
