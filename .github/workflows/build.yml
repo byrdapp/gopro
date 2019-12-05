@@ -45,18 +45,17 @@ jobs:
         run: |
           docker push byrdapp/pro-app:dev
           docker push byrdapp/pro-app:prod
-
-  deploy:
-    name: deploy code
-    runs-on: ubuntu-latest
-    needs: [build, test]
-    steps:
-      - continue-on-error: false
-      # Deploy to swarm
-      # - name: Docker Swarm Deploy
-      #   uses: sagebind/docker-swarm-deploy-action@1.0.0
-      #   with:
-      #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
+  # deploy:
+  #   name: deploy code
+  #   runs-on: ubuntu-latest
+  #   needs: [build, test]
+  #   steps:
+  #     - continue-on-error: false
+  # Deploy to swarm
+  # - name: Docker Swarm Deploy
+  #   uses: sagebind/docker-swarm-deploy-action@1.0.0
+  #   with:
+  #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
   # slack:
   #   - name: CI dependency
   #     needs: [build, test, deploy]
