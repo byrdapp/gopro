@@ -46,11 +46,9 @@ jobs:
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
       - name: Build the Docker image
-        run: docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-
-        # run: |
-        #   docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-        #   docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+        run: |
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
       - name: Push the Docker image to the registry
         run: |
           docker push byrdapp/pro-app:dev
