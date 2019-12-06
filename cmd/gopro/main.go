@@ -4,9 +4,10 @@ import (
 	"flag"
 	"os"
 
+	"github.com/joho/godotenv"
+
 	"github.com/blixenkrone/gopro/internal/server"
 	"github.com/blixenkrone/gopro/pkg/logger"
-	"github.com/joho/godotenv"
 )
 
 // ssl        = flag.Bool("ssl", false, "To set ssl or not?")
@@ -19,6 +20,7 @@ var (
 func init() {
 	// type go run *.go -local
 	flag.Parse()
+
 	if *local && !*production {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
@@ -39,7 +41,7 @@ func main() {
 		log.Fatalf("Error initializing DB %s", err)
 	}
 
-	s.HttpListenServer.Addr = ":8080"
+	s.HttpListenServer.Addr = ":3000"
 	log.Infof("Serving on host w. address %s", s.HttpListenServer.Addr)
 	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
 	if err := s.HttpListenServer.ListenAndServe(); err != nil {

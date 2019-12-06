@@ -46,10 +46,10 @@ func NewServer() *Server {
 		log.Infoln("Ran test")
 		fmt.Fprintln(w, "Nothing to see here :-)")
 	}).Methods("GET")
-	mux.HandleFunc("/login", loginGetToken).Methods("POST")
+	mux.HandleFunc("/login", loginGetUserAccess).Methods("POST")
 
 	// * Private endpoints
-	mux.HandleFunc("/reauthenticate", isAuth(loginGetToken)).Methods("GET")
+	mux.HandleFunc("/reauthenticate", isAuth(loginGetUserAccess)).Methods("GET")
 	mux.HandleFunc("/secure", isAuth(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service"}`)); err != nil {
 			log.Errorln(err)
@@ -82,7 +82,7 @@ func NewServer() *Server {
 	mux.HandleFunc("/bookings" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "https://pro.development.byrd.news", "https://pro.byrd.news"},
+		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
 		// AllowCredentials: true,

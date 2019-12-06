@@ -45,7 +45,12 @@ type Credentials struct {
 	Password string `json:"password,omitempty"`
 }
 
-var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
+type credsResponse struct {
+	IsPro   bool `json:"isPro"`
+	IsAdmin bool `json:"isAdmin"`
+}
+
+var loginGetUserAccess = func(w http.ResponseWriter, r *http.Request) {
 	// ? verify here, that the user is a pro user
 	if r.Method == http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
@@ -68,26 +73,32 @@ var loginGetToken = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if isPro, err := fb.IsProfessional(r.Context(), usr.UID); !isPro || err != nil {
+		isPro, err := fb.IsProfessional(r.Context(), usr.UID)
+		if !isPro || err != nil {
 			NewResErr(err, err.Error(), http.StatusUnauthorized, w)
 			return
 		}
 
 		// Is user an admin? Set claims as such.
-		claims := make(map[string]interface{})
+		// claims := make(map[string]interface{})
 		isAdmin, err := fb.IsAdminUID(r.Context(), usr.UID)
 		if err != nil {
 			NewResErr(err, "Error admin ref was not found", http.StatusBadRequest, w)
 			return
 		}
-		claims[isAdminClaim] = isAdmin
-		signedToken, err := fb.CreateCustomTokenWithClaims(r.Context(), usr.UID, claims)
-		if err != nil {
-			NewResErr(err, "Error creating token!", http.StatusInternalServerError, w, "trace")
-			return
+		// claims[isAdminClaim] = isAdmin
+		// signedToken, err := fb.CreateCustomTokenWithClaims(r.Context(), usr.UID, claims)
+		// if err != nil {
+		// 	NewResErr(err, "Error creating token!", http.StatusInternalServerError, w, "trace")
+		// 	return
+		// }
+
+		credsRes := credsResponse{
+			IsPro:   isPro,
+			IsAdmin: isAdmin,
 		}
 
-		if err := json.NewEncoder(w).Encode(signedToken); err != nil {
+		if err := json.NewEncoder(w).Encode(&credsRes); err != nil {
 			NewResErr(err, "Error encoding JSON token", http.StatusInternalServerError, w)
 			return
 		}
@@ -148,6 +159,44 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(medias); err != nil {
 		NewResErr(err, "JSON Encoding failed", 500, w)
 	}
+}
+
+var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		_, cancel := context.WithDeadline(r.Context(), time.Now().Add(30*time.Second))
+		defer cancel()
+
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+		w.Header().Set("Content-Type", mediaType)
+
+		if strings.HasPrefix(mediaType, "multipart/") {
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
+			var res interface{}
+			for {
+				// read length of files
+				part, err := mr.NextPart()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+					break
+				}
+
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+				return
+			}
+
+		}
+	}
+
 }
 
 // getExif recieves body with img files

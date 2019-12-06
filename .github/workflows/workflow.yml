@@ -1,0 +1,89 @@
+name: Byrd pro API CI/CD workflow
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    name: test code
+    env:
+      GO_VERSION: 1.13
+
+    steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
+
+      - name: Verify Go version
+        run: echo Go runnning on $GO_VERSION
+
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13 # The Go version to download (if necessary) and use.
+        id: go
+
+      - name: Go vet
+        run: go vet cmd/gopro/main.go
+
+      - name: List Files
+        run: ls -alrt $GITHUB_WORKSPACE
+
+      # - name: Go test
+      #   run: go test
+
+  build:
+    name: build code
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
+
+      - name: Login to DockerHub registry
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build the Docker image
+        run: |
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+
+      - name: Push the Docker image to the registry
+        run: |
+          docker push byrdapp/pro-app:dev
+          docker push byrdapp/pro-app:prod
+
+  # deploy:
+  #   name: deploy code
+  #   runs-on: ubuntu-latest
+  #   needs: [build, test]
+  #   steps:
+  #     - continue-on-error: false
+  #     - name: Docker Swarm Deploy
+  #       uses: sagebind/docker-swarm-deploy-action@1.0.0
+  #       with:
+  #         args: docker stack deploy -c docker-compose.yml --with-registry-auth
+        # env:
+        # DOCKER_SSH_PUBLIC_KEY:
+
+  slack:
+    name: Notify on slack
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
+
+      - name: Notify slack
+        # uses: pullreminders/slack-action@master
+        uses: rtCamp/action-slack-notify@master
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
+          SLACK_USERNAME: SweetBabyRays
+          SLACK_CHANNEL: "#deployments"
+          SLACK_COLOR: "#517122"
+          SLACK_ICON: https://avatars0.githubusercontent.com/u/7809248?s=400&v=4
+          SLACK_TITLE: "New pro app ready to be swarmed!"
+          SLACK_MESSAGE: "This will be awesome!"
