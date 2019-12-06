@@ -176,7 +176,10 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res interface{}
+
+			// pr, pw := io.Pipe()
+
+			// var res interface{}
 			for {
 				// read length of files
 				part, err := mr.NextPart()
@@ -187,12 +190,23 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
+				// defer part.Close()
+				log.Info("Reading: " + part.FileName())
+
+				go func() {
+					// gw := gzip.NewWriter(pw)
+					// _, err := io.Copy(gw, part)
+					// if err != nil {
+					// 	NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+					// 	return
+					// }
+				}()
 
 			}
-			if err := json.NewEncoder(w).Encode(res); err != nil {
-				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
-				return
-			}
+			// if err := json.NewEncoder(w).Encode(res); err != nil {
+			// 	NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+			// 	return
+			// }
 
 		}
 	}

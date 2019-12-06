@@ -75,11 +75,13 @@ func NewServer() *Server {
 	mux.HandleFunc("/auth/profile/token", isAuth(decodeTokenGetProfile)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProProfile)).Methods("GET")
 
-	mux.HandleFunc("/booking/{uid}", isAuth(getBookingsByUID)).Methods("GET")
-	mux.HandleFunc("/booking/{proUID}", isAuth(createBooking)).Methods("POST")
-	mux.HandleFunc("/booking/{bookingID}", isAuth(updateBooking)).Methods("PUT")
-	mux.HandleFunc("/booking/{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
-	mux.HandleFunc("/bookings" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
+	mux.HandleFunc("/booking/upload", isAuth(bookingUploadToStorage)).Methods("POST")
+
+	mux.HandleFunc("/booking/task/{uid}", isAuth(getBookingsByUID)).Methods("GET")
+	mux.HandleFunc("/booking/task{proUID}", isAuth(createBooking)).Methods("POST")
+	mux.HandleFunc("/booking/task{bookingID}", isAuth(updateBooking)).Methods("PUT")
+	mux.HandleFunc("/booking/task{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
+	mux.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},

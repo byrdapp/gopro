@@ -1,4 +1,4 @@
-name: Byrd pro API CI/CD workflow
+name: Byrd pro
 on:
   push:
     branches:
