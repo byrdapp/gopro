@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
 	"github.com/blixenkrone/gopro/pkg/logger"
-	"github.com/joho/godotenv"
 )
 
 // func createCSV(record []string, index int, info interface{}) {
@@ -41,7 +42,7 @@ func main() {
 	ProfilesToCSV()
 }
 
-// WithdrawalsToCSV asdasd
+// WithdrawalsToCSV .
 func WithdrawalsToCSV() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*40)
 	defer cancel()
