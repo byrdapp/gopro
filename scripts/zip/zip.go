@@ -32,7 +32,7 @@ func writeZip(zipName string, file string) error {
 	defer zipWriter.Close()
 
 	zipWriter.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(out, flate.HuffmanOnly)
+		return flate.NewWriter(out, flate.BestSpeed)
 	})
 
 	// Add files to zip

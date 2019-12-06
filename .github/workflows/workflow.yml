@@ -5,55 +5,55 @@ on:
       - master
 
 jobs:
-  #   setup:
-  #     runs-on: ubuntu-latest
-  #     name: test code
-  #     env:
-  #       GO_VERSION: 1.13
+  setup:
+    runs-on: ubuntu-latest
+    name: test code
+    env:
+      GO_VERSION: 1.13
 
-  #     steps:
-  #       - name: Check out master branch
-  #         uses: actions/checkout@master
+    steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
 
-  #       - name: Verify Go version
-  #         run: echo Go runnning on $GO_VERSION
+      - name: Verify Go version
+        run: echo Go runnning on $GO_VERSION
 
-  #       - name: Set up Go
-  #         uses: actions/setup-go@v1
-  #         with:
-  #           go-version: 1.13 # The Go version to download (if necessary) and use.
-  #         id: go
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13 # The Go version to download (if necessary) and use.
+        id: go
 
-  #       - name: Go vet
-  #         run: go vet cmd/gopro/main.go
+      - name: Go vet
+        run: go vet cmd/gopro/main.go
 
-  #       - name: List Files
-  #         run: ls -alrt $GITHUB_WORKSPACE
+      - name: List Files
+        run: ls -alrt $GITHUB_WORKSPACE
 
-  #       # - name: Go test
-  #       #   run: go test
+      # - name: Go test
+      #   run: go test
 
-  #   build:
-  #     name: build code
-  #     needs: setup
-  #     runs-on: ubuntu-latest
+  build:
+    name: build code
+    needs: setup
+    runs-on: ubuntu-latest
 
-  #     steps:
-  #       - name: Check out master branch
-  #         uses: actions/checkout@master
+    steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
 
-  #       - name: Login to DockerHub registry
-  #         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Login to DockerHub registry
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
-  #       - name: Build the Docker image
-  #         run: |
-  #           docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-  #           docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+      - name: Build the Docker image
+        run: |
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
 
-  #       - name: Push the Docker image to the registry
-  #         run: |
-  #           docker push byrdapp/pro-app:dev
-  #           docker push byrdapp/pro-app:prod
+      - name: Push the Docker image to the registry
+        run: |
+          docker push byrdapp/pro-app:dev
+          docker push byrdapp/pro-app:prod
 
   # deploy:
   #   name: deploy code
@@ -61,14 +61,16 @@ jobs:
   #   needs: [build, test]
   #   steps:
   #     - continue-on-error: false
-  # Deploy to swarm
-  # - name: Docker Swarm Deploy
-  #   uses: sagebind/docker-swarm-deploy-action@1.0.0
-  #   with:
-  #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
+  #     - name: Docker Swarm Deploy
+  #       uses: sagebind/docker-swarm-deploy-action@1.0.0
+  #       with:
+  #         args: docker stack deploy -c docker-compose.yml --with-registry-auth
+        # env:
+        # DOCKER_SSH_PUBLIC_KEY:
+
   slack:
     name: Notify on slack
-    # needs: [setup, build]
+    needs: [setup, build, deploy]
     runs-on: ubuntu-latest
     steps:
       - name: Check out master branch
@@ -79,9 +81,9 @@ jobs:
         uses: rtCamp/action-slack-notify@master
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
-          SLACK_USERNAME: BotBotBot
+          SLACK_USERNAME: SweetBabyRays
           SLACK_CHANNEL: "#deployments"
           SLACK_COLOR: "#517122"
-          SLACK_ICON: https://avatars3.githubusercontent.com/u/40791635?s=400&v=4
-          SLACK_TITLE: "New pro app deployed!"
-          SLACK_MESSAGE: "Deloyed!"
+          SLACK_ICON: https://avatars0.githubusercontent.com/u/7809248?s=400&v=4
+          SLACK_TITLE: "New pro app ready to be swarmed!"
+          SLACK_MESSAGE: "This will be awesome!"

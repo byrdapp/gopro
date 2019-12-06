@@ -161,6 +161,44 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		_, cancel := context.WithDeadline(r.Context(), time.Now().Add(30*time.Second))
+		defer cancel()
+
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
+			return
+		}
+		w.Header().Set("Content-Type", mediaType)
+
+		if strings.HasPrefix(mediaType, "multipart/") {
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
+			var res interface{}
+			for {
+				// read length of files
+				part, err := mr.NextPart()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+					break
+				}
+
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+				return
+			}
+
+		}
+	}
+
+}
+
 // getExif recieves body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF
