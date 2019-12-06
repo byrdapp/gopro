@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@master
 
       - name: Notify slack
-        # uses: actions/checkout@master
+        # uses: pullreminders/slack-action@master
         uses: rtCamp/action-slack-notify@master
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
@@ -83,4 +83,3 @@ jobs:
           SLACK_CHANNEL: '#deployments'
           SLACK_COLOR: '#517122'
           SLACK_MESSAGE: 'Deloyed!'
-        uses: pullreminders/slack-action@master
