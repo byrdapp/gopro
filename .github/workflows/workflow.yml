@@ -79,6 +79,8 @@ jobs:
         uses: rtCamp/action-slack-notify@master
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
+          SLACK_USERNAME: BotBotBot
+          SLACK_CHANNEL: '#deployments'
+          SLACK_COLOR: '#517122'
+          SLACK_MESSAGE: 'Deloyed!'
         uses: pullreminders/slack-action@master
-        with:
-          args: '{\"channel\":\"#deployments\",\"Deployment\":\"Byrd pro app was deployed\"}'
