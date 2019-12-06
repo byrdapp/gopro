@@ -68,7 +68,7 @@ jobs:
   #     args: docker stack deploy -c docker-compose.yml --with-registry-auth
   slack:
     name: Notify on slack
-    needs: [setup, build]
+    # needs: [setup, build]
     runs-on: ubuntu-latest
     steps:
       - name: Notify slack
