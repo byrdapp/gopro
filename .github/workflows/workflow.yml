@@ -70,7 +70,7 @@ jobs:
 
   slack:
     name: Notify on slack
-    needs: [setup, build, deploy]
+    needs: [setup, build]
     runs-on: ubuntu-latest
     steps:
       - name: Check out master branch
