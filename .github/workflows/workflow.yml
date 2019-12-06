@@ -80,6 +80,8 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
           SLACK_USERNAME: BotBotBot
-          SLACK_CHANNEL: '#deployments'
-          SLACK_COLOR: '#517122'
-          SLACK_MESSAGE: 'Deloyed!'
+          SLACK_CHANNEL: "#deployments"
+          SLACK_COLOR: "#517122"
+          SLACK_ICON: https://avatars3.githubusercontent.com/u/40791635?s=400&v=4
+          SLACK_TITLE: "New pro app deployed!"
+          SLACK_MESSAGE: "Deloyed!"
