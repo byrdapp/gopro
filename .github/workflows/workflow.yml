@@ -71,9 +71,14 @@ jobs:
     # needs: [setup, build]
     runs-on: ubuntu-latest
     steps:
+      - name: Check out master branch
+        uses: actions/checkout@master
+
       - name: Notify slack
+        # uses: actions/checkout@master
+        uses: rtCamp/action-slack-notify@master
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_TOKEN }}
         uses: pullreminders/slack-action@master
         with:
           args: '{\"channel\":\"#deployments\",\"Deployment\":\"Byrd pro app was deployed\"}'
