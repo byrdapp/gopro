@@ -47,6 +47,7 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	if err != nil {
 		return err
 	}
+
 	defer fileToZip.Close()
 
 	// Get the file information

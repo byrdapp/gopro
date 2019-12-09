@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -63,7 +62,7 @@ func GetAWSSecrets(fileName string) []byte {
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
 	if err != nil {
-		log.Fatal("Didnt get aws CC's: ", err)
+		log.Errorf("Didnt get aws CC's: ", err)
 	}
 	dl := s3manager.NewDownloader(sess)
 	_, err = dl.Download(buf, &s3.GetObjectInput{
@@ -71,7 +70,7 @@ func GetAWSSecrets(fileName string) []byte {
 		Key:    aws.String(fileName),
 	})
 	if err != nil {
-		log.Fatal("Didnt get aws DL: ", err)
+		log.Errorf("Didnt get aws DL: ", err)
 	}
 	return buf.Bytes()
 }

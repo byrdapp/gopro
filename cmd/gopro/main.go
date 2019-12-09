@@ -47,7 +47,6 @@ func main() {
 	if err := s.HttpListenServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-
 	// * runs until os.SIGTERM happens
 	s.WaitForShutdown()
 }

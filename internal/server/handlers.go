@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	video "github.com/blixenkrone/gopro/internal/exif/video"
 	mail "github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
+	"github.com/blixenkrone/gopro/pkg/compression"
 	conversion "github.com/blixenkrone/gopro/pkg/conversion"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
@@ -177,33 +179,57 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 
-			// pr, pw := io.Pipe()
-
-			// var res interface{}
+			pr, pw := io.Pipe()
 			for {
-				// read length of files
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
 						break
 					}
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
-					break
+					return
 				}
 				// defer part.Close()
-				log.Info("Reading: " + part.FileName())
-
+				log.Info("Processing: " + part.FileName())
 				go func() {
-					// gw := gzip.NewWriter(pw)
-					// _, err := io.Copy(gw, part)
-					// if err != nil {
-					// 	NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
-					// 	return
-					// }
+					// defer pw.Close()
+					_, err := io.Copy(pw, part)
+					if err != nil {
+						if err == io.EOF {
+							log.Info(io.EOF)
+						}
+						log.Errorf("copy err: %s", err)
+						return
+					}
+					log.Info("copied file!")
 				}()
-
+				comp, err := compression.NewZip(pw, part.FileName())
+				if err != nil {
+					log.Errorf("compression err: %s", err)
+					return
+				}
+				defer func() {
+					err := comp.Close()
+					if err != nil {
+						log.Errorf("close err: %s", err)
+						return
+					}
+				}()
 			}
-			// if err := json.NewEncoder(w).Encode(res); err != nil {
+
+			b, err := ioutil.ReadAll(pr)
+			if err != nil {
+				log.Errorln(err)
+			}
+
+			log.Infof("Read the body to zip: %s", b)
+
+			// defer func() {
+			// 	if err := pr.Close(); err != nil {
+			// 		panic(err)
+			// 	}
+			// }()
+			// if err := json.NewEncoder(w).Encode(pr); err != nil {
 			// 	NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
 			// 	return
 			// }
