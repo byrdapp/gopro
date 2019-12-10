@@ -1,6 +1,7 @@
-package storage
+package aws
 
 import (
+	"context"
 	"io"
 	"os"
 
@@ -13,28 +14,40 @@ import (
 
 var log = logger.NewLogger()
 
-type S3Storage struct {
+type s3Storage struct {
+	session     *session.Session
+	ctx         context.Context
+	contentType string
 }
 
-func StoreFiles(file io.Reader) error {
-	s, err := session.NewSession(&aws.Config{
+type AWSStorer interface {
+	StoreFile(io.Reader) error
+}
+
+func NewSession(s AWSStorer, ctx context.Context, contentType string) (*s3Storage, error) {
+	session, err := session.NewSession(&aws.Config{
 		Region:      aws.String(s3Region),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	uploader := s3manager.NewUploader(s)
-	_, err = uploader.Upload(&s3manager.UploadInput{
+	return &s3Storage{session, ctx, contentType}, nil
+}
+
+func (s *s3Storage) StoreFile(file io.Reader, name string) error {
+	uploader := s3manager.NewUploader(s.session)
+	_, err := uploader.UploadWithContext(s.ctx, &s3manager.UploadInput{
 		Body:                 file,
-		Bucket:               aws.String(s3Bucket),
-		Key:                  aws.String(string("fileName")),
+		Bucket:               aws.String("byrd-bookings"),
+		Key:                  aws.String("/simontestdir/" + name),
 		ServerSideEncryption: aws.String("AES256"),
+		ContentType:          aws.String(s.contentType),
 	})
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Info("success to aws s3")
+	log.Info("storage upload complete")
 	return nil
 }

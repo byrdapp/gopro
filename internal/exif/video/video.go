@@ -30,7 +30,7 @@ const (
 )
 
 type videoExifData struct {
-	File file.FileGenerator
+	File *file.File
 }
 
 func ReadVideo(r io.Reader) (*videoExifData, error) {

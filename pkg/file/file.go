@@ -15,17 +15,17 @@ type File struct {
 	file *os.File
 }
 
-type FileGenerator interface {
-	File() *os.File
-	Close() error
-	RemoveFile() error
-	FileName() string
-	FileSize() (size float64, err error)
-	FileStat() (os.FileInfo, error)
-	WriteFile(data []byte) (*File, error)
-}
+// type FileGenerator interface {
+// 	File() *os.File
+// 	Close() error
+// 	RemoveFile() error
+// 	FileName() string
+// 	FileSize() (size float64, err error)
+// 	FileStat() (os.FileInfo, error)
+// 	WriteFile(data []byte) (*File, error)
+// }
 
-func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
+func NewFileLtdRead(r io.Reader, limit int64) (*File, error) {
 	// rd := io.LimitReader(r, limit)
 	rd := io.LimitReader(r, 1000)
 	b, err := ioutil.ReadAll(rd)
@@ -37,7 +37,7 @@ func NewFileLtdRead(r io.Reader, limit int64) (FileGenerator, error) {
 }
 
 // Read whole file at once
-func NewFile(r io.Reader) (FileGenerator, error) {
+func NewFile(r io.Reader) (*File, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func NewFile(r io.Reader) (FileGenerator, error) {
 }
 
 // Read file buffered as scanner ! not tested !
-func NewFileBuffer(r *bufio.Scanner) (FileGenerator, error) {
+func NewFileBuffer(r *bufio.Scanner) (*File, error) {
 	var b []byte
 	for r.Scan() {
 		if err := r.Err(); err != nil {
@@ -56,7 +56,7 @@ func NewFileBuffer(r *bufio.Scanner) (FileGenerator, error) {
 	return writeTmpFile(b)
 }
 
-func writeTmpFile(data []byte) (FileGenerator, error) {
+func writeTmpFile(data []byte) (*File, error) {
 	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating tmp file")

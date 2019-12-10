@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -22,7 +22,7 @@ import (
 	video "github.com/blixenkrone/gopro/internal/exif/video"
 	mail "github.com/blixenkrone/gopro/internal/mail"
 	storage "github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/pkg/compression"
+	"github.com/blixenkrone/gopro/internal/storage/aws"
 	conversion "github.com/blixenkrone/gopro/pkg/conversion"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
@@ -163,6 +163,8 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var wg sync.WaitGroup
+
 var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		_, cancel := context.WithDeadline(r.Context(), time.Now().Add(30*time.Second))
@@ -180,63 +182,51 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
 
 			pr, pw := io.Pipe()
+			defer pw.Close()
+
+			var s aws.AWSStorer
+			aws, err := aws.NewSession(s, r.Context(), mediaType)
+			if err != nil {
+				log.Error(err)
+			}
+
 			for {
+				length := 0
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
-						break
+						return
 					}
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					return
 				}
-				// defer part.Close()
+				defer part.Close()
 				log.Info("Processing: " + part.FileName())
+				length++
+
 				go func() {
-					// defer pw.Close()
+
 					_, err := io.Copy(pw, part)
 					if err != nil {
 						if err == io.EOF {
 							log.Info(io.EOF)
 						}
 						log.Errorf("copy err: %s", err)
-						return
-					}
-					log.Info("copied file!")
-				}()
-				comp, err := compression.NewZip(pw, part.FileName())
-				if err != nil {
-					log.Errorf("compression err: %s", err)
-					return
-				}
-				defer func() {
-					err := comp.Close()
-					if err != nil {
-						log.Errorf("close err: %s", err)
-						return
+						// return
 					}
 				}()
+
+				go func() {
+					// defer pw.Close()
+					if err := aws.StoreFile(pr, part.FileName()); err != nil {
+						log.Error(err)
+					}
+
+				}()
+
 			}
-
-			b, err := ioutil.ReadAll(pr)
-			if err != nil {
-				log.Errorln(err)
-			}
-
-			log.Infof("Read the body to zip: %s", b)
-
-			// defer func() {
-			// 	if err := pr.Close(); err != nil {
-			// 		panic(err)
-			// 	}
-			// }()
-			// if err := json.NewEncoder(w).Encode(pr); err != nil {
-			// 	NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
-			// 	return
-			// }
-
 		}
 	}
-
 }
 
 // getExif recieves body with img files
