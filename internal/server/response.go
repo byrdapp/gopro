@@ -7,6 +7,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ResponseBuilder struct {
+	Data   map[string]interface{} `json:"data"`
+	Errors map[string]interface{} `json:"data"`
+}
+
 // ResponseBuilder builds custom errors to a http response writer
 type ErrResponseBuilder struct {
 	Status    int    `json:"status"`

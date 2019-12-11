@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -163,7 +162,7 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var wg sync.WaitGroup
+var bookingUpload struct{}
 
 var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
@@ -179,10 +178,7 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
-			defer r.Body.Close()
-
-			pr, pw := io.Pipe()
-			defer pw.Close()
+			defer log.Error(r.Body.Close())
 
 			var s aws.AWSStorer
 			aws, err := aws.NewSession(s, r.Context(), mediaType)
@@ -190,41 +186,45 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 				log.Error(err)
 			}
 
+			pr, pw := io.Pipe()
+			nameCH := make(chan string)
 			for {
-				length := 0
-				part, err := mr.NextPart()
-				if err != nil {
-					if err == io.EOF {
-						return
-					}
-					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
-					return
-				}
-				defer part.Close()
-				log.Info("Processing: " + part.FileName())
-				length++
-
 				go func() {
-
-					_, err := io.Copy(pw, part)
+					part, err := mr.NextPart()
 					if err != nil {
 						if err == io.EOF {
-							log.Info(io.EOF)
+							return
 						}
-						log.Errorf("copy err: %s", err)
-						// return
+						NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
+						return
 					}
+					defer part.Close()
+					defer pw.Close()
+
+					log.Info("Processing: " + part.FileName())
+					_, err = io.Copy(pw, part)
+					if err != nil {
+						log.Error(errors.Errorf("error copying: %s", err))
+					}
+					nameCH <- part.FileName()
 				}()
 
-				go func() {
-					// defer pw.Close()
-					if err := aws.StoreFile(pr, part.FileName()); err != nil {
-						log.Error(err)
-					}
+				fileName := <-nameCH
 
-				}()
-
+				if err := aws.StoreFile(pr, fileName); err != nil {
+					log.Errorf("error storing file %s with err: %s", fileName, err)
+					break
+				}
 			}
+			//
+			_, err = w.Write([]byte("success"))
+			if err != nil {
+				log.Error(err)
+			}
+			// if err := json.NewEncoder(w).Encode(&res); err != nil {
+			// 	NewResErr(err, "failed uploading encoding", http.StatusInternalServerError, w)
+			// 	return
+			// }
 		}
 	}
 }
