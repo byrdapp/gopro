@@ -41,3 +41,5 @@ func (o *Output) MediaType() (mediaType *string) {
 	}
 	return mediaType
 }
+
+

@@ -2,6 +2,8 @@ package image
 
 import (
 	"bytes"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"io/ioutil"
 
@@ -10,9 +12,6 @@ import (
 	"github.com/blixenkrone/gopro/internal/exif"
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/logger"
-
-	_ "image/jpeg"
-	_ "image/png"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
@@ -40,6 +39,7 @@ func ReadImage(r io.Reader) *exif.Output {
 		err = errors.Cause(err)
 		xErr.MissingExif("load", err)
 	}
+
 	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
 		err = errors.Cause(err)

@@ -1,7 +1,9 @@
 package image
 
 import (
+	"bytes"
 	"image"
+	"image/jpeg"
 	"io"
 
 	"github.com/disintegration/imaging"
@@ -10,20 +12,32 @@ import (
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
-type ParsedImage struct {
-	Extension string       `json:"extension"`
-	Config    image.Config `json:"config"`
-	Img       image.Image  `json:"img"`
-}
-
 var log = logger.NewLogger()
+
+type Filter imaging.ResampleFilter
 
 const (
 	defaultWidth, defaultHeight                 = 640, 640
 	widthResizeThreshold, heightResizeThreshold = 720, 720
 )
 
-func NewPreviewImage(r io.Reader) (*ParsedImage, error) {
+type options struct {
+	width, height int
+	filter        imaging.ResampleFilter
+}
+
+type ParsedImage struct {
+	options   options
+	buf       bytes.Buffer
+	Extension string
+	Config    image.Config
+	Img       image.Image
+}
+
+/**
+Constructor function to create new image processing
+*/
+func NewPreviewProcessing(r io.Reader, filter ...Filter) (*ParsedImage, error) {
 	img, err := decodeImg(r)
 	if err != nil {
 		return nil, err
@@ -32,10 +46,19 @@ func NewPreviewImage(r io.Reader) (*ParsedImage, error) {
 	if err != nil {
 		return nil, err
 	}
+	sampleFilter := Filter(imaging.Lanczos)
+
+	if len(filter) > 0 {
+		sampleFilter = filter[0]
+	}
+
+	opt := options{cfg.Height, cfg.Width, imaging.ResampleFilter(sampleFilter)}
+
 	return &ParsedImage{
 		Extension: ext,
 		Config:    cfg,
 		Img:       img,
+		options:   opt,
 	}, nil
 }
 
@@ -60,21 +83,61 @@ func (img *ParsedImage) aboveThreshold(cfg image.Config) bool {
 	return cfg.Width > widthResizeThreshold && cfg.Height > heightResizeThreshold
 }
 
+func (img *ParsedImage) writeAsJPEG() (*ParsedImage, error) {
+	var err error
+	ext, err := imaging.FormatFromExtension(img.Extension)
+	if err != nil {
+		return nil, err
+	}
+
+	switch ext {
+	case imaging.JPEG:
+		break
+
+	case imaging.PNG:
+		err = jpeg.Encode(&img.buf, img.Img, &jpeg.Options{}) // TODO: Quality
+		break
+
+	default:
+		err = errors.New("format is not supported yet")
+		break
+	}
+	return img, err
+}
+
+type Preview struct {
+	Thumbnail []byte `json:"image"`
+	Error     error  `json:"error"`
+}
+
 /**
 Resize image according to the dimensions.
 Default value for filter is imaging.Lanczos
 */
-func (img *ParsedImage) Resize(dimX, dimY int, filter ...imaging.ResampleFilter) (*image.NRGBA, error) {
+func (img *ParsedImage) Thumbnail() (*Preview, error) {
 	// is the img big enough to upload to byrd and therefore worth scaling?
 	if !img.aboveThreshold(img.Config) {
 		return nil, errors.New("image too small to upload to platform")
 	}
-	if dimX <= 0 || dimY <= 0 {
-		return nil, errors.Errorf("dimensions cannot be negative or nil %v %v", dimX, dimY)
+	if img.options.width <= 0 || img.options.height <= 0 {
+		return nil, errors.Errorf("dimensions cannot be negative or nil %v %v", img.options.width, img.options.height)
 	}
-	opt := imaging.Lanczos
-	if len(filter) > 0 {
-		opt = filter[0]
+	thumb, err := img.createThumbnail(img.options)
+
+	return &Preview{
+		Thumbnail: nil,
+		Error:     err,
+	}, nil
+}
+
+func (img *ParsedImage) createThumbnail(opt options) (*image.NRGBA, error) {
+	return imaging.Thumbnail(img.Img, opt.width, opt.height, opt.filter), nil
+}
+
+func (img *ParsedImage) parseImage() ([]byte, error) {
+	err := jpeg.Encode(&img.buf, img.Img, nil)
+	if err != nil {
+		return nil, err
 	}
-	return imaging.Resize(img.Img, dimX, dimY, opt), nil
+	return img.buf.Bytes(), nil
 }

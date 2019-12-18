@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
@@ -23,6 +24,7 @@ import (
 	storage "github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/internal/storage/aws"
 	conversion "github.com/blixenkrone/gopro/pkg/conversion"
+	"github.com/blixenkrone/gopro/pkg/image"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
 
@@ -63,7 +65,7 @@ var loginGetUserAccess = func(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
-			err := fmt.Errorf("Missing email or password in credentials")
+			err := fmt.Errorf("missing email or password in credentials")
 			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
@@ -228,7 +230,8 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 }
 
 type ExifImageResponse struct {
-	Exif []*exif.Output `json:"exif"`
+	Exif    []*exif.Output   `json:"exif"`
+	Preview []*image.Preview `json:"preview"`
 }
 
 // getExif receives body with img files
@@ -237,12 +240,12 @@ type ExifImageResponse struct {
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
+		var preview = false
 		w.Header().Set("Content-Type", "multipart/form-data")
 		_, cancel := context.WithTimeout(r.Context(), time.Second*10)
 		defer cancel()
 
 		params := mux.Vars(r)
-
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
@@ -250,19 +253,15 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
+			if v, ok := params["preview"]; len(v) > 0 && ok {
+				// video: (*os.File+name, size 640px, seek 00.01.00, 1 frame output, low quality)
+				preview = true
+			}
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 			var res ExifImageResponse
 			for {
 				// read length of files
-
-				// v, ok := params["preview"]; ok {
-				// 	//	TODO: Create preview for image/video
-				// 	//	video: ffmpeg(*os.File+name, size 640px, seek 00.01.00, 1 frame output, low quality)
-				//
-				// 	// var pr image.Image
-				// }
-
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
@@ -271,6 +270,23 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
+
+				if preview {
+					var preview image.Preview
+					img, err := image.NewPreviewProcessing(part, image.Filter(imaging.Lanczos))
+					if err != nil {
+						log.Error(err) // FIXME: add some json response to this
+					}
+					thumb, err := img.Thumbnail()
+					if err != nil {
+						preview.Error = err
+						log.Error(err) // FIXME: add some json response to this˘
+					}
+					preview.Thumbnail = thumb.Thumbnail
+					res.Preview = append(res.Preview, &preview)
+				}
+
+				// Read EXIF data
 				output := exifimage.ReadImage(part)
 				res.Exif = append(res.Exif, output)
 			}
