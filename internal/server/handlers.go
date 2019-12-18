@@ -17,14 +17,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
 
-	exif "github.com/blixenkrone/gopro/internal/exif"
+	"github.com/blixenkrone/gopro/internal/exif"
 	exifimage "github.com/blixenkrone/gopro/internal/exif/image"
 	exifvideo "github.com/blixenkrone/gopro/internal/exif/video"
-	mail "github.com/blixenkrone/gopro/internal/mail"
-	storage "github.com/blixenkrone/gopro/internal/storage"
+	"github.com/blixenkrone/gopro/internal/mail"
+	"github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/internal/storage/aws"
-	conversion "github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/blixenkrone/gopro/pkg/image"
+	"github.com/blixenkrone/gopro/pkg/conversion"
+	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
 
@@ -230,8 +230,13 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 }
 
 type ExifImageResponse struct {
-	Exif    []*exif.Output   `json:"exif"`
-	Preview []*image.Preview `json:"preview"`
+	Exif    []*exif.Output `json:"exif,omitempty"`
+	Preview []preview      `json:"preview,omitempty"`
+}
+
+type preview struct {
+	Source []byte `json:"source,omitempty"`
+	Error  error  `json:"error,omitempty"`
 }
 
 // getExif receives body with img files
@@ -240,12 +245,10 @@ type ExifImageResponse struct {
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
-		var preview = false
+		var withPreview = false
 		w.Header().Set("Content-Type", "multipart/form-data")
 		_, cancel := context.WithTimeout(r.Context(), time.Second*10)
 		defer cancel()
-
-		params := mux.Vars(r)
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
@@ -253,15 +256,14 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
-			if v, ok := params["preview"]; len(v) > 0 && ok {
-				// video: (*os.File+name, size 640px, seek 00.01.00, 1 frame output, low quality)
-				preview = true
+			if w.Header().Get("preview") != "" {
+				withPreview = true
 			}
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 			var res ExifImageResponse
 			for {
-				// read length of files
+				// (*os.File) for next file
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
@@ -271,19 +273,27 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 
-				if preview {
-					var preview image.Preview
-					img, err := image.NewPreviewProcessing(part, image.Filter(imaging.Lanczos))
+				if withPreview {
+					log.Info("preview!§")
+					var preview preview
+					img, err := thumbnail.New(part, thumbnail.Filter(imaging.Lanczos))
 					if err != nil {
+						preview.Error = err
 						log.Error(err) // FIXME: add some json response to this
+						break
 					}
 					thumb, err := img.Thumbnail()
 					if err != nil {
 						preview.Error = err
 						log.Error(err) // FIXME: add some json response to this˘
 					}
-					preview.Thumbnail = thumb.Thumbnail
-					res.Preview = append(res.Preview, &preview)
+					b, err := thumb.Bytes()
+					if err != nil {
+						preview.Error = err
+						break
+					}
+					preview.Source = b
+					res.Preview = append(res.Preview, preview)
 				}
 
 				// Read EXIF data

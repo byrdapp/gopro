@@ -41,7 +41,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 }
 
 var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		headerToken := r.Header.Get(userToken)
@@ -65,5 +65,5 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		next(w, r)
-	})
+	}
 }
