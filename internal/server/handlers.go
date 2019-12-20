@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/disintegration/imaging"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
@@ -229,7 +229,7 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type ExifImageResponse struct {
+type exifImageResponse struct {
 	Exif    []*exif.Output `json:"exif,omitempty"`
 	Preview []preview      `json:"preview,omitempty"`
 }
@@ -241,7 +241,8 @@ type preview struct {
 
 // getExif receives body with img files
 // it attempts to fetch EXIF data from each image
-// if no exif data, the error message will be added to the response without breaking out of the loop until EOF
+// if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
+// endpoint: exif/${type=image/video}/?preview:bool
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
@@ -256,12 +257,13 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
-			if w.Header().Get("preview") != "" {
+			if r.URL.Query().Get("preview") != "" {
+				log.Info("preview!")
 				withPreview = true
 			}
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res ExifImageResponse
+			var res exifImageResponse
 			for {
 				// (*os.File) for next file
 				part, err := mr.NextPart()
@@ -272,15 +274,19 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
+				var buf bytes.Buffer
+				_, err = io.Copy(&buf, part)
+				if err != nil {
+					NewResErr(err, "error buffering file: "+part.FileName(), http.StatusBadRequest, w)
+					break
+				}
 
 				if withPreview {
-					log.Info("preview!§")
 					var preview preview
-					img, err := thumbnail.New(part, thumbnail.Filter(imaging.Lanczos))
+					img, err := thumbnail.New(buf)
 					if err != nil {
 						preview.Error = err
 						log.Error(err) // FIXME: add some json response to this
-						break
 					}
 					thumb, err := img.Thumbnail()
 					if err != nil {
@@ -290,14 +296,13 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					b, err := thumb.Bytes()
 					if err != nil {
 						preview.Error = err
-						break
 					}
 					preview.Source = b
 					res.Preview = append(res.Preview, preview)
 				}
 
-				// Read EXIF data
-				output := exifimage.ReadImage(part)
+				// // Read EXIF data
+				output := exifimage.ReadImage(buf.Bytes())
 				res.Exif = append(res.Exif, output)
 			}
 

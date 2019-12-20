@@ -25,7 +25,7 @@ var log = logger.NewLogger()
 
 // adds an object to the output JSON that displays missing exif data
 func (o *Output) MissingExif(errType string, err error) {
-	log.Errorf("exif added msg: %s from type: %s", err, errType)
+	log.Warnf("exif missing: %s from type: %s", err, errType)
 	o.ExifErrors[errType] = err.Error()
 }
 

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"image"
 	"image/jpeg"
-	"io"
+	_ "image/jpeg"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 
@@ -32,16 +33,16 @@ type Image struct {
 /**
 Constructor function to create new image processing. Filter is optional.
 */
-func New(r io.Reader, filter ...Filter) (*Image, error) {
-	img, err := decodeImg(r)
+func New(buf bytes.Buffer, filter ...Filter) (*Image, error) {
+	img, err := decodeImg(buf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decoding image from buffer")
 	}
-	cfg, ext, err := decodeImgCfg(r)
+
+	cfg, ext, err := decodeImgCfg(buf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decoding image config")
 	}
-	var buf bytes.Buffer
 
 	parseOpts := setDefaultParseOptions(filter...)
 
@@ -54,32 +55,36 @@ func New(r io.Reader, filter ...Filter) (*Image, error) {
 	}, nil
 }
 
+func byteReader(imageData []byte) *bytes.Reader {
+	return bytes.NewReader(imageData)
+}
+
+func decodeImg(data []byte) (img image.Image, err error) {
+	r := byteReader(data)
+	img, err = imaging.Decode(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding raw image")
+	}
+	return img, err
+}
+
+func decodeImgCfg(data []byte) (cfg image.Config, ext string, err error) {
+	r := byteReader(data)
+	cfg, ext, err = image.DecodeConfig(r)
+	if err != nil {
+		return cfg, ext, errors.Wrap(err, "error decoding image config")
+	}
+	return cfg, ext, err
+}
+
 type parseOptions struct {
 	width, height int
 	filter        imaging.ResampleFilter
 }
 
-func decodeImg(r io.Reader, opts ...imaging.DecodeOption) (img image.Image, err error) {
-	img, err = imaging.Decode(r, opts...)
-	if err != nil {
-		return nil, errors.Wrap(err, "error decoding image")
-	}
-
-	return img, err
-}
-
-func decodeImgCfg(r io.Reader) (cfg image.Config, ext string, err error) {
-	cfg, ext, err = image.DecodeConfig(r)
-	if err != nil {
-		return cfg, "", errors.Wrap(err, "error decoding image")
-	}
-	return cfg, ext, err
-}
-
 // Sets default options and filter (Lanczos) if not specified otherwise
 func setDefaultParseOptions(filter ...Filter) parseOptions {
 	sampleFilter := Filter(imaging.Lanczos)
-
 	if len(filter) > 0 {
 		sampleFilter = filter[0]
 	}
@@ -90,21 +95,17 @@ func (img *Image) aboveThreshold(cfg image.Config) bool {
 	return cfg.Width > widthResizeThreshold && cfg.Height > heightResizeThreshold
 }
 
-// Create thumbnail from imaging lib
-func (img *Image) createThumbnail(opt parseOptions) *image.NRGBA {
-	return imaging.Thumbnail(img.Image, opt.width, opt.height, opt.filter)
-}
-
 // If the format is anything else than JPEG, convert it...
-func (img *Image) writeAsJPEG() (*Image, error) {
+func (img *Image) writeAsJPEG() (image.Image, error) {
 	var err error
 	ext, err := imaging.FormatFromExtension(img.Extension)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "couldn't format from extension: %s", img.Extension)
 	}
 
 	switch ext {
 	case imaging.JPEG:
+		log.Info("JPEG - no formatting needed")
 		break
 
 	case imaging.PNG:
@@ -115,7 +116,13 @@ func (img *Image) writeAsJPEG() (*Image, error) {
 		err = errors.New("format is not supported yet")
 		break
 	}
-	return img, err
+	return img.Image, err
+}
+
+// Create thumbnail from imaging lib
+func (img *Image) createThumbnail(opt parseOptions) *image.NRGBA {
+	spew.Dump(opt)
+	return imaging.Thumbnail(img.Image, opt.width, opt.height, opt.filter)
 }
 
 /**
@@ -130,10 +137,15 @@ func (img *Image) Thumbnail() (*ParsedImage, error) {
 	if img.Info.Width <= 0 || img.Info.Height <= 0 {
 		return nil, errors.Errorf("dimensions cannot be negative or nil %v %v", img.Info.Width, img.Info.Height)
 	}
+
+	parsedImg, err := img.writeAsJPEG()
+	if err != nil {
+		return nil, errors.Errorf("error writing file as jpeg: %s with ext: %s", err, img.Extension)
+	}
+	img.Image = parsedImg
 	thumbnail := img.createThumbnail(img.parseOptions)
 
-	var buf bytes.Buffer
-
+	buf := bytes.Buffer{}
 	return &ParsedImage{
 		Thumbnail: thumbnail,
 		buf:       buf,

@@ -31,7 +31,8 @@ type imgExifData struct {
 
 // GetOutput returns the struct *Output containing img data.
 // This will always complete but the errors from missing/broken exif will follow.
-func ReadImage(r io.Reader) *exif.Output {
+func ReadImage(data []byte) *exif.Output {
+	r := bytes.NewReader(data)
 	xErr := &exif.Output{ExifErrors: make(map[string]string)}
 
 	x, err := loadExifData(r)
@@ -94,7 +95,6 @@ func ReadImage(r io.Reader) *exif.Output {
 func loadExifData(r io.Reader) (*imgExifData, error) {
 	x, err := goexif.Decode(r)
 	if err != nil {
-		log.Errorln("ERROR DECODING: " + err.Error())
 		return nil, errors.Wrap(err, "loading exif error")
 	}
 	return &imgExifData{x}, nil
@@ -109,19 +109,19 @@ func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, er
 
 		return 0.0, errors.WithMessagef(err, "error getting location coordinates from %s", fieldName)
 	}
-	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
-	fVals := make(map[string]float64, len(ratVals))
+	ratValues := map[string]int{"deg": 0, "min": 1, "sec": 2}
+	fValues := make(map[string]float64, len(ratValues))
 
-	for key, val := range ratVals {
-		rVals, err := tag.Rat(val)
+	for key, val := range ratValues {
+		v, err := tag.Rat(val)
 		if err != nil {
 			return 0.0, err
 		}
-		f, _ := rVals.Float64()
-		fVals[key] = f
+		f, _ := v.Float64()
+		fValues[key] = f
 	}
 
-	res := fVals["deg"] + (fVals["min"] / 60) + (fVals["sec"] / 3600)
+	res := fValues["deg"] + (fValues["min"] / 60) + (fValues["sec"] / 3600)
 	return res, nil
 }
 
