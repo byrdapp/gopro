@@ -19,7 +19,6 @@ var (
 )
 
 func init() {
-	// type go run *.go -local
 	flag.Parse()
 
 	if *local && !*production {
@@ -31,7 +30,6 @@ func init() {
 }
 
 func main() {
-
 	s := server.NewServer()
 
 	if err := s.UseHTTP2(); err != nil {

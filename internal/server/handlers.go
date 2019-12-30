@@ -286,12 +286,12 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					img, err := thumbnail.New(buf)
 					if err != nil {
 						preview.Error = err
-						log.Error(err) // FIXME: add some json response to this
+						log.Error(err)
 					}
 					thumb, err := img.Thumbnail()
 					if err != nil {
 						preview.Error = err
-						log.Error(err) // FIXME: add some json response to this˘
+						log.Error(err)
 					}
 					b, err := thumb.Bytes()
 					if err != nil {

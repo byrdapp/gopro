@@ -13,6 +13,9 @@ import (
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
+// TODO: format to jpeg: x-adobe-dmg && binary files
+// https://github.com/h2non/bimg
+
 var log = logger.NewLogger()
 
 type Filter imaging.ResampleFilter
@@ -45,7 +48,6 @@ func New(buf bytes.Buffer, filter ...Filter) (*Image, error) {
 	}
 
 	parseOpts := setDefaultParseOptions(filter...)
-
 	return &Image{
 		parseOptions: parseOpts,
 		Extension:    ext,
@@ -107,11 +109,12 @@ func (img *Image) writeAsJPEG() (image.Image, error) {
 	case imaging.JPEG:
 		log.Info("JPEG - no formatting needed")
 		break
-
 	case imaging.PNG:
 		err = jpeg.Encode(&img.buf, img.Image, &jpeg.Options{}) // TODO: Quality
 		break
-
+	case imaging.GIF:
+		err = jpeg.Encode(&img.buf, img.Image, &jpeg.Options{}) // TODO: Quality
+		break
 	default:
 		err = errors.New("format is not supported yet")
 		break
@@ -158,9 +161,9 @@ type ParsedImage struct {
 	buf       bytes.Buffer
 }
 
-type ImageParser interface {
-	Bytes() ([]byte, error)
-}
+// type ImageParser interface {
+// 	Bytes() ([]byte, error)
+// }
 
 func (pImg *ParsedImage) Bytes() ([]byte, error) {
 	err := jpeg.Encode(&pImg.buf, pImg.Thumbnail, nil)
