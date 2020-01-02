@@ -32,10 +32,7 @@ var isAdmin = func(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
-		if err != nil {
-			http.Error(w, "Error getting admin rights", http.StatusBadRequest)
-		}
-		err = fmt.Errorf("No admin rights found")
+		err = errors.New("No admin rights found:")
 		NewResErr(err, err.Error(), http.StatusBadRequest, w)
 	}
 }
@@ -59,7 +56,13 @@ var isAuth = func(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if isPro, err := fb.IsProfessional(r.Context(), token.UID); !isPro || err != nil {
+		isPro, err := fb.IsProfessional(r.Context(), token.UID)
+		if err != nil {
+			http.RedirectHandler("/login", http.StatusBadRequest)
+			return
+		}
+		if !isPro {
+			err := errors.New("User is not professional")
 			NewResErr(err, err.Error(), http.StatusUnauthorized, w)
 			http.RedirectHandler("/login", http.StatusFound)
 			return

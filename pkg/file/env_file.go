@@ -1,9 +1,6 @@
 package file
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -15,23 +12,17 @@ func SetEnvVar(key, variable string) error {
 	return errors.WithMessage(os.Setenv(key, variable), "setting env variable")
 }
 
-// Set env vars from .env file globally FIXME: Not working
-func SetEnvFileVars() error {
-	return godotenv.Load()
-}
-
-func RetrieveFromEnvFile() {
-	_, err := os.Open("./env_file.go")
-	if err != nil {
-		panic(err)
+// Set env vars from .env file globally
+func SetEnvFileVars(dotPath string) (path string, err error) {
+	if err := os.Chdir(dotPath); err != nil {
+		return "", errors.Cause(err)
 	}
-
-	b, err := ioutil.ReadFile(".env")
+	path, err = os.Getwd()
 	if err != nil {
-		panic(err)
+		return "", errors.Wrap(err, "change path err:")
 	}
-	fmt.Println(string(b))
-	barr := bytes.Split(b, []byte("="))
-	fmt.Println(barr)
-
+	if err := godotenv.Load(); err != nil {
+		return "", errors.Wrap(err, "load dotenv file")
+	}
+	return path, err
 }

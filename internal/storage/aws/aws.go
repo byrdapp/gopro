@@ -14,16 +14,17 @@ import (
 )
 
 const (
-	s3Region           = "eu-north-1"
+	s3NorthRegion      = "eu-north-1"
+	// s3CentralRegion    = "eu-central-1"
 	s3SecretBucket     = "byrd-secrets"
 	s3AccountingBucket = "byrd-accounting"
-	s3TestBucket       = "byrd-test"
+	s3TestBucket       = "/byrd-tests"
 )
 
 // NewUpload returns url location for where the file has been placed
 func NewUpload(file []byte, dateStamp string) (string, error) {
 	s, err := session.NewSession(&aws.Config{
-		Region:      aws.String(s3Region),
+		Region:      aws.String(s3NorthRegion),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
 	if err != nil {
@@ -59,7 +60,7 @@ func uploader(s *session.Session, file []byte, dateStamp string) (string, error)
 func GetAWSSecrets(fileName string) []byte {
 	buf := &aws.WriteAtBuffer{}
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(s3Region),
+		Region:      aws.String(s3NorthRegion),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
 	if err != nil {

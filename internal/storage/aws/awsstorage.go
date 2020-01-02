@@ -26,7 +26,7 @@ type AWSStorer interface {
 
 func NewSession(s AWSStorer, ctx context.Context, contentType string) (*s3Storage, error) {
 	session, err := session.NewSession(&aws.Config{
-		Region:      aws.String(s3Region),
+		Region:      aws.String(s3NorthRegion),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
 	})
 	if err != nil {

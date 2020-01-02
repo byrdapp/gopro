@@ -6,7 +6,6 @@ import (
 	"image/jpeg"
 	_ "image/jpeg"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 
@@ -36,13 +35,13 @@ type Image struct {
 /**
 Constructor function to create new image processing. Filter is optional.
 */
-func New(buf bytes.Buffer, filter ...Filter) (*Image, error) {
-	img, err := decodeImg(buf.Bytes())
+func New(b []byte, filter ...Filter) (*Image, error) {
+	img, err := decodeImg(b)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding image from buffer")
 	}
 
-	cfg, ext, err := decodeImgCfg(buf.Bytes())
+	cfg, ext, err := decodeImgCfg(b)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding image config")
 	}
@@ -53,7 +52,6 @@ func New(buf bytes.Buffer, filter ...Filter) (*Image, error) {
 		Extension:    ext,
 		Info:         cfg,
 		Image:        img,
-		buf:          buf,
 	}, nil
 }
 
@@ -107,7 +105,6 @@ func (img *Image) writeAsJPEG() (image.Image, error) {
 
 	switch ext {
 	case imaging.JPEG:
-		log.Info("JPEG - no formatting needed")
 		break
 	case imaging.PNG:
 		err = jpeg.Encode(&img.buf, img.Image, &jpeg.Options{}) // TODO: Quality
@@ -124,15 +121,20 @@ func (img *Image) writeAsJPEG() (image.Image, error) {
 
 // Create thumbnail from imaging lib
 func (img *Image) createThumbnail(opt parseOptions) *image.NRGBA {
-	spew.Dump(opt)
 	return imaging.Thumbnail(img.Image, opt.width, opt.height, opt.filter)
+}
+
+// ParsedImage contains the thumbnail properties
+type ParsedImage struct {
+	ThumbnailImg *image.NRGBA
+	buf          bytes.Buffer
 }
 
 /**
 Resize image according to the default dimensions.
 Default value for filter is imaging.Lanczos
 */
-func (img *Image) Thumbnail() (*ParsedImage, error) {
+func (img *Image) EncodeThumbnail() (*ParsedImage, error) {
 	// is the img big enough to upload to byrd and therefore worth scaling?
 	if !img.aboveThreshold(img.Info) {
 		return nil, errors.New("image too small to upload to platform")
@@ -148,27 +150,22 @@ func (img *Image) Thumbnail() (*ParsedImage, error) {
 	img.Image = parsedImg
 	thumbnail := img.createThumbnail(img.parseOptions)
 
-	buf := bytes.Buffer{}
+	var buf bytes.Buffer
+	err = jpeg.Encode(&buf, thumbnail, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "jpeg encoding err:")
+	}
+
 	return &ParsedImage{
-		Thumbnail: thumbnail,
-		buf:       buf,
+		ThumbnailImg: thumbnail,
+		buf:          buf,
 	}, nil
 }
 
-// ParsedImage contains the thumbnail properties
-type ParsedImage struct {
-	Thumbnail *image.NRGBA
-	buf       bytes.Buffer
+type Reader interface {
+	Bytes() []byte
 }
 
-// type ImageParser interface {
-// 	Bytes() ([]byte, error)
-// }
-
-func (pImg *ParsedImage) Bytes() ([]byte, error) {
-	err := jpeg.Encode(&pImg.buf, pImg.Thumbnail, nil)
-	if err != nil {
-		return nil, err
-	}
-	return pImg.buf.Bytes(), nil
+func (pImg *ParsedImage) Bytes() []byte {
+	return pImg.buf.Bytes()
 }

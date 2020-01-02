@@ -20,7 +20,5 @@ vendor
 *.mp4
 *.png
 *.txt
-
-*_test.go
 *.zip
 *.xml

@@ -229,9 +229,9 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type exifImageResponse struct {
-	Exif    []*exif.Output `json:"exif,omitempty"`
-	Preview []preview      `json:"preview,omitempty"`
+type exifImagesResponse struct {
+	Exif    *exif.Output `json:"exif,omitempty"`
+	Preview *preview     `json:"preview,omitempty"`
 }
 
 type preview struct {
@@ -258,13 +258,14 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
 			if r.URL.Query().Get("preview") != "" {
-				log.Info("preview!")
 				withPreview = true
 			}
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res exifImageResponse
+			var res []*exifImagesResponse
+
 			for {
+
 				// (*os.File) for next file
 				part, err := mr.NextPart()
 				if err != nil {
@@ -274,6 +275,9 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
+
+				var data exifImagesResponse
+
 				var buf bytes.Buffer
 				_, err = io.Copy(&buf, part)
 				if err != nil {
@@ -281,29 +285,27 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 
+				log.Infof("copied file: ", part.FileName())
+
 				if withPreview {
 					var preview preview
-					img, err := thumbnail.New(buf)
+					img, err := thumbnail.New(buf.Bytes())
 					if err != nil {
 						preview.Error = err
 						log.Error(err)
 					}
-					thumb, err := img.Thumbnail()
+					thumb, err := img.EncodeThumbnail()
 					if err != nil {
 						preview.Error = err
 						log.Error(err)
 					}
-					b, err := thumb.Bytes()
-					if err != nil {
-						preview.Error = err
-					}
-					preview.Source = b
-					res.Preview = append(res.Preview, preview)
+					preview.Source = thumb.Bytes()
+					data.Preview = &preview
 				}
-
 				// // Read EXIF data
-				output := exifimage.ReadImage(buf.Bytes())
-				res.Exif = append(res.Exif, output)
+				parsedExif := exifimage.ReadImage(buf.Bytes())
+				data.Exif = parsedExif
+				res = append(res, &data)
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
