@@ -31,6 +31,7 @@ require (
 	github.com/sendgrid/rest v2.4.1+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.5.0+incompatible
 	github.com/sirupsen/logrus v1.4.2
+	github.com/stretchr/testify v1.4.0
 	go.opencensus.io v0.22.2 // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/exp v0.0.0-20191129062945-2f5052295587 // indirect

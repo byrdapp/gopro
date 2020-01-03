@@ -42,8 +42,6 @@ func GetTestMaterial(path BucketRef, fileName string) (*S3TestMaterial, error) {
 	if !ok {
 		return nil, errors.New("bucket reference path for test material not found for: " + string(path))
 	}
-	log.Infof("getting path %s", pathType)
-
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(s3NorthRegion),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS"), os.Getenv("AWS_SECRET"), ""),
@@ -52,10 +50,13 @@ func GetTestMaterial(path BucketRef, fileName string) (*S3TestMaterial, error) {
 		return nil, errors.Errorf("aws session failed: %s", err)
 	}
 
+	bucketPath := s3TestBucket + "/" + testTypePath[path]
+	log.Infof("getting AWS bucket path/file %s/%s", bucketPath, fileName)
+
 	var buf aws.WriteAtBuffer
 	dl := s3manager.NewDownloader(sess)
 	_, err = dl.Download(&buf, &s3.GetObjectInput{
-		Bucket: aws.String("/" + s3TestBucket + "/" + testTypePath[path]),
+		Bucket: aws.String(bucketPath),
 		Key:    aws.String(fileName),
 	})
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
 
-	"github.com/blixenkrone/gopro/internal/exif"
+	exif "github.com/blixenkrone/gopro/internal/exif"
 	exifimage "github.com/blixenkrone/gopro/internal/exif/image"
 	exifvideo "github.com/blixenkrone/gopro/internal/exif/video"
 	"github.com/blixenkrone/gopro/internal/mail"
@@ -230,13 +230,18 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 }
 
 type exifImagesResponse struct {
-	Exif    *exif.Output `json:"exif,omitempty"`
-	Preview *preview     `json:"preview,omitempty"`
+	Preview *preview    `json:"preview,omitempty"`
+	Exif    *exifOutput `json:"exif,omitempty"`
+}
+
+type exifOutput struct {
+	Output *exif.Output `json:"output,omitempty"`
+	Error  string       `json:"error,omitempty"`
 }
 
 type preview struct {
 	Source []byte `json:"source,omitempty"`
-	Error  error  `json:"error,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 // getExif receives body with img files
@@ -265,7 +270,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			var res []*exifImagesResponse
 
 			for {
-
 				// (*os.File) for next file
 				part, err := mr.NextPart()
 				if err != nil {
@@ -276,8 +280,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 
-				var data exifImagesResponse
-
 				var buf bytes.Buffer
 				_, err = io.Copy(&buf, part)
 				if err != nil {
@@ -287,24 +289,35 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 
 				log.Infof("copied file: ", part.FileName())
 
+				// JSON response struct
+				var data exifImagesResponse
+
 				if withPreview {
 					var preview preview
 					img, err := thumbnail.New(buf.Bytes())
 					if err != nil {
-						preview.Error = err
+						preview.Error = err.Error()
 						log.Error(err)
 					}
 					thumb, err := img.EncodeThumbnail()
 					if err != nil {
-						preview.Error = err
+						preview.Error = err.Error()
 						log.Error(err)
 					}
 					preview.Source = thumb.Bytes()
 					data.Preview = &preview
 				}
-				// // Read EXIF data
-				parsedExif := exifimage.ReadImage(buf.Bytes())
-				data.Exif = parsedExif
+
+				// Read EXIF data
+				var exif exifOutput
+				parsedExif, err := exifimage.DecodeImageMetadata(buf.Bytes())
+				if err != nil {
+					log.Errorf("parsed exif error: %v", err)
+					exif.Error = err.Error()
+				}
+				exif.Output = parsedExif
+				data.Exif = &exif
+
 				res = append(res, &data)
 			}
 
