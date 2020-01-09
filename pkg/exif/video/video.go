@@ -30,7 +30,7 @@ const (
 )
 
 type videoExifData struct {
-	File file.FileGenerator
+	File *file.File
 }
 
 func ReadVideo(r io.Reader) (*videoExifData, error) {
@@ -45,7 +45,7 @@ func ReadVideo(r io.Reader) (*videoExifData, error) {
 }
 
 func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
-	xErr := &exif.Output{ExifErrors: make(map[string]string)}
+	xErr := &exif.Output{MissingExif: make(map[string]string)}
 	// TODO:
 	// thumbnail, err := f.makeThumbnail()
 	// if err != nil {
@@ -55,18 +55,18 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("filesize", err)
+		xErr.AddMissingExif("filesize", err)
 	}
 
 	meta, err := v.ffprobeVideoMeta()
 	if err != nil {
-		xErr.MissingExif("metacmd", err)
+		xErr.AddMissingExif("metacmd", err)
 	}
 	spew.Dump(meta)
 
 	geo, err := v.parseLocation(meta.Format.Tags.Location)
 	if err != nil {
-		xErr.MissingExif("geo", err)
+		xErr.AddMissingExif("geo", err)
 		log.Errorf("cause: %s", errors.Cause(err))
 	}
 
@@ -77,7 +77,7 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 		Lng:             geo[lng],
 		PixelXDimension: meta.Streams[0].Width,
 		PixelYDimension: meta.Streams[0].Height,
-		ExifErrors:      xErr.ExifErrors,
+		MissingExif:     xErr.MissingExif,
 	}
 }
 
