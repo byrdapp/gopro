@@ -17,13 +17,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
 
-	exif "github.com/blixenkrone/gopro/internal/exif"
-	exifimage "github.com/blixenkrone/gopro/internal/exif/image"
-	exifvideo "github.com/blixenkrone/gopro/internal/exif/video"
 	"github.com/blixenkrone/gopro/internal/mail"
 	"github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/internal/storage/aws"
 	"github.com/blixenkrone/gopro/pkg/conversion"
+	exif "github.com/blixenkrone/gopro/pkg/exif"
+	exifimage "github.com/blixenkrone/gopro/pkg/exif/image"
+	exifvideo "github.com/blixenkrone/gopro/pkg/exif/video"
 	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )

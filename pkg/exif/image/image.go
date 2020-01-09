@@ -9,8 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/gopro/internal/exif"
 	"github.com/blixenkrone/gopro/pkg/conversion"
+	"github.com/blixenkrone/gopro/pkg/exif"
 	"github.com/blixenkrone/gopro/pkg/logger"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
