@@ -5,8 +5,6 @@ import (
 	"io"
 	"os"
 	"testing"
-
-	"github.com/blixenkrone/gopro/internal/storage/aws"
 )
 
 func TestVideoExif(t *testing.T) {
@@ -31,7 +29,6 @@ func TestVideoExif(t *testing.T) {
 		// 	t.Error(err)
 		// 	return
 		// }
->>>>>>> Stashed changes
 
 		// video, err := video.ReadVideo(r)
 		// if err != nil {
