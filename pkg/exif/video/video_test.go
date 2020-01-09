@@ -5,22 +5,25 @@ import (
 	"io"
 	"os"
 	"testing"
+<<<<<<< Updated upstream
 
 	"github.com/aws/aws-sdk-go/aws"
+=======
+>>>>>>> Stashed changes
 )
 
 func TestVideoExif(t *testing.T) {
 	t.Run("read video metadata", func(t *testing.T) {
-		pr, pw := io.Pipe()
-		if err := aws.ParseCredentials(); err != nil {
-			t.Error(err)
-			return
-		}
-		mat, err := aws.GetTestMaterial("videos", "in.mp4")
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		// pr, pw := io.Pipe()
+		// if err := aws.ParseCredentials(); err != nil {
+		// 	t.Error(err)
+		// 	return
+		// }
+		// mat, err := aws.GetTestMaterial("videos", "in.mp4")
+		// if err != nil {
+		// 	t.Error(err)
+		// 	return
+		// }
 
 		// video, err := video.ReadVideo(r)
 		// if err != nil {
