@@ -2,6 +2,8 @@ package image
 
 import (
 	"bytes"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"io/ioutil"
 
@@ -10,9 +12,6 @@ import (
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	"github.com/blixenkrone/gopro/pkg/exif"
 	"github.com/blixenkrone/gopro/pkg/logger"
-
-	_ "image/jpeg"
-	_ "image/png"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
@@ -24,56 +23,63 @@ var (
 // tiff.Tag struct return values as number(i.e. 0 == int)
 const (
 	exifIntVal = iota
+	EOFError   = "error reading exif from file: EOF"
 )
 
 type imgExifData struct {
 	x *goexif.Exif
 }
 
-// GetOutput returns the struct *Output containing img data.
-// This will always complete but the errors from missing/broken exif will follow.
-func ReadImage(r io.Reader) *exif.Output {
-	xErr := &exif.Output{ExifErrors: make(map[string]string)}
+// DecodeImageMetadata returns the struct *Output containing img data.
+// This will include the errors from missing/broken exif will follow.
+// If an error is != nil, its a panic
+func DecodeImageMetadata(data []byte) (*exif.Output, error) {
+	r := bytes.NewReader(data)
+	xErr := &exif.Output{MissingExif: make(map[string]string)}
 
 	x, err := loadExifData(r)
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("load", err)
+		if err == io.ErrUnexpectedEOF || err == io.EOF {
+			return nil, errors.New(EOFError)
+		}
+		// Missing exif should probably not happen
+		xErr.AddMissingExif("decode", err)
 	}
 	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("lat", err)
+		xErr.AddMissingExif("lat", err)
 	}
 	lng, err := x.calcGeoCoordinate(goexif.GPSLongitude)
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("lng", err)
+		xErr.AddMissingExif("lng", err)
 	}
 	date, err := x.getDateTime()
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("date", err)
+		xErr.AddMissingExif("date", err)
 	}
 	author, err := x.getCopyright()
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("copyright", err)
+		xErr.AddMissingExif("copyright", err)
 	}
 	model, err := x.getCameraModel()
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("model", err)
+		xErr.AddMissingExif("model", err)
 	}
 	dimensions, err := x.getImageDimensions()
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("dimension", err)
+		xErr.AddMissingExif("dimension", err)
 	}
 	size, err := x.getFileSize(r)
 	if err != nil {
 		err = errors.Cause(err)
-		xErr.MissingExif("fileSize", err)
+		xErr.AddMissingExif("fileSize", err)
 	}
 
 	return &exif.Output{
@@ -85,17 +91,17 @@ func ReadImage(r io.Reader) *exif.Output {
 		PixelYDimension: dimensions[goexif.PixelYDimension],
 		Copyright:       author,
 		MediaSize:       size,
-		ExifErrors:      xErr.ExifErrors,
+		MissingExif:     xErr.MissingExif,
 		// ? do this MediaFormat:     mediaFmt,
-	}
+	}, nil
 }
 
 // loadExifData request exif data for image
 func loadExifData(r io.Reader) (*imgExifData, error) {
 	x, err := goexif.Decode(r)
 	if err != nil {
-		log.Errorln("ERROR DECODING: " + err.Error())
-		return nil, errors.Wrap(err, "loading exif error")
+		err := errors.Wrap(err, "loading exif error")
+		return nil, err
 	}
 	return &imgExifData{x}, nil
 }
@@ -103,25 +109,21 @@ func loadExifData(r io.Reader) (*imgExifData, error) {
 func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, error) {
 	tag, err := e.x.Get(fieldName)
 	if err != nil {
-		if goexif.IsTagNotPresentError(err) {
-			return 0.0, err
-		}
-
 		return 0.0, errors.WithMessagef(err, "error getting location coordinates from %s", fieldName)
 	}
-	ratVals := map[string]int{"deg": 0, "min": 1, "sec": 2}
-	fVals := make(map[string]float64, len(ratVals))
+	ratValues := map[string]int{"deg": 0, "min": 1, "sec": 2}
+	fValues := make(map[string]float64, len(ratValues))
 
-	for key, val := range ratVals {
-		rVals, err := tag.Rat(val)
+	for key, val := range ratValues {
+		v, err := tag.Rat(val)
 		if err != nil {
 			return 0.0, err
 		}
-		f, _ := rVals.Float64()
-		fVals[key] = f
+		f, _ := v.Float64()
+		fValues[key] = f
 	}
 
-	res := fVals["deg"] + (fVals["min"] / 60) + (fVals["sec"] / 3600)
+	res := fValues["deg"] + (fValues["min"] / 60) + (fValues["sec"] / 3600)
 	return res, nil
 }
 
