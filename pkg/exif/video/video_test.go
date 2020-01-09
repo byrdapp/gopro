@@ -19,7 +19,6 @@ func TestVideoExif(t *testing.T) {
 		// 	t.Error(err)
 		// 	return
 		// }
-		// mat, err := aws.GetTestMaterial("videos", "in.mp4")
 
 		// video, err := video.ReadVideo(r)
 		// if err != nil {
