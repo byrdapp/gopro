@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,12 +17,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sendgrid/sendgrid-go"
 
-	exif "github.com/blixenkrone/gopro/internal/exif"
-	image "github.com/blixenkrone/gopro/internal/exif/image"
-	video "github.com/blixenkrone/gopro/internal/exif/video"
-	mail "github.com/blixenkrone/gopro/internal/mail"
-	storage "github.com/blixenkrone/gopro/internal/storage"
-	conversion "github.com/blixenkrone/gopro/pkg/conversion"
+	"github.com/blixenkrone/gopro/internal/mail"
+	"github.com/blixenkrone/gopro/internal/storage"
+	"github.com/blixenkrone/gopro/internal/storage/aws"
+	"github.com/blixenkrone/gopro/pkg/conversion"
+	exif "github.com/blixenkrone/gopro/pkg/exif"
+	exifimage "github.com/blixenkrone/gopro/pkg/exif/image"
+	exifvideo "github.com/blixenkrone/gopro/pkg/exif/video"
+	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
 
@@ -62,7 +65,7 @@ var loginGetUserAccess = func(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		if creds.Password == "" || creds.Email == "" {
-			err := fmt.Errorf("Missing email or password in credentials")
+			err := fmt.Errorf("missing email or password in credentials")
 			NewResErr(err, err.Error(), http.StatusInternalServerError, w)
 			return
 		}
@@ -161,6 +164,8 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var bookingUpload struct{}
+
 var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		_, cancel := context.WithDeadline(r.Context(), time.Now().Add(30*time.Second))
@@ -175,10 +180,18 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 
 		if strings.HasPrefix(mediaType, "multipart/") {
 			mr := multipart.NewReader(r.Body, params["boundary"])
-			defer r.Body.Close()
-			var res interface{}
+			defer log.Error(r.Body.Close())
+
+			var s aws.AWSStorer
+			aws, err := aws.NewSession(s, r.Context(), mediaType)
+			if err != nil {
+				log.Error(err)
+			}
+
+			pr, pw := io.Pipe()
+			defer pw.Close()
+			// nameCH := make(chan string)
 			for {
-				// read length of files
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
@@ -188,41 +201,76 @@ var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 
-			}
-			if err := json.NewEncoder(w).Encode(res); err != nil {
-				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
-				return
+				go func() {
+					_, err := io.Copy(pw, part)
+					if err != nil {
+						err := pw.CloseWithError(err)
+						log.Error(errors.Errorf("copy err: %s", err))
+					}
+				}()
+
+				log.Info("Processing: " + part.FileName())
+				go func() {
+					if err := aws.StoreFile(pr, part.FileName()); err != nil {
+						log.Errorf("error storing file %s with err: %s", part.FileName(), err)
+						return
+					}
+				}()
 			}
 
+			// if err := json.NewEncoder(w).Encode("success"); err != nil {
+			//	log.Error(err)
+			// }
+			// if err := json.NewEncoder(w).Encode(&res); err != nil {
+			// 	NewResErr(err, "failed uploading encoding", http.StatusInternalServerError, w)
+			// 	return
+			// }
 		}
 	}
-
 }
 
-// getExif recieves body with img files
+type exifImagesResponse struct {
+	Preview *preview    `json:"preview,omitempty"`
+	Exif    *exifOutput `json:"exif,omitempty"`
+}
+
+type exifOutput struct {
+	Output *exif.Output `json:"output,omitempty"`
+	Error  string       `json:"error,omitempty"`
+}
+
+type preview struct {
+	Source []byte `json:"source,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// getExif receives body with img files
 // it attempts to fetch EXIF data from each image
-// if no exif data, the error message will be added to the response without breaking out of the loop until EOF
+// if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
+// endpoint: exif/${type=image/video}/?preview:bool
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == "POST" {
+		var withPreview = false
 		w.Header().Set("Content-Type", "multipart/form-data")
-		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
+		_, cancel := context.WithTimeout(r.Context(), time.Second*10)
 		defer cancel()
-
 		// Parse media type to get type of media
 		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
 			return
 		}
-
 		if strings.HasPrefix(mediaType, "multipart/") {
+			if r.URL.Query().Get("preview") != "" {
+				withPreview = true
+			}
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*exif.Output
+			var res []*exifImagesResponse
+
 			for {
-				// read length of files
-				var x exif.Output
+				// (*os.File) for next file
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF {
@@ -231,10 +279,46 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
 					break
 				}
-				output := image.ReadImage(part)
 
-				x = *output
-				res = append(res, &x)
+				var buf bytes.Buffer
+				_, err = io.Copy(&buf, part)
+				if err != nil {
+					NewResErr(err, "error buffering file: "+part.FileName(), http.StatusBadRequest, w)
+					break
+				}
+
+				log.Infof("copied file: ", part.FileName())
+
+				// JSON response struct
+				var data exifImagesResponse
+
+				if withPreview {
+					var preview preview
+					img, err := thumbnail.New(buf.Bytes())
+					if err != nil {
+						preview.Error = err.Error()
+						log.Error(err)
+					}
+					thumb, err := img.EncodeThumbnail()
+					if err != nil {
+						preview.Error = err.Error()
+						log.Error(err)
+					}
+					preview.Source = thumb.Bytes()
+					data.Preview = &preview
+				}
+
+				// Read EXIF data
+				var exif exifOutput
+				parsedExif, err := exifimage.DecodeImageMetadata(buf.Bytes())
+				if err != nil {
+					log.Errorf("parsed exif error: %v", err)
+					exif.Error = err.Error()
+				}
+				exif.Output = parsedExif
+				data.Exif = &exif
+
+				res = append(res, &data)
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -254,7 +338,7 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", mediaType)
 
-		video, err := video.ReadVideo(r.Body)
+		video, err := exifvideo.ReadVideo(r.Body)
 		if err != nil {
 			NewResErr(err, err.Error(), http.StatusNotFound, w, "err")
 			return
@@ -276,71 +360,6 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
 		}
-	}
-}
-
-type ClientReq struct {
-	Geoloc           map[string]int `json:"_geoloc"`
-	IsHash           bool           `json:"isHash"`
-	StoryHeadline    string         `json:"storyHeadline"`
-	StoryDescription string         `json:"storyDescription"`
-	Media            []*media       `json:"media"`
-}
-
-type media struct {
-	Geoloc         map[string]int `json:"_geoloc"`
-	MediaDate      int64          `json:"mediaDate"`
-	MediaExtension string         `json:"mediaExtension"`
-	MediaType      string         `json:"mediaType"`
-	MediaDevice    string         `json:"mediaDevice"`
-	IsVerified     bool           `json:"isVerified"`
-	MediaWidth     int            `json:"mediaWidth"`
-	MediaHeight    int            `json:"mediaHeight"`
-	MediaSize      float64        `json:"mediaSize"`
-}
-
-var uploadByrdAPIRequest = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		w.Header().Set("Content-Type", "multipart/form-data")
-		_, cancel := context.WithTimeout(r.Context(), time.Duration(time.Second*10))
-		defer cancel()
-
-		// Parse media type to get type of media
-		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		if err != nil {
-			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
-			return
-		}
-
-		if strings.HasPrefix(mediaType, "multipart/") {
-			mr := multipart.NewReader(r.Body, params["boundary"])
-			defer r.Body.Close()
-			for {
-				part, err := mr.NextPart()
-				// defer part.Close()
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					log.Error(err)
-					break
-				}
-				fileName := part.FormName()
-				formVal := r.FormValue(fileName)
-				log.Info(formVal)
-			}
-
-			if err != nil {
-				NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-				return
-			}
-
-			if err := json.NewEncoder(w).Encode([]byte("hello")); err != nil {
-				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
-				return
-			}
-		}
-
 	}
 }
 

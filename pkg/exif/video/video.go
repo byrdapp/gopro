@@ -12,7 +12,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
-	exif "github.com/blixenkrone/gopro/internal/exif"
+	exif "github.com/blixenkrone/gopro/pkg/exif"
 	"github.com/blixenkrone/gopro/pkg/file"
 	"github.com/blixenkrone/gopro/pkg/logger"
 )

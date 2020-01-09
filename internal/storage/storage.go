@@ -8,7 +8,6 @@ import (
 	"firebase.google.com/go/auth"
 )
 
-// PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
 	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
