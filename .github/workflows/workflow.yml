@@ -37,7 +37,6 @@ jobs:
     name: build code
     needs: setup
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out master branch
         uses: actions/checkout@master

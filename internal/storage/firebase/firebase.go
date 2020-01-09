@@ -26,7 +26,7 @@ var log = logger.NewLogger()
 type Firebase struct {
 	Client  *db.Client
 	Auth    *auth.Client
-	Context context.Context // context.Backgroun() - use r.Context()
+	Context context.Context // context.Background() - use r.Context()
 }
 
 // ! Get profile params to switch profile type (reg, media, pro)
@@ -49,7 +49,7 @@ func NewFB() (storage.FBService, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := app.Auth(ctx)
+	fbAuth, err := app.Auth(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func NewFB() (storage.FBService, error) {
 	return &Firebase{
 		Client:  client,
 		Context: ctx,
-		Auth:    auth,
+		Auth:    fbAuth,
 	}, nil
 }
 
@@ -80,7 +80,7 @@ func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 // GetTransactions - this guy
 func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 	p := os.Getenv("ENV") + "/transactions"
-	transaction := []*storage.Transaction{}
+	var transaction []*storage.Transaction
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, transaction); err != nil {
 		return nil, err
