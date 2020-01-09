@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/blixenkrone/gopro/internal/storage/aws"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 func TestVideoExif(t *testing.T) {
