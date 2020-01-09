@@ -9,6 +9,7 @@ import (
 
 func TestVideoExif(t *testing.T) {
 	t.Run("read video metadata", func(t *testing.T) {
+		
 		// pr, pw := io.Pipe()
 		// if err := aws.ParseCredentials(); err != nil {
 		// 	t.Error(err)
