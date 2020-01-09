@@ -5,11 +5,6 @@ import (
 	"io"
 	"os"
 	"testing"
-<<<<<<< Updated upstream
-
-	"github.com/aws/aws-sdk-go/aws"
-=======
->>>>>>> Stashed changes
 )
 
 func TestVideoExif(t *testing.T) {
