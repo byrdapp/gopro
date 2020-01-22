@@ -9,7 +9,7 @@ import (
 
 type ResponseBuilder struct {
 	Data   map[string]interface{} `json:"data"`
-	Errors map[string]interface{} `json:"data"`
+	Errors map[string]interface{} `json:"errors"`
 }
 
 // ResponseBuilder builds custom errors to a http response writer

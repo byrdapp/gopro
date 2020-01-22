@@ -19,7 +19,6 @@ import (
 
 	"github.com/blixenkrone/gopro/internal/mail"
 	"github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/internal/storage/aws"
 	"github.com/blixenkrone/gopro/pkg/conversion"
 	exif "github.com/blixenkrone/gopro/pkg/exif"
 	exifimage "github.com/blixenkrone/gopro/pkg/exif/image"
@@ -164,71 +163,6 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var bookingUpload struct{}
-
-var bookingUploadToStorage = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		_, cancel := context.WithDeadline(r.Context(), time.Now().Add(30*time.Second))
-		defer cancel()
-
-		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		if err != nil {
-			NewResErr(err, "Could not parse request body", http.StatusBadRequest, w)
-			return
-		}
-		w.Header().Set("Content-Type", mediaType)
-
-		if strings.HasPrefix(mediaType, "multipart/") {
-			mr := multipart.NewReader(r.Body, params["boundary"])
-			defer log.Error(r.Body.Close())
-
-			var s aws.AWSStorer
-			aws, err := aws.NewSession(s, r.Context(), mediaType)
-			if err != nil {
-				log.Error(err)
-			}
-
-			pr, pw := io.Pipe()
-			defer pw.Close()
-			// nameCH := make(chan string)
-			for {
-				part, err := mr.NextPart()
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					NewResErr(err, "error reading file: "+part.FileName(), http.StatusBadRequest, w)
-					break
-				}
-
-				go func() {
-					_, err := io.Copy(pw, part)
-					if err != nil {
-						err := pw.CloseWithError(err)
-						log.Error(errors.Errorf("copy err: %s", err))
-					}
-				}()
-
-				log.Info("Processing: " + part.FileName())
-				go func() {
-					if err := aws.StoreFile(pr, part.FileName()); err != nil {
-						log.Errorf("error storing file %s with err: %s", part.FileName(), err)
-						return
-					}
-				}()
-			}
-
-			// if err := json.NewEncoder(w).Encode("success"); err != nil {
-			//	log.Error(err)
-			// }
-			// if err := json.NewEncoder(w).Encode(&res); err != nil {
-			// 	NewResErr(err, "failed uploading encoding", http.StatusInternalServerError, w)
-			// 	return
-			// }
-		}
-	}
-}
-
 type exifImagesResponse struct {
 	Preview *preview    `json:"preview,omitempty"`
 	Exif    *exifOutput `json:"exif,omitempty"`
@@ -301,8 +235,8 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					}
 					thumb, err := img.EncodeThumbnail()
 					if err != nil {
-						preview.Error = err.Error()
-						log.Error(err)
+						NewResErr(err, err.Error(), http.StatusBadRequest, w)
+						return
 					}
 					preview.Source = thumb.Bytes()
 					data.Preview = &preview
@@ -329,6 +263,11 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type videoReponse struct {
+	Out       *exif.Output
+	Thumbnail []byte `json:"thumnail,omitempty"`
+}
+
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
@@ -344,7 +283,6 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		out := video.CreateVideoExifOutput()
 		defer func() {
 			if err := video.File.Close(); err != nil {
 				log.Errorln(err)
@@ -357,7 +295,21 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		if err := json.NewEncoder(w).Encode(out); err != nil {
+		var res videoReponse
+		out := video.CreateVideoExifOutput()
+		res.Out = out
+
+		img, err := thumbnail.New(video.Bytes())
+		if err != nil {
+			NewResErr(err, err.Error(), http.StatusBadRequest, w)
+		}
+
+		thumb, err :=) img.EncodeThumbnail()
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.NewEncoder(w).Encode(&res); err != nil {
 			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
 		}
 	}

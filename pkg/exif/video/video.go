@@ -1,15 +1,14 @@
 package video
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"os/exec"
 	"regexp"
 	"strconv"
-	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	exif "github.com/blixenkrone/gopro/pkg/exif"
@@ -19,7 +18,6 @@ import (
 
 var (
 	log = logger.NewLogger()
-	mut sync.RWMutex
 )
 
 const (
@@ -29,22 +27,22 @@ const (
 	lng    = "lng"
 )
 
-type videoExifData struct {
+type videoFile struct {
 	File *file.File
 }
 
-func ReadVideo(r io.Reader) (*videoExifData, error) {
+func ReadVideo(r io.Reader) (*videoFile, error) {
 	f, err := file.NewFile(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &videoExifData{
+	return &videoFile{
 		File: f,
 	}, nil
 }
 
-func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
+func (v *videoFile) CreateVideoExifOutput() *exif.Output {
 	xErr := &exif.Output{MissingExif: make(map[string]string)}
 	// TODO:
 	// thumbnail, err := f.makeThumbnail()
@@ -62,7 +60,9 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 	if err != nil {
 		xErr.AddMissingExif("metacmd", err)
 	}
-	spew.Dump(meta)
+
+	// log.Info("FFPROBE META:\n")
+	// spew.Dump(meta)
 
 	geo, err := v.parseLocation(meta.Format.Tags.Location)
 	if err != nil {
@@ -79,6 +79,15 @@ func (v *videoExifData) CreateVideoExifOutput() *exif.Output {
 		PixelYDimension: meta.Streams[0].Height,
 		MissingExif:     xErr.MissingExif,
 	}
+}
+
+func (v *videoFile) Bytes() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, v.File.File())
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 type ffprobeOutput struct {
@@ -116,7 +125,7 @@ type ffprobeTags struct {
 // 	return out, nil
 // }
 
-func (v *videoExifData) ffprobeVideoMeta() (*ffprobeOutput, error) {
+func (v *videoFile) ffprobeVideoMeta() (*ffprobeOutput, error) {
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
 		return nil, errors.New("error finding exec path for ffprobe")
@@ -137,7 +146,7 @@ func (v *videoExifData) ffprobeVideoMeta() (*ffprobeOutput, error) {
 }
 
 // Parse geolocation from single video file - no array pls
-func (v *videoExifData) parseLocation(input string) (geo map[string]float64, err error) {
+func (v *videoFile) parseLocation(input string) (geo map[string]float64, err error) {
 	if len(input) <= 0 {
 		return nil, errors.New("error: no location data provided in file")
 	}
@@ -159,7 +168,7 @@ func (v *videoExifData) parseLocation(input string) (geo map[string]float64, err
 }
 
 // map represents height and width as string values i.e: hw["width"].
-func (v *videoExifData) matchWHDimension(input []byte) (wh map[string]int, err error) {
+func (v *videoFile) matchWHDimension(input []byte) (wh map[string]int, err error) {
 	exp, match := matchRegExp(`[0-9]*`, input)
 	if !match {
 		return nil, errors.New("regex failed to match")
@@ -169,7 +178,6 @@ func (v *videoExifData) matchWHDimension(input []byte) (wh map[string]int, err e
 	wh = make(map[string]int)
 	// width always comes first
 	dimensions := exp.FindAllString(string(input), -1)
-	log.Infof("%s", dimensions)
 	arr := []string{width, height}
 	for i := range arr {
 		if err != nil {
@@ -184,18 +192,9 @@ func (v *videoExifData) matchWHDimension(input []byte) (wh map[string]int, err e
 	return wh, err
 }
 
-// TODO: For later use maybe?
-func execCmd(path string, arg ...string) (*exec.Cmd, error) {
-	pathcmd, err := exec.LookPath(path)
-	if err != nil {
-		return nil, errors.Errorf("error finding exec path for %s", path)
-	}
-	return exec.Command(pathcmd, arg...), nil
-}
-
-func matchRegExp(str string, bval []byte) (*regexp.Regexp, bool) {
+func matchRegExp(str string, b []byte) (*regexp.Regexp, bool) {
 	exp := regexp.MustCompile(str)
-	if matched := exp.Match(bval); !matched {
+	if matched := exp.Match(b); !matched {
 		return nil, false
 	} else {
 		return exp, true

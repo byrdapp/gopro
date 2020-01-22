@@ -45,6 +45,7 @@ func DecodeImageMetadata(data []byte) (*exif.Output, error) {
 		}
 		// Missing exif should probably not happen
 		xErr.AddMissingExif("decode", err)
+		return nil, errors.New("error decoding image for meta data")
 	}
 	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {

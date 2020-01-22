@@ -75,7 +75,6 @@ func NewServer() *Server {
 	mux.HandleFunc("/auth/profile/token", isAuth(decodeTokenGetProfile)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProProfile)).Methods("GET")
 
-	mux.HandleFunc("/booking/upload", isAuth(bookingUploadToStorage)).Methods("POST")
 	mux.HandleFunc("/booking/task/{uid}", isAuth(getBookingsByUID)).Methods("GET")
 	mux.HandleFunc("/booking/task/{proUID}", isAuth(createBooking)).Methods("POST")
 	mux.HandleFunc("/booking/task/{bookingID}", isAuth(updateBooking)).Methods("PUT")
