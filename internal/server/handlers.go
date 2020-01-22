@@ -27,7 +27,7 @@ import (
 	timeutil "github.com/blixenkrone/gopro/pkg/time"
 )
 
-var JSONEncodingError = errors.New("Error converting exif to JSON")
+var errJSONEncoding = errors.New("Error converting exif to JSON")
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -256,7 +256,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
-				NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w)
+				NewResErr(err, errJSONEncoding.Error(), http.StatusInternalServerError, w)
 				return
 			}
 		}
@@ -264,8 +264,9 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 }
 
 type videoReponse struct {
-	Out       *exif.Output
-	Thumbnail []byte `json:"thumnail,omitempty"`
+	Out       *exif.Output `json:"out,omitempty"`
+	Thumbnail []byte       `json:"thumnail,omitempty"`
+	Error     string       `json:"error,omitempty"`
 }
 
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
@@ -296,21 +297,24 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		var res videoReponse
+		b, err := video.Bytes()
+		_, err = thumbnail.New(b)
+		if err != nil {
+			res.Error = err.Error()
+		}
+		// spew.Dump(img.Info)
+		// _, err = img.EncodeThumbnail()
+		// if err != nil {
+		// 	NewResErr(err, err.Error(), http.StatusInternalServerError, w)
+		// }
+
 		out := video.CreateVideoExifOutput()
 		res.Out = out
 
-		img, err := thumbnail.New(video.Bytes())
-		if err != nil {
-			NewResErr(err, err.Error(), http.StatusBadRequest, w)
-		}
-
-		thumb, err :=) img.EncodeThumbnail()
-		if err != nil {
-			return nil, err
-		}
+		// res.Thumbnail = thumb.Bytes()
 
 		if err := json.NewEncoder(w).Encode(&res); err != nil {
-			NewResErr(err, JSONEncodingError.Error(), http.StatusInternalServerError, w, "trace")
+			NewResErr(err, errJSONEncoding.Error(), http.StatusInternalServerError, w, "trace")
 		}
 	}
 }

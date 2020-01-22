@@ -29,13 +29,13 @@ var (
 
 // Server is used in main.go
 type Server struct {
-	HttpListenServer   *http.Server
-	HttpRedirectServer *http.Server
+	HTTPListenServer   *http.Server
+	HTTPRedirectServer *http.Server
 	CertM              *autocert.Manager
 	// handlermux http.Handler
 }
 
-// Creates a new server with HTTP2 & HTTPS
+// NewServer - Creates a new server with HTTP2 & HTTPS
 func NewServer() *Server {
 	mux := mux.NewRouter()
 
@@ -124,7 +124,7 @@ func NewServer() *Server {
 	// }
 
 	return &Server{
-		HttpListenServer: httpsSrv,
+		HTTPListenServer: httpsSrv,
 		// HttpRedirectServer: httpSrv,
 		// CertM:              &m,
 	}
@@ -149,7 +149,7 @@ func (s *Server) InitDB() error {
 
 func (s *Server) UseHTTP2() error {
 	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.HttpListenServer, &http2Srv)
+	err := http2.ConfigureServer(s.HTTPListenServer, &http2Srv)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (s *Server) WaitForShutdown() {
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	log.Fatal(s.HttpListenServer.Shutdown(ctx))
+	log.Fatal(s.HTTPListenServer.Shutdown(ctx))
 	log.Println("Shutting down")
 	os.Exit(0)
 }

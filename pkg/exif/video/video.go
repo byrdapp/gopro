@@ -90,6 +90,15 @@ func (v *videoFile) Bytes() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (v *videoFile) ExtractImage() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, v.File.File())
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 type ffprobeOutput struct {
 	Format  *ffprobeFormat   `json:"format,omitempty"`
 	Streams []*ffprobeStream `json:"streams,omitempty"`

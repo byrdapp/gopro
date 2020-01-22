@@ -42,10 +42,10 @@ func main() {
 		}
 	}
 
-	s.HttpListenServer.Addr = ":3000"
-	log.Infof("Serving on host w. address %s", s.HttpListenServer.Addr)
+	s.HTTPListenServer.Addr = ":3000"
+	log.Infof("Serving on host w. address %s", s.HTTPListenServer.Addr)
 	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
-	if err := s.HttpListenServer.ListenAndServe(); err != nil {
+	if err := s.HTTPListenServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 	// * runs until os.SIGTERM happens
