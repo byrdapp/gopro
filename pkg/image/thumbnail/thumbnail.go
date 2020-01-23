@@ -91,8 +91,8 @@ func setDefaultParseOptions(filter ...Filter) parseOptions {
 	return parseOptions{defaultWidth, defaultHeight, imaging.ResampleFilter(sampleFilter)}
 }
 
-func (img *Image) aboveThreshold(cfg image.Config) bool {
-	return cfg.Width > widthResizeThreshold && cfg.Height > heightResizeThreshold
+func (img *Image) aboveThreshold() bool {
+	return img.Info.Width > widthResizeThreshold && img.Info.Height > heightResizeThreshold
 }
 
 // If the format is anything else than JPEG, convert it...
@@ -136,7 +136,7 @@ Default value for filter is imaging.Lanczos
 */
 func (img *Image) EncodeThumbnail() (*ParsedImage, error) {
 	// is the img big enough to upload to byrd and therefore worth scaling?
-	if !img.aboveThreshold(img.Info) {
+	if !img.aboveThreshold() {
 		return nil, errors.New("image too small to upload to platform")
 	}
 	if img.Info.Width <= 0 || img.Info.Height <= 0 {

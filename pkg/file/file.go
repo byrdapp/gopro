@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
@@ -108,4 +109,17 @@ func (f *File) EncodeExif(metaTag, value string) error {
 
 	return nil
 
+}
+
+type Reader interface {
+	Bytes() ([]byte, error)
+}
+
+func (f *File) Bytes() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, f.file)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

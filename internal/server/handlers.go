@@ -297,21 +297,15 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		var res videoReponse
-		b, err := video.Bytes()
-		_, err = thumbnail.New(b)
+		t, err := video.Thumbnail()
 		if err != nil {
+			log.Error(err)
 			res.Error = err.Error()
 		}
-		// spew.Dump(img.Info)
-		// _, err = img.EncodeThumbnail()
-		// if err != nil {
-		// 	NewResErr(err, err.Error(), http.StatusInternalServerError, w)
-		// }
 
 		out := video.CreateVideoExifOutput()
 		res.Out = out
-
-		// res.Thumbnail = thumb.Bytes()
+		res.Thumbnail = t.Bytes()
 
 		if err := json.NewEncoder(w).Encode(&res); err != nil {
 			NewResErr(err, errJSONEncoding.Error(), http.StatusInternalServerError, w, "trace")

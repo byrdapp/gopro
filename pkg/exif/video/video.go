@@ -13,6 +13,7 @@ import (
 
 	exif "github.com/blixenkrone/gopro/pkg/exif"
 	"github.com/blixenkrone/gopro/pkg/file"
+	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
@@ -44,13 +45,8 @@ func ReadVideo(r io.Reader) (*videoFile, error) {
 
 func (v *videoFile) CreateVideoExifOutput() *exif.Output {
 	xErr := &exif.Output{MissingExif: make(map[string]string)}
-	// TODO:
-	// thumbnail, err := f.makeThumbnail()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	size, err := v.File.FileSize()
 
+	size, err := v.File.FileSize()
 	if err != nil {
 		err = errors.Cause(err)
 		xErr.AddMissingExif("filesize", err)
@@ -81,22 +77,16 @@ func (v *videoFile) CreateVideoExifOutput() *exif.Output {
 	}
 }
 
-func (v *videoFile) Bytes() ([]byte, error) {
-	var buf bytes.Buffer
-	_, err := io.Copy(&buf, v.File.File())
+func (v *videoFile) Thumbnail() (*thumbnail.ParsedImage, error) {
+	b, err := v.ffprobeThumbnail(640, 400)
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
-}
-
-func (v *videoFile) ExtractImage() ([]byte, error) {
-	var buf bytes.Buffer
-	_, err := io.Copy(&buf, v.File.File())
+	thumb, err := thumbnail.New(b)
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return thumb.EncodeThumbnail()
 }
 
 type ffprobeOutput struct {
@@ -120,6 +110,7 @@ type ffprobeFormat struct {
 type ffprobeTags struct {
 	CreationTime time.Time `json:"creation_time,omitempty"`
 	Location     string    `json:"location,omitempty"`
+	ISO6709      string    `json:"com.apple.quicktime.location.ISO6709,omitempty"`
 }
 
 // func (v *videoExifData) ffprobeVideoMeta() ([]byte, error) {
@@ -137,9 +128,8 @@ type ffprobeTags struct {
 func (v *videoFile) ffprobeVideoMeta() (*ffprobeOutput, error) {
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
-		return nil, errors.New("error finding exec path for ffprobe")
+		return "", errors.New("error finding exec path for ffprobe")
 	}
-
 	cmd := exec.Command(ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-hide_banner", v.File.FileName())
 	log.Info(cmd.String())
 	out, err := cmd.CombinedOutput()
@@ -152,6 +142,21 @@ func (v *videoFile) ffprobeVideoMeta() (*ffprobeOutput, error) {
 		return nil, errors.Cause(err)
 	}
 	return &ffprobeOut, nil
+}
+
+func (v *videoFile) ffmpegThumbnail(sizeX, sizeY int) ([]byte, error) {
+	b, err := v.File.Bytes()
+	if err != nil {
+		return nil, errors.Wrap(err, "video bytes")
+	}
+	ffprobe, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		return nil, errors.New("error finding exec path for ffprobe")
+	}
+	var buf bytes.Buffer
+	cmd := exec.Command(ffprobe, "[-ss 10]", "-i", v.File.FileName(), "-vframes 1", "-s", string(sizeX), string(sizeY), "thumbnail.png")
+	cmd.CombinedOutput()
+
 }
 
 // Parse geolocation from single video file - no array pls
