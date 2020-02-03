@@ -41,7 +41,7 @@ func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatus
 		Code: int(code),
 		Msg:  code.StatusText(),
 	}
-	w.WriteHeader(int(code))
+	w.WriteHeader(int(res.Code))
 	if err := enc.Encode(res); err != nil {
 		return StatusJSONEncode
 	}

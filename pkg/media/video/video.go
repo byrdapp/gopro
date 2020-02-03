@@ -23,8 +23,10 @@ var (
 )
 
 const (
-	lat = "lat"
-	lng = "lng"
+	lat            = "lat"
+	lng            = "lng"
+	fromSecondMark = "00:00:00.000"
+	toSecondMark   = "00:00:01.000"
 )
 
 // TODO: Add some buffered input to files other than mp4
@@ -168,27 +170,28 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 
 	_, err = io.Copy(&v.bufRd, &in)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	var cmd *exec.Cmd
 	switch v.format.FileFormat {
 	case media.MP4:
 		// ? ffmpeg -f mp4 -i filename.mp4 -ss 00:00:01.000 -to 00:00:02.000 -vframes 1 -s 320x240 -f singlejpeg pipe: | cat > out.jpg
-		cmd = exec.Command(ffmpeg, "-f", "mp4", "-i", v.file.FileName(), "-ss", "00:00:01.000", "-to", "00:00:02.000", "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:1")
+		cmd = exec.Command(ffmpeg, "-f", "mp4", "-i", v.file.FileName(), "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:1")
 	case media.MOV:
 		// ? cat mov.MOV | ffmpeg -f mov -i pipe:0 -ss 00:00:01.000 -to 00:00:02.000 -vframes 1 -s 320x240 -f singlejpeg out.jpg
 		_, err := file.NewFile(&out)
 		if err != nil {
 			return nil, err
 		}
-		cmd = exec.Command(ffmpeg, "-f", "mov", "-i", "pipe:0", "-ss", "00:00:00.000", "-to", "00:00:00.100", "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "out.jpg")
+		cmd = exec.Command(ffmpeg, "-f", "mov", "-i", "pipe:0", "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "out.jpg")
 		// cmd.Stdin = &v.bufRd
 		stdin, _ := cmd.StdinPipe()
 		_, err = stdin.Write(v.bufRd.Bytes())
 		if err != nil {
 			return nil, err
 		}
+		log.Info("write to stdin")
 	}
 	log.Info(cmd.String())
 	stdout, _ := cmd.StdoutPipe()

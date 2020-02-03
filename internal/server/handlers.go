@@ -300,7 +300,7 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			var res videoReponse
 			t, err := video.Thumbnail()
 			if err != nil {
-				log.Error(err)
+				log.Warn(err)
 				res.Error = err.Error()
 			}
 
