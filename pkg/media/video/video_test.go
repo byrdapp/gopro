@@ -16,23 +16,16 @@ func TestVideoExifBuffer(t *testing.T) {
 		return
 	}
 
-	m, err := aws.GetTestMaterial("videos", "mov.mov")
+	m, err := aws.GetTestMaterial("videos", "mp4.mp4")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-
 	rd := bytes.NewReader(m.Bytes())
-	video, err := ReadVideoBuffer(rd, "mov")
+	video, err := ReadVideoBuffer(rd, "mp4")
 	if err != nil {
 		t.Error(err)
 		panic(err)
-	}
-
-	_, err = video.ffprobeVideoMeta()
-	if err != nil {
-		t.Error(err)
-		return
 	}
 
 	thumb, err := video.ffmpegThumbnail(thumbnail.DefaultWidth, thumbnail.DefaultHeight)
@@ -51,7 +44,7 @@ func TestVideoExifBuffer(t *testing.T) {
 		return
 	}
 
-	spew.Dump(pthumb.Bytes())
+	spew.Dump(pthumb.Bytes()[1:2])
 
 	defer func() {
 		if err := video.Close(video.file); err != nil {

@@ -34,6 +34,15 @@ func NewFile(r io.Reader) (*File, error) {
 	return writeTmpFile(b)
 }
 
+func NewEmptyFile() (*File, error) {
+	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
+	if err != nil {
+		return nil, err
+	}
+
+	return &File{file}, nil
+}
+
 // Read file buffered as scanner ! not tested !
 func NewFileBuffer(r *bufio.Scanner) (*File, error) {
 	var b []byte
