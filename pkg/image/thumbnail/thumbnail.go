@@ -20,8 +20,7 @@ var log = logger.NewLogger()
 type Filter imaging.ResampleFilter
 
 const (
-	defaultWidth, defaultHeight                 = 640, 640
-	widthResizeThreshold, heightResizeThreshold = 720, 720
+	DefaultWidth, DefaultHeight = 320, 240
 )
 
 type Image struct {
@@ -88,11 +87,11 @@ func setDefaultParseOptions(filter ...Filter) parseOptions {
 	if len(filter) > 0 {
 		sampleFilter = filter[0]
 	}
-	return parseOptions{defaultWidth, defaultHeight, imaging.ResampleFilter(sampleFilter)}
+	return parseOptions{DefaultWidth, DefaultHeight, imaging.ResampleFilter(sampleFilter)}
 }
 
 func (img *Image) aboveThreshold() bool {
-	return img.Info.Width > widthResizeThreshold && img.Info.Height > heightResizeThreshold
+	return img.Info.Width >= DefaultWidth && img.Info.Height >= DefaultHeight
 }
 
 // If the format is anything else than JPEG, convert it...
@@ -108,13 +107,10 @@ func (img *Image) writeAsJPEG() (image.Image, error) {
 		break
 	case imaging.PNG:
 		err = jpeg.Encode(&img.buf, img.Image, &jpeg.Options{}) // TODO: Quality
-		break
 	case imaging.GIF:
 		err = jpeg.Encode(&img.buf, img.Image, &jpeg.Options{}) // TODO: Quality
-		break
 	default:
 		err = errors.New("format is not supported yet")
-		break
 	}
 	return img.Image, err
 }

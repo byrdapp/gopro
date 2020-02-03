@@ -38,7 +38,6 @@ type Server struct {
 // NewServer - Creates a new server with HTTP2 & HTTPS
 func NewServer() *Server {
 	mux := mux.NewRouter()
-
 	// mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./dist/pro-app/"))))
 	// mux = mux.PathPrefix("/api/").Subrouter()
 
@@ -67,7 +66,7 @@ func NewServer() *Server {
 
 	mux.HandleFunc("/mail/send", isAuth(sendMail)).Methods("POST")
 	mux.HandleFunc("/exif/image", isAuth(exifImages)).Methods("POST")
-	mux.HandleFunc("/exif/video", isAuth(exifVideo)).Methods("POST")
+	mux.HandleFunc("/exif/video", recoverFunc(isAuth(exifVideo))).Methods("POST")
 
 	mux.HandleFunc("/profiles", isAuth(getProfiles)).Methods("GET")
 	mux.HandleFunc("/profile/{id}", isAuth(getProfileByID)).Methods("GET")
@@ -85,7 +84,6 @@ func NewServer() *Server {
 		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token", "preview"},
-		// AllowCredentials: true,
 	})
 
 	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2

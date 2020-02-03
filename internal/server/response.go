@@ -4,73 +4,71 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pkg/errors"
+	"errors"
 )
 
-type ResponseBuilder struct {
-	Data   map[string]interface{} `json:"data"`
-	Errors map[string]interface{} `json:"errors"`
+type simpleResponse struct {
+	Msg  string `json:"msg,omitempty"`
+	Code int    `json:"code,omitempty"`
 }
 
-// ResponseBuilder builds custom errors to a http response writer
-type ErrResponseBuilder struct {
-	Status    int    `json:"status"`
-	ClientMsg string `json:"msg"`
-	w         http.ResponseWriter
-	err       error
-	traced    string
+type HttpStatusCode int
+
+var ErrPanicRecover = errors.New("")
+var ErrJSONEncoding = errors.New("json marshall encoding to byte array")
+var ErrJSONDecoding = errors.New("json unmarshall decoding")
+var ErrBadTokenHeader = errors.New("no or wrong token found in header")
+
+const (
+	_ = iota + 519
+	StatusPanic
+	// Marshall
+	StatusJSONEncode
+	// Unmarshall
+	StatusJSONDecode
+	StatusBadTokenHeader
+)
+
+var StatusText = map[HttpStatusCode]string{
+	StatusJSONEncode:     ErrJSONEncoding.Error(),
+	StatusJSONDecode:     ErrJSONDecoding.Error(),
+	StatusBadTokenHeader: ErrBadTokenHeader.Error(),
 }
 
-// NewResErr constructs and executes an err struct.
-// Set stackTraced = "trace" to show error stack.
-func NewResErr(err error, msg string, statusCode int, w http.ResponseWriter, stackTraced ...string) *ErrResponseBuilder {
-	build := &ErrResponseBuilder{
-		Status:    statusCode,
-		ClientMsg: msg,
-		w:         w,
-		err:       err,
+func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
+	enc := json.NewEncoder(w)
+	res := &simpleResponse{
+		Code: int(code),
+		Msg:  code.StatusText(),
 	}
-	if len(stackTraced) > 0 {
-		build.traced = stackTraced[0]
+	w.WriteHeader(int(code))
+	if err := enc.Encode(res); err != nil {
+		return StatusJSONEncode
 	}
-	if build.traced == "trace" {
-		build.errStackTraced()
-	}
-	if build.traced == "err" {
-		log.Error(err)
-	}
-	if err := build.ErrorResponse(); err != nil {
-		log.Errorf("Internal error: %s", err)
-	}
-	return build
+	return 0
 }
 
-type errResponse struct {
-	Status    int    `json:"status"`
-	ClientMsg string `json:"msg"`
-}
-
-func (r *ErrResponseBuilder) ErrorResponse() error {
-	r.w.Header().Set("Content-Type", "application/json")
-	errRes := &errResponse{
-		Status:    r.Status,
-		ClientMsg: r.ClientMsg,
+func (code HttpStatusCode) StatusText() string {
+	if http.StatusText(int(code)) != "" {
+		return http.StatusText(int(code))
+	} else {
+		if val, ok := StatusText[code]; ok {
+			return val
+		} else {
+			return "unknown error occurred internally - contact Simon on Slack."
+		}
 	}
-	r.w.WriteHeader(r.Status)
-	return json.NewEncoder(r.w).Encode(errRes)
 }
 
-func (r *ErrResponseBuilder) errStackTraced() {
+func (code HttpStatusCode) LogError(err error) {
+	log.Error(err)
+	log.Errorf("ERR: %s ERR+V: %+v \n ClientMsg: %s", err, code.StatusText())
+}
+
+// ! Not in use
+func (r *simpleResponse) errStackTraced(err error) {
 	// The `errors.Cause` function returns the originally wrapped error, which we can then type assert to its original struct type
-	err := errors.WithStack(r.err)
-	log.Errorf("originated: %+v", err)
-}
-
-// Imbed errors in the response JSON
-func (r *ErrResponseBuilder) ErrorImbedded(err error, msg string, code int) *ErrResponseBuilder {
-	return &ErrResponseBuilder{
-		Status:    code,
-		ClientMsg: msg,
-		err:       err,
-	}
+	nErr := errors.Unwrap(err)
+	log.Errorf("OG err:", err)
+	log.Errorf("unwrapped: %+v", nErr)
 }

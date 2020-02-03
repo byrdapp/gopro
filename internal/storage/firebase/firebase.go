@@ -119,6 +119,24 @@ func (db *Firebase) GetProfile(ctx context.Context, uid string) (*storage.Fireba
 	return &prf, nil
 }
 
+// GetProfileByToken get a single FirebaseProfile instance
+func (db *Firebase) GetProfileByToken(ctx context.Context, headerToken string) (*storage.FirebaseProfile, error) {
+	path := os.Getenv("ENV") + "/profiles"
+	prf := storage.FirebaseProfile{}
+	signedToken, err := db.VerifyToken(ctx, headerToken)
+	if err != nil {
+		return nil, err
+	}
+
+	ref := db.Client.NewRef(path).Child(signedToken.UID)
+
+	err = ref.Get(ctx, &prf)
+	if err != nil {
+		return nil, err
+	}
+	return &prf, nil
+}
+
 // GetProfileByEmail returns single UserRecord instance from email
 func (db *Firebase) GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error) {
 	usr, err := db.Auth.GetUserByEmail(ctx, email)
@@ -180,9 +198,9 @@ func (db *Firebase) CreateCustomTokenWithClaims(ctx context.Context, uid string,
 	return db.Auth.CustomTokenWithClaims(ctx, uid, claims)
 }
 
-// VerifyToken verify JWT handled by middleware.go returning the uid
-func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Token, error) {
-	t, err := db.Auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+// VerifyToken verify JWT handled by middleware.go returning the uid from the "user_token"
+func (db *Firebase) VerifyToken(ctx context.Context, clientToken string) (*auth.Token, error) {
+	t, err := db.Auth.VerifyIDTokenAndCheckRevoked(ctx, clientToken)
 	if err != nil {
 		return nil, err
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/blixenkrone/gopro/pkg/exif"
+	"github.com/blixenkrone/gopro/pkg/media"
 	"github.com/blixenkrone/gopro/pkg/logger"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
@@ -33,9 +33,9 @@ type imgExifData struct {
 // DecodeImageMetadata returns the struct *Output containing img data.
 // This will include the errors from missing/broken exif will follow.
 // If an error is != nil, its a panic
-func DecodeImageMetadata(data []byte) (*exif.Output, error) {
+func DecodeImageMetadata(data []byte) (*media.Metadata, error) {
 	r := bytes.NewReader(data)
-	xErr := &exif.Output{MissingExif: make(map[string]string)}
+	xErr := &media.Metadata{MissingExif: make(map[string]string)}
 
 	x, err := loadExifData(r)
 	if err != nil {
@@ -83,7 +83,7 @@ func DecodeImageMetadata(data []byte) (*exif.Output, error) {
 		xErr.AddMissingExif("fileSize", err)
 	}
 
-	return &exif.Output{
+	return &media.Metadata{
 		Lat:             lat,
 		Lng:             lng,
 		Date:            date,

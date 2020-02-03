@@ -28,6 +28,7 @@ type FBService interface {
 	UpdateData(uid string, prop string, value string) error
 	GetWithdrawals(ctx context.Context) ([]*Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
+	GetProfileByToken(ctx context.Context, clientToken string) (*FirebaseProfile, error)
 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
 	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
 	GetAuth() ([]*auth.ExportedUserRecord, error)

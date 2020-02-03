@@ -2,21 +2,56 @@ package slack
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/blixenkrone/gopro/internal/storage"
 	models "github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/pkg/logger"
-
 	"github.com/nlopes/slack"
 )
 
 var (
 	log = logger.NewLogger()
 )
+
+type SlackHookMsg struct {
+	Reason, Msg string
+	Profile     *storage.FirebaseProfile
+}
+
+func Hook(msg string, profile *storage.FirebaseProfile) *SlackHookMsg {
+	return &SlackHookMsg{
+		Msg:     msg,
+		Profile: profile,
+	}
+}
+
+func (qs *SlackHookMsg) Panic() {
+	log.Infof("sent slack panic msg: %s", qs)
+	attachment := slack.Attachment{
+		Color:      "bad",
+		Title:      "<!here> Pro API server paniced!",
+		ImageURL:   qs.Profile.UserPicture,
+		Fallback:   qs.Msg,
+		AuthorName: "BUG",
+		Text:       qs.Msg,
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	msg := slack.WebhookMessage{
+		Attachments: []slack.Attachment{attachment},
+		Channel:     "server_errors",
+	}
+	if err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), &msg); err != nil {
+		log.Errorf("error sending slack notification: %s", err)
+		return
+	}
+}
 
 // TipRequest from FE JSON req.
 type TipRequest struct {

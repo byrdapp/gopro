@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/blixenkrone/gopro/internal/storage/aws"
-	"github.com/blixenkrone/gopro/pkg/exif"
+	"github.com/blixenkrone/gopro/pkg/media"
 )
 
 func TestImageReaderFailed(t *testing.T) {
@@ -22,7 +22,7 @@ func TestImageReaderSuccess(t *testing.T) {
 	if err := aws.ParseCredentials(); err != nil {
 		t.Fatal(err)
 	}
-	var output []*exif.Output
+	var output []*media.Output
 	for i := 1; i < 5; i++ {
 		fileName := fmt.Sprintf("%v.jpg", i)
 		t.Run("success exif", func(t *testing.T) {

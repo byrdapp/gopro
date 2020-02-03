@@ -7,24 +7,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"github.com/blixenkrone/gopro/pkg/conversion"
 )
 
 type File struct {
 	file *os.File
 }
-
-// type FileGenerator interface {
-// 	File() *os.File
-// 	Close() error
-// 	RemoveFile() error
-// 	FileName() string
-// 	FileSize() (size float64, err error)
-// 	FileStat() (os.FileInfo, error)
-// 	WriteFile(data []byte) (*File, error)
-// }
 
 func NewFileLtdRead(r io.Reader, limit int64) (*File, error) {
 	// rd := io.LimitReader(r, limit)
@@ -60,17 +48,17 @@ func NewFileBuffer(r *bufio.Scanner) (*File, error) {
 func writeTmpFile(data []byte) (*File, error) {
 	file, err := ioutil.TempFile(os.TempDir(), "prefix-*")
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating tmp file")
+		return nil, err
 	}
 	if err := ioutil.WriteFile(file.Name(), data, 0777); err != nil {
-		return nil, errors.Wrap(err, "error writing to tmp file")
+		return nil, err
 	}
 	return &File{file}, nil
 }
 
 func (f *File) WriteFile(data []byte) (*File, error) {
 	if err := ioutil.WriteFile(f.file.Name(), data, 0777); err != nil {
-		return nil, errors.Wrap(err, "error writing to tmp file")
+		return nil, err
 	}
 	return f, nil
 }
@@ -106,13 +94,12 @@ func (f *File) FileSize() (size float64, err error) {
 
 func (f *File) EncodeExif(metaTag, value string) error {
 	// Handle file types
-
 	return nil
-
 }
 
 type Reader interface {
 	Bytes() ([]byte, error)
+	Read()
 }
 
 func (f *File) Bytes() ([]byte, error) {

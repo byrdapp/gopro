@@ -1,4 +1,4 @@
-package exif
+package media
 
 import (
 	"github.com/pkg/errors"
@@ -10,11 +10,13 @@ import (
 // type MediaDimension int
 
 // Output represents the final decoded EXIF data from an image
-type Output struct {
+type Metadata struct {
 	// File            file.FileGenerator
 	Date            int64             `json:"date,omitempty"`
 	Lat             float64           `json:"lat,omitempty"`
 	Lng             float64           `json:"lng,omitempty"`
+	ISOLat          float64           `json:"isoLat,omitempty"`
+	ISOLng          float64           `json:"isoLng,omitempty"`
 	Copyright       string            `json:"copyright,omitempty"`
 	Model           string            `json:"model,omitempty"`
 	PixelXDimension int               `json:"pixelXDimension,omitempty"`
@@ -27,7 +29,7 @@ type Output struct {
 var log = logger.NewLogger()
 
 // adds an object to the output JSON that displays missing exif data
-func (o *Output) AddMissingExif(errType string, originError error) {
+func (o *Metadata) AddMissingExif(errType string, originError error) {
 	var returnError error
 	if goexif.IsTagNotPresentError(originError) {
 		returnError = errors.Wrapf(originError, "exif missing from type: %s", errType)
@@ -41,17 +43,4 @@ func (o *Output) AddMissingExif(errType string, originError error) {
 	log.Errorf("Origin error: %s - Client error: %s - Type?: %s", originError, returnError, errType)
 	returnError = errors.Errorf("error parsing from type %s", errType)
 	o.MissingExif[errType] = returnError.Error()
-}
-
-func (o *Output) MediaType() (mediaType *string) {
-	// TODO: handle this stuff
-	switch o.Copyright {
-	case "image":
-		*mediaType = "image"
-	case "video":
-		*mediaType = "video"
-	default:
-		mediaType = nil
-	}
-	return mediaType
 }
