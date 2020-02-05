@@ -22,7 +22,7 @@ func TestImageReaderSuccess(t *testing.T) {
 	if err := aws.ParseCredentials(); err != nil {
 		t.Fatal(err)
 	}
-	var output []*media.Output
+	var output []*media.Metadata
 	for i := 1; i < 5; i++ {
 		fileName := fmt.Sprintf("%v.jpg", i)
 		t.Run("success exif", func(t *testing.T) {

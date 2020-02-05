@@ -10,7 +10,6 @@ import (
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
-// ssl        = flag.Bool("ssl", false, "To set ssl or not?")
 var (
 	local      = flag.Bool("local", false, "Do you want to run go run *.go with .env local file?")
 	production = flag.Bool("production", false, "Is it production?")
@@ -24,7 +23,7 @@ func init() {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
 		}
-		os.Setenv("NOTIFICATIONS", "false")
+		os.Setenv("PANIC_NOTIFICATIONS", "false")
 		log.Infof("Running locally with %s env", os.Getenv("ENV"))
 	}
 }

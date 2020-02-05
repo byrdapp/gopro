@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/blixenkrone/gopro/internal/storage"
 	models "github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/pkg/logger"
 	"github.com/nlopes/slack"
@@ -21,14 +20,14 @@ var (
 )
 
 type SlackHookMsg struct {
-	Reason, Msg string
-	Profile     *storage.FirebaseProfile
+	Msg      string
+	ImageURL string
 }
 
-func Hook(msg string, profile *storage.FirebaseProfile) *SlackHookMsg {
+func Hook(msg, imgurl string) *SlackHookMsg {
 	return &SlackHookMsg{
-		Msg:     msg,
-		Profile: profile,
+		Msg:      msg,
+		ImageURL: imgurl,
 	}
 }
 
@@ -37,7 +36,7 @@ func (qs *SlackHookMsg) Panic() {
 	attachment := slack.Attachment{
 		Color:      "bad",
 		Title:      "<!here> Pro API server paniced!",
-		ImageURL:   qs.Profile.UserPicture,
+		ImageURL:   qs.ImageURL,
 		Fallback:   qs.Msg,
 		AuthorName: "BUG",
 		Text:       qs.Msg,

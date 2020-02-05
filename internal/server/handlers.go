@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 
@@ -167,21 +168,6 @@ type preview struct {
 	Error  string `json:"error,omitempty"`
 }
 
-/**
- * TODO: fix the goddamn json response encoder
- */
-
-type ErrorResponse struct {
-	Msg  string `json:"msg,omitempty"`
-	Code int    `json:"code,omitempty"`
-}
-
-func Encode(w http.ResponseWriter, msg string, code int) error {
-	res := &ErrorResponse{msg, code}
-	w.WriteHeader(code)
-	return json.NewEncoder(w).Encode(res)
-}
-
 // getExif receives body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
@@ -189,7 +175,7 @@ func Encode(w http.ResponseWriter, msg string, code int) error {
 var exifImages = func(w http.ResponseWriter, r *http.Request) {
 	// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 	if r.Method == http.MethodPost {
-		var withPreview = false
+		var withPreview bool
 		// w.Header().Set("Content-Type", "multipart/form-data")
 		_, cancel := context.WithTimeout(r.Context(), time.Second*10)
 		defer cancel()
@@ -200,9 +186,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
-			if r.URL.Query().Get("preview") != "" {
-				withPreview = true
-			}
+			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 			var res []*exifImagesResponse
@@ -273,8 +257,10 @@ type videoReponse struct {
 	Error     string          `json:"error,omitempty"`
 }
 
+// /exif/video
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		var withPreview bool
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			WriteClient(w, http.StatusUnsupportedMediaType)
@@ -282,6 +268,7 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if strings.HasPrefix(mediaType, "video/") {
+			log.Info("ran exif video")
 			str := strings.Split(mediaType, "video/")[1]
 			log.Info(str)
 			fmt, ok, err := media.IsSupportedMediaFmt(str)
@@ -289,6 +276,7 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 				WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
 				return
 			}
+			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
 
 			video, err := video.ReadVideoBuffer(r.Body, fmt)
 			if err != nil {
@@ -296,17 +284,19 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			defer r.Body.Close()
-
 			var res videoReponse
-			t, err := video.Thumbnail()
-			if err != nil {
-				log.Warn(err)
-				res.Error = err.Error()
+			if withPreview {
+				t, err := video.Thumbnail()
+				if err != nil {
+					log.Warn(err)
+					res.Error = err.Error()
+				}
+				res.Thumbnail = t.Bytes()
 			}
-
 			out := video.Metadata()
 			res.Out = out
-			res.Thumbnail = t.Bytes()
+
+			spew.Dump(res.Out)
 
 			if err := json.NewEncoder(w).Encode(&res); err != nil {
 				WriteClient(w, http.StatusInternalServerError)

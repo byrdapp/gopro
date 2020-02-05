@@ -29,7 +29,7 @@ var recoverFunc = func(next http.HandlerFunc) http.HandlerFunc {
 					recoverReason = recovered.(error).Error()
 				}
 
-				if os.Getenv("NOTIFICATIONS") == "true" {
+				if os.Getenv("PANIC_NOTIFICATIONS") == "true" {
 					prf, err := fb.GetProfileByToken(r.Context(), r.Header.Get("user_token"))
 					if err != nil {
 						log.Error(errors.New("profile was not found / header not present"))
@@ -37,7 +37,7 @@ var recoverFunc = func(next http.HandlerFunc) http.HandlerFunc {
 					msg := fmt.Sprintf("%s (%s) messed up route: %s. reason might be: %v",
 						prf.DisplayName, prf.UserID, r.URL.String(), recoverReason)
 
-					slack.Hook(msg, prf).Panic()
+					slack.Hook(msg, prf.UserPicture).Panic()
 				}
 				return
 			}

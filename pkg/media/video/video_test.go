@@ -16,13 +16,13 @@ func TestVideoExifBuffer(t *testing.T) {
 		return
 	}
 
-	m, err := aws.GetTestMaterial("videos", "mp4.mp4")
+	m, err := aws.GetTestMaterial("videos", "mov_small.mov")
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	rd := bytes.NewReader(m.Bytes())
-	video, err := ReadVideoBuffer(rd, "mp4")
+	video, err := ReadVideoBuffer(rd, "mov")
 	if err != nil {
 		t.Error(err)
 		panic(err)

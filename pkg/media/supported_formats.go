@@ -21,7 +21,7 @@ func lowercaseFmt(s string) FileFormat {
 	return FileFormat(strings.ToLower(s))
 }
 
-func IsSupportedMediaFmt(inputFormat string) (format string, ok bool, err error) {
+func IsSupportedMediaFmt(inputFormat string) (format FileFormat, ok bool, err error) {
 	if format, ok = supportedMediaFmt[lowercaseFmt(inputFormat)]; !ok {
 		return "", false, ErrUnsupportedFormat
 	} else {
@@ -29,7 +29,7 @@ func IsSupportedMediaFmt(inputFormat string) (format string, ok bool, err error)
 	}
 }
 
-var supportedMediaFmt = map[FileFormat]string{
+var supportedMediaFmt = map[FileFormat]FileFormat{
 	MP4:       "mp4",
 	MOV:       "mov",
 	Quicktime: "quicktime",

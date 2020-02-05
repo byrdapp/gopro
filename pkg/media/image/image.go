@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/blixenkrone/gopro/pkg/media"
 	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/blixenkrone/gopro/pkg/media"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
@@ -184,16 +184,4 @@ func (e *imgExifData) getFileSize(r io.Reader) (float64, error) {
 	}
 	size := conversion.FileSizeBytesToFloat(n)
 	return size, nil
-}
-
-// get image fmt
-// ! switch between image and video - evt create struct input
-func (e *imgExifData) getMediaFmt(r io.Reader) (fmt string, err error) {
-	// _, fmt, err = image.DecodeConfig(r)
-	// if err != nil {
-	// 	log.Errorln(err)
-	// 	return "", err
-	// }
-	fmt = ".jpeg"
-	return fmt, err
 }

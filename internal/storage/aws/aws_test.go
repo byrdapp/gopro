@@ -15,7 +15,7 @@ func TestDownloadImages(t *testing.T) {
 		t.Error(err)
 	}
 
-	i, err := GetTestMaterial(ImageTestReference, "2.jpg")
+	i, err := GetTestMaterial(ImageBucketReference, "2.jpg")
 	if err != nil {
 		t.Error(err)
 		return

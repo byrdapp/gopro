@@ -33,14 +33,10 @@ const (
 type VideoBuffer struct {
 	bufRd  bytes.Buffer
 	file   *file.File
-	format *mediaFormat
+	format media.FileFormat
 }
 
-type mediaFormat struct {
-	media.FileFormat
-}
-
-func ReadVideoBuffer(r io.Reader, videoFmt string) (*VideoBuffer, error) {
+func ReadVideoBuffer(r io.Reader, videoFmt media.FileFormat) (*VideoBuffer, error) {
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
 	if err != nil {
@@ -56,7 +52,7 @@ func ReadVideoBuffer(r io.Reader, videoFmt string) (*VideoBuffer, error) {
 	return &VideoBuffer{
 		bufRd:  buf,
 		file:   f,
-		format: &mediaFormat{media.FileFormat(videoFmt)},
+		format: videoFmt,
 	}, nil
 }
 
@@ -140,7 +136,7 @@ func (v *VideoBuffer) ffprobeVideoMeta() (*ffmpegOutput, error) {
 		return nil, errors.New("error finding exec path for ffprobe")
 	}
 	var cmd *exec.Cmd
-	switch v.format.FileFormat {
+	switch v.format {
 	case media.MOV:
 		cmd = exec.Command(ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-hide_banner", v.file.FileName())
 	case media.MP4:
@@ -168,9 +164,10 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 	}
 	var out bytes.Buffer
 	var buferr bytes.Buffer
+	// pr, pw := io.Pipe()
 
 	var cmd *exec.Cmd
-	switch v.format.FileFormat {
+	switch v.format {
 	case media.MP4:
 		// ? ffmpeg -f mp4 -i filename.mp4 -ss 00:00:01.000 -to 00:00:02.000 -vframes 1 -s 320x240 -f singlejpeg pipe: | cat > out.jpg
 		cmd = exec.Command(ffmpeg, "-f", "mp4", "-i", v.file.FileName(), "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:1")
@@ -181,18 +178,14 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 		cmd = exec.Command(ffmpeg, "-f", "mov", "-i", "pipe:0", "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "out.jpg")
 		log.Info(v.bufRd.Bytes()[:4])
 		// cmd.Stdin = &v.bufRd
-		stdw, err := cmd.StdinPipe()
+		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			log.Error(err)
 		}
-		if _, err := io.Copy(stdw, &v.bufRd); err != nil {
+
+		if _, err := io.Copy(stdin, &v.bufRd); err != nil {
 			log.Error(err)
 		}
-		// stdin, _ := cmd.StdinPipe()
-		// _, err = stdin.Write(v.bufRd.Bytes())
-		// if err != nil {
-		// 	return nil, err
-		// }
 	}
 
 	stdout, err := cmd.StdoutPipe()
@@ -200,6 +193,7 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 		panic(err)
 	}
 	cmd.Stderr = &buferr
+
 	log.Info("here")
 
 	if err := cmd.Start(); err != nil {
@@ -209,8 +203,7 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 	}
 	log.Info("started cmd")
 	go func() {
-		_, err := io.Copy(&out, stdout)
-		if err != nil {
+		if _, err := io.Copy(&out, stdout); err != nil {
 			panic(err)
 		}
 		log.Info("goroutine copied")
@@ -222,6 +215,7 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 		return nil, err
 	}
 	log.Info("waiting cmd done")
+
 	return out.Bytes(), nil
 }
 
