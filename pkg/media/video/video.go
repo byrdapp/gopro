@@ -42,8 +42,6 @@ func ReadVideoBuffer(r io.Reader, videoFmt media.FileFormat) (*VideoBuffer, erro
 	if err != nil {
 		return nil, errors.Wrap(err, "copy failed")
 	}
-	log.Info("init read bytes:")
-	log.Info(buf.Bytes()[:4])
 	f, err := file.NewFile(&buf)
 	if err != nil {
 		return nil, errors.Wrap(err, "tmp file creation")
@@ -194,14 +192,11 @@ func (v *VideoBuffer) ffmpegThumbnail(x, y int) ([]byte, error) {
 	}
 	cmd.Stderr = &buferr
 
-	log.Info("here")
-
 	if err := cmd.Start(); err != nil {
 		log.Error(buferr.String())
 		log.Error(err)
 		return nil, err
 	}
-	log.Info("started cmd")
 	go func() {
 		if _, err := io.Copy(&out, stdout); err != nil {
 			panic(err)

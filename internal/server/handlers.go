@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 
@@ -187,6 +186,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
 			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
+			log.Infof("withpreview: %v", withPreview)
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 			var res []*exifImagesResponse
@@ -260,52 +260,59 @@ type videoReponse struct {
 // /exif/video
 var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
 		var withPreview bool
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
 			WriteClient(w, http.StatusUnsupportedMediaType)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		if strings.HasPrefix(mediaType, "video/") {
-			log.Info("ran exif video")
-			str := strings.Split(mediaType, "video/")[1]
-			log.Info(str)
-			fmt, ok, err := media.IsSupportedMediaFmt(str)
-			if !ok || err != nil {
-				WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
-				return
-			}
-			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-
-			video, err := video.ReadVideoBuffer(r.Body, fmt)
-			if err != nil {
-				WriteClient(w, http.StatusNotAcceptable)
-				return
-			}
-			defer r.Body.Close()
-			var res videoReponse
-			if withPreview {
-				t, err := video.Thumbnail()
-				if err != nil {
-					log.Warn(err)
-					res.Error = err.Error()
-				}
-				res.Thumbnail = t.Bytes()
-			}
-			out := video.Metadata()
-			res.Out = out
-
-			spew.Dump(res.Out)
-
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				WriteClient(w, http.StatusInternalServerError)
-				return
-			}
-		}
 		// Wrong request body
-		WriteClient(w, http.StatusBadRequest)
-		return
+
+		log.Info(mediaType)
+		if !strings.HasPrefix(mediaType, "multipart/") {
+			WriteClient(w, http.StatusBadRequest)
+			return
+		}
+
+		file, fheader, err := r.FormFile("file")
+		if err != nil {
+			WriteClient(w, http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		headerMediaType := strings.Split(fheader.Header["Content-Type"][0], "video/")[1]
+		fmt, ok, err := media.IsSupportedMediaFmt(headerMediaType)
+		if !ok || err != nil {
+			WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
+			return
+		}
+		withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
+
+		video, err := video.ReadVideoBuffer(file, fmt)
+		if err != nil {
+			WriteClient(w, http.StatusNotAcceptable)
+			return
+		}
+		defer r.Body.Close()
+
+		var res videoReponse
+		if withPreview {
+			t, err := video.Thumbnail()
+			if err != nil {
+				log.Warn(err)
+				res.Error = err.Error()
+			}
+			res.Thumbnail = t.Bytes()
+		}
+		out := video.Metadata()
+		res.Out = out
+
+		if err := json.NewEncoder(w).Encode(&res); err != nil {
+			WriteClient(w, http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

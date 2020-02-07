@@ -8,9 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
-	models "github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/pkg/logger"
 	"github.com/nlopes/slack"
 )
@@ -54,10 +52,11 @@ func (qs *SlackHookMsg) Panic() {
 
 // TipRequest from FE JSON req.
 type TipRequest struct {
-	Story      *models.StoryProps   `json:"story,omitempty"`
-	Medias     []string             `json:"medias"`
-	Assignment *models.Assignment   `json:"assignment"`
-	Profile    *models.ProfileProps `json:"profile"`
+
+	// Story      *models.StoryProps   `json:"story,omitempty"`
+	// Medias     []string             `json:"medias"`
+	// Assignment *models.Assignment   `json:"assignment"`
+	// Profile    *models.ProfileProps `json:"profile"`
 }
 
 // PostSlackMsg receives slack msg in body
@@ -81,10 +80,10 @@ func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 
 func postTip(tip *TipRequest) error {
 	slackMsg := &SlackMsg{
-		Text: "A new pro-tip has been made from: " + tip.Profile.DisplayName +
-			"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
-		Title:     "Story: " + tip.Story.StoryHeadline,
-		TitleLink: "https://app.byrd.news/" + tip.Story.StoryID,
+		// Text: "A new pro-tip has been made from: " + tip.DisplayName +
+		// 	"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
+		// Title:     "Story: " + tip.StoryHeadline,
+		// TitleLink: "https://app.byrd.news/" + tip.StoryID,
 	}
 	err := slackMsg.Success()
 	if err != nil {

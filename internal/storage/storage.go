@@ -79,6 +79,7 @@ type FirebaseProfile struct {
 	FirstName           string `json:"firstName,omitempty"`
 	LastName            string `json:"lastName,omitempty"`
 	Address             string `json:"address,omitempty"`
+	Country             string `json:"country,omitempty"`
 	Email               string `json:"email,omitempty"`
 	IsMedia             bool   `json:"isMedia,omitempty"`
 	IsProfessional      bool   `json:"isProfessional,omitempty"`

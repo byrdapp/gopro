@@ -31,6 +31,8 @@ func init() {
 func main() {
 	s := server.NewServer()
 
+	s.InitRoutes()
+
 	if err := s.UseHTTP2(); err != nil {
 		log.Warnf("Error with HTTP2 %s", err)
 	}

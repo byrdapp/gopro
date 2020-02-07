@@ -37,38 +37,34 @@ var StatusText = map[HttpStatusCode]string{
 
 func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
+	msg, ok := code.StatusText()
 	res := &simpleResponse{
 		Code: int(code),
-		Msg:  code.StatusText(),
+		Msg:  msg,
 	}
-	w.WriteHeader(int(res.Code))
+	if !ok {
+		w.WriteHeader(int(res.Code))
+	}
 	if err := enc.Encode(res); err != nil {
 		return StatusJSONEncode
 	}
 	return 0
 }
 
-func (code HttpStatusCode) StatusText() string {
+func (code HttpStatusCode) StatusText() (string, bool) {
 	if http.StatusText(int(code)) != "" {
-		return http.StatusText(int(code))
+		return http.StatusText(int(code)), true
 	} else {
 		if val, ok := StatusText[code]; ok {
-			return val
+			return val, ok
 		} else {
-			return "unknown error occurred internally - contact Simon on Slack."
+			return "unknown error occurred internally - contact Simon on Slack.", false
 		}
 	}
 }
 
 func (code HttpStatusCode) LogError(err error) {
 	log.Error(err)
-	log.Errorf("ERR: %s ERR+V: %+v \n ClientMsg: %s", err, code.StatusText())
-}
-
-// ! Not in use
-func (r *simpleResponse) errStackTraced(err error) {
-	// The `errors.Cause` function returns the originally wrapped error, which we can then type assert to its original struct type
-	nErr := errors.Unwrap(err)
-	log.Errorf("OG err:", err)
-	log.Errorf("unwrapped: %+v", nErr)
+	msg, ok := code.StatusText()
+	log.Errorf("err val: %+v \n ClientMsg: %s (statuscode anticipated and defined in API?: %v)", err, msg, ok)
 }

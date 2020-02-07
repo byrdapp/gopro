@@ -10,16 +10,16 @@ import (
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
 	"github.com/blixenkrone/gopro/internal/slack"
-	models "github.com/blixenkrone/gopro/models"
+	"github.com/blixenkrone/gopro/internal/storage"
 )
 
 // RequestBody is the received Client req for mail
 type RequestBody struct {
-	Recievers []*models.ProfileProps `json:"recievers"`
-	From      *models.ProfileProps   `json:"from"`
-	Subject   string                 `json:"subject"`
-	Content   string                 `json:"content"`
-	StoryIDS  []string               `json:"storyIds"`
+	Recievers []*storage.FirebaseProfile `json:"recievers"`
+	From      *storage.FirebaseProfile   `json:"from"`
+	Subject   string                     `json:"subject"`
+	Content   string                     `json:"content"`
+	StoryIDS  []string                   `json:"storyIds"`
 }
 
 // Response returns json for each story
