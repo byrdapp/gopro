@@ -152,9 +152,10 @@ var getProfiles = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type exifImagesResponse struct {
-	Preview *preview    `json:"preview,omitempty"`
-	Exif    *exifOutput `json:"exif,omitempty"`
+// response struct - dont use data as pointers, refer writer to the Metadata pointer when allocated.
+type Metadata struct {
+	Preview preview    `json:"preview,omitempty"`
+	Exif    exifOutput `json:"exif,omitempty"`
 }
 
 type exifOutput struct {
@@ -189,7 +190,7 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			log.Infof("withpreview: %v", withPreview)
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
-			var res []*exifImagesResponse
+			var res []*Metadata
 
 			for {
 				// (*os.File) for next file
@@ -209,37 +210,32 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 
-				log.Infof("copied file: ", part.FileName())
+				log.Infof("copied file: %v", part.FileName())
 
 				// JSON response struct
-				var data exifImagesResponse
-
+				var data Metadata
 				if withPreview {
-					var preview preview
 					img, err := thumbnail.New(buf.Bytes())
 					if err != nil {
-						preview.Error = err.Error()
 						log.Error(err)
+						data.Preview.Error = err.Error()
 					}
 					thumb, err := img.EncodeThumbnail()
 					if err != nil {
+						log.Error(err)
 						WriteClient(w, http.StatusBadRequest)
 						return
 					}
-					preview.Source = thumb.Bytes()
-					data.Preview = &preview
+					data.Preview.Source = thumb.Bytes()
 				}
 
 				// Read EXIF data
-				var exif exifOutput
 				parsedExif, err := image.DecodeImageMetadata(buf.Bytes())
 				if err != nil {
 					log.Errorf("parsed exif error: %v", err)
-					exif.Error = err.Error()
+					data.Exif.Error = err.Error()
 				}
-				exif.Output = parsedExif
-				data.Exif = &exif
-
+				data.Exif.Output = parsedExif
 				res = append(res, &data)
 			}
 
@@ -249,12 +245,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-}
-
-type videoReponse struct {
-	Out       *media.Metadata `json:"out,omitempty"`
-	Thumbnail []byte          `json:"thumbnail,omitempty"`
-	Error     string          `json:"error,omitempty"`
 }
 
 // /exif/video
@@ -270,21 +260,26 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		// Wrong request body
 
 		log.Info(mediaType)
-		if !strings.HasPrefix(mediaType, "multipart/") {
-			WriteClient(w, http.StatusBadRequest)
+		if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
+			WriteClient(w, http.StatusUnsupportedMediaType)
 			return
 		}
 
 		file, fheader, err := r.FormFile("file")
 		if err != nil {
-			WriteClient(w, http.StatusBadRequest)
+			WriteClient(w, http.StatusForbidden)
 			return
 		}
 		defer file.Close()
 
-		headerMediaType := strings.Split(fheader.Header["Content-Type"][0], "video/")[1]
-		fmt, ok, err := media.IsSupportedMediaFmt(headerMediaType)
-		if !ok || err != nil {
+		filetype, ok := fheader.Header["Content-Type"]
+		if !ok || len(filetype) == 0 {
+			WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
+			return
+		}
+		headerMediaType := strings.Split(filetype[0], "video/")[1]
+		fmt, err := media.Format(headerMediaType).Video()
+		if err != nil {
 			WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
 			return
 		}
@@ -297,17 +292,18 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		var res videoReponse
+		var res Metadata
 		if withPreview {
 			t, err := video.Thumbnail()
 			if err != nil {
 				log.Warn(err)
-				res.Error = err.Error()
+				res.Preview.Error = err.Error()
 			}
-			res.Thumbnail = t.Bytes()
+			res.Preview.Source = t.Bytes()
 		}
+
 		out := video.Metadata()
-		res.Out = out
+		res.Exif.Output = out
 
 		if err := json.NewEncoder(w).Encode(&res); err != nil {
 			WriteClient(w, http.StatusInternalServerError)

@@ -17,22 +17,37 @@ const (
 	JPG       = "jpg"
 )
 
-func lowercaseFmt(s string) FileFormat {
-	return FileFormat(strings.ToLower(s))
+func lowercaseFmt(s FileFormat) FileFormat {
+	return FileFormat(strings.ToLower(string(s)))
 }
 
-func IsSupportedMediaFmt(inputFormat string) (format FileFormat, ok bool, err error) {
-	if format, ok = supportedMediaFmt[lowercaseFmt(inputFormat)]; !ok {
-		return "", false, ErrUnsupportedFormat
+func Format(inputFormat string) (_ FileFormat) {
+	return FileFormat(inputFormat)
+}
+
+func (f FileFormat) Video() (FileFormat, error) {
+	if _, ok := videoFormats[lowercaseFmt(f)]; !ok {
+		return "", ErrUnsupportedFormat
 	} else {
-		return format, ok, nil
+		return f, nil
 	}
 }
 
-var supportedMediaFmt = map[FileFormat]FileFormat{
+func (f FileFormat) Image() (FileFormat, error) {
+	if _, ok := imageFormats[lowercaseFmt(f)]; !ok {
+		return "", ErrUnsupportedFormat
+	} else {
+		return f, nil
+	}
+}
+
+var videoFormats = map[FileFormat]FileFormat{
 	MP4:       "mp4",
 	MOV:       "mov",
 	Quicktime: "quicktime",
-	JPEG:      "jpeg",
-	JPG:       "jpg",
+}
+
+var imageFormats = map[FileFormat]FileFormat{
+	JPEG: "jpeg",
+	JPG:  "jpg",
 }

@@ -23,7 +23,7 @@ var (
 // tiff.Tag struct return values as number(i.e. 0 == int)
 const (
 	exifIntVal = iota
-	EOFError   = "error reading exif from file: EOF"
+	EOFError   = "error reading exif from file"
 )
 
 type imgExifData struct {

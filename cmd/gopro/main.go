@@ -12,7 +12,8 @@ import (
 
 var (
 	local      = flag.Bool("local", false, "Do you want to run go run *.go with .env local file?")
-	production = flag.Bool("production", false, "Is it production?")
+	production = flag.Bool("production", false, "Is it production")
+	mute       = flag.Bool("mute", false, "Mute public notificatons but not logging")
 	log        = logger.NewLogger()
 )
 
@@ -23,7 +24,9 @@ func init() {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
 		}
-		os.Setenv("PANIC_NOTIFICATIONS", "false")
+		if *mute {
+			os.Setenv("PANIC_NOTIFICATIONS", "false")
+		}
 		log.Infof("Running locally with %s env", os.Getenv("ENV"))
 	}
 }

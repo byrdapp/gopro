@@ -38,12 +38,19 @@ var StatusText = map[HttpStatusCode]string{
 func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
 	msg, ok := code.StatusText()
+	if !ok {
+		if err := enc.Encode(&simpleResponse{
+			Code: http.StatusInternalServerError,
+			Msg:  "statuswriter failed output",
+		}); err != nil {
+			log.Error(err)
+		}
+		return
+	}
+	w.WriteHeader(int(code))
 	res := &simpleResponse{
 		Code: int(code),
 		Msg:  msg,
-	}
-	if !ok {
-		w.WriteHeader(int(res.Code))
 	}
 	if err := enc.Encode(res); err != nil {
 		return StatusJSONEncode
@@ -58,6 +65,7 @@ func (code HttpStatusCode) StatusText() (string, bool) {
 		if val, ok := StatusText[code]; ok {
 			return val, ok
 		} else {
+			log.Infof("code %v - possibly nil pointer err", int(code))
 			return "unknown error occurred internally - contact Simon on Slack.", false
 		}
 	}
