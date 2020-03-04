@@ -1,4 +1,4 @@
-package migrate
+package postgres
 
 /**
 This will contain all the code necessary to spin up a new DB instance of

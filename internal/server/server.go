@@ -13,7 +13,7 @@ import (
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
-	storage "github.com/blixenkrone/gopro/internal/storage"
+	"github.com/blixenkrone/gopro/internal/storage"
 	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
 	"github.com/blixenkrone/gopro/internal/storage/postgres"
 	"github.com/blixenkrone/gopro/pkg/logger"

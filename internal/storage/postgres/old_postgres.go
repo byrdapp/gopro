@@ -9,7 +9,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	squirrel "github.com/Masterminds/squirrel"
+	"github.com/Masterminds/squirrel"
 
 	"github.com/blixenkrone/gopro/internal/storage"
 	"github.com/blixenkrone/gopro/pkg/logger"
@@ -27,7 +27,8 @@ type Postgres struct {
 }
 
 // NewPQ Starts ORM
-func NewPQ(s storage.Service) (*Postgres, error) {
+// func NewPQ(s storage.Service) (*Postgres, error) {
+func NewPQ() (storage.PQService, error) {
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
 		return nil, errors.New("Error opening postgress connstr from environment variable")

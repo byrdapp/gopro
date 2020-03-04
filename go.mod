@@ -11,6 +11,7 @@ require (
 	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.7.4
 	github.com/joho/godotenv v1.3.0
+	github.com/kyleconroy/sqlc v1.0.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/nlopes/slack v0.6.0
 	github.com/pkg/errors v0.9.1
