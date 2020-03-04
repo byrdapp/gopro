@@ -4,11 +4,41 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
-	"firebase.google.com/go/auth"
 )
 
-type PQService interface {
+// type PQService interface {
+// 	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
+// 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
+// 	UpdateBooking(ctx context.Context, b *Booking) error
+// 	DeleteBooking(ctx context.Context, bookingID string) error
+// 	GetBookingsAdmin(ctx context.Context) ([]*AdminBookings, error)
+// 	GetProfile(ctx context.Context, id string) (*Professional, error)
+// 	Close() error
+// 	Ping() error
+// 	HandleRowError(error) error
+// 	CancelRowsError(*sql.Rows) error
+// }
+
+// // FBService contains firebase methods
+// type FBService interface {
+// 	GetTransactions() ([]*Transaction, error)
+// 	// ! dont update anything from the API - only scripting
+// 	UpdateData(uid string, prop string, value string) error
+// 	GetWithdrawals(ctx context.Context) ([]*Withdrawals, error)
+// 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
+// 	GetProfileByToken(ctx context.Context, clientToken string) (*FirebaseProfile, error)
+// 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
+// 	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
+// 	GetAuth() ([]*auth.ExportedUserRecord, error)
+// 	DeleteAuthUserByUID(uid string) error
+// 	CreateCustomTokenWithClaims(ctx context.Context, uid string, claims map[string]interface{}) (string, error)
+// 	IsAdminClaims(claims map[string]interface{}) bool
+// 	IsAdminUID(ctx context.Context, uid string) (bool, error)
+// 	IsProfessional(ctx context.Context, uid string) (bool, error)
+// 	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
+// }
+
+type Service interface {
 	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
 	UpdateBooking(ctx context.Context, b *Booking) error
@@ -19,25 +49,6 @@ type PQService interface {
 	Ping() error
 	HandleRowError(error) error
 	CancelRowsError(*sql.Rows) error
-}
-
-// FBService contains firebase methods
-type FBService interface {
-	GetTransactions() ([]*Transaction, error)
-	// ! dont update anything from the API - only scripting
-	UpdateData(uid string, prop string, value string) error
-	GetWithdrawals(ctx context.Context) ([]*Withdrawals, error)
-	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
-	GetProfileByToken(ctx context.Context, clientToken string) (*FirebaseProfile, error)
-	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
-	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
-	GetAuth() ([]*auth.ExportedUserRecord, error)
-	DeleteAuthUserByUID(uid string) error
-	CreateCustomTokenWithClaims(ctx context.Context, uid string, claims map[string]interface{}) (string, error)
-	IsAdminClaims(claims map[string]interface{}) bool
-	IsAdminUID(ctx context.Context, uid string) (bool, error)
-	IsProfessional(ctx context.Context, uid string) (bool, error)
-	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 
 // Professional user class

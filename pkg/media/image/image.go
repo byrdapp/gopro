@@ -110,7 +110,7 @@ func loadExifData(r io.Reader) (*imgExifData, error) {
 func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, error) {
 	tag, err := e.x.Get(fieldName)
 	if err != nil {
-		return 0.0, errors.WithMessagef(err, "error getting location coordinates from %s", fieldName)
+		return 0, errors.WithMessagef(err, "error getting location coordinates from %s", fieldName)
 	}
 	ratValues := map[string]int{"deg": 0, "min": 1, "sec": 2}
 	fValues := make(map[string]float64, len(ratValues))
@@ -118,7 +118,7 @@ func (e *imgExifData) calcGeoCoordinate(fieldName goexif.FieldName) (float64, er
 	for key, val := range ratValues {
 		v, err := tag.Rat(val)
 		if err != nil {
-			return 0.0, err
+			return 0, err
 		}
 		f, _ := v.Float64()
 		fValues[key] = f

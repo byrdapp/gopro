@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     name: test code
     env:
-      GO_VERSION: 1.13
+      GO_VERSION: 1.14
 
     steps:
       - name: Check out master branch
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13 # The Go version to download (if necessary) and use.
+          go-version: 1.14 # The Go version to download (if necessary) and use.
         id: go
 
       - name: Go vet

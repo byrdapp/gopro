@@ -1,10 +1,9 @@
 package media
 
 import (
-	"github.com/pkg/errors"
-	goexif "github.com/rwcarlsen/goexif/exif"
+	"errors"
 
-	"github.com/blixenkrone/gopro/pkg/logger"
+	goexif "github.com/rwcarlsen/goexif/exif"
 )
 
 // type MediaDimension int
@@ -26,21 +25,17 @@ type Metadata struct {
 	// MediaFormat     string  `json:"mediaFormat,omitempty"`
 }
 
-var log = logger.NewLogger()
-
 // adds an object to the output JSON that displays missing exif data
 func (o *Metadata) AddMissingExif(errType string, originError error) {
-	var returnError error
+	var returnErr error
 	if goexif.IsTagNotPresentError(originError) {
-		returnError = errors.Wrapf(originError, "exif missing from type: %s", errType)
+		returnErr = errors.New("exif tag is not present in file")
 	}
 	if goexif.IsCriticalError(originError) {
-		returnError = errors.Wrapf(originError, "critical error with %s", errType)
+		returnErr = errors.New("critial error from file")
 	}
 	if goexif.IsGPSError(originError) {
-		returnError = errors.Wrapf(originError, "geographical error with %s", errType)
+		returnErr = errors.New("GPS decoding error")
 	}
-	log.Errorf("Origin error: %s - Client error: %s - Type?: %s", originError, returnError, errType)
-	returnError = errors.Errorf("error parsing from type %s", errType)
-	o.MissingExif[errType] = returnError.Error()
+	o.MissingExif[errType] = returnErr.Error()
 }

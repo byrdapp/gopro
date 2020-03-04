@@ -187,7 +187,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.HasPrefix(mediaType, "multipart/") {
 			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-			log.Infof("withpreview: %v", withPreview)
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			defer r.Body.Close()
 			var res []*Metadata
@@ -209,8 +208,6 @@ var exifImages = func(w http.ResponseWriter, r *http.Request) {
 					WriteClient(w, http.StatusNotAcceptable).LogError(fmt.Errorf("file: %s + %+v", part.FileName(), err))
 					break
 				}
-
-				log.Infof("copied file: %v", part.FileName())
 
 				// JSON response struct
 				var data Metadata
@@ -257,9 +254,8 @@ var exifVideo = func(w http.ResponseWriter, r *http.Request) {
 			WriteClient(w, http.StatusUnsupportedMediaType)
 			return
 		}
-		// Wrong request body
 
-		log.Info(mediaType)
+		// Wrong request body
 		if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
 			WriteClient(w, http.StatusUnsupportedMediaType)
 			return
