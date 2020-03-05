@@ -1,7 +1,7 @@
 CREATE TABLE profiles (
     id uuid PRIMARY KEY NOT NULL,
     user_id uuid NOT NULL,
-    pro_level INTEGER NULL
+    pro_level INTEGER NOT NULL
 );
 
 CREATE TABLE bookings (

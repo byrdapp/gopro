@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -126,14 +125,14 @@ LIMIT 5
 `
 
 type ListBookingsByUserRow struct {
-	Task      string        `json:"task"`
-	Credits   int32         `json:"credits"`
-	Price     int64         `json:"price"`
-	CreatedAt time.Time     `json:"created_at"`
-	Accepted  bool          `json:"accepted"`
-	Completed bool          `json:"completed"`
-	ProLevel  sql.NullInt32 `json:"pro_level"`
-	UserID    uuid.UUID     `json:"user_id"`
+	Task      string    `json:"task"`
+	Credits   int32     `json:"credits"`
+	Price     int64     `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
+	Accepted  bool      `json:"accepted"`
+	Completed bool      `json:"completed"`
+	ProLevel  int32     `json:"pro_level"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 // Requires admin

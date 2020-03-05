@@ -3,7 +3,6 @@
 package postgres
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +25,7 @@ type Booking struct {
 }
 
 type Profile struct {
-	ID       uuid.UUID     `json:"id"`
-	UserID   uuid.UUID     `json:"user_id"`
-	ProLevel sql.NullInt32 `json:"pro_level"`
+	ID       uuid.UUID `json:"id"`
+	UserID   uuid.UUID `json:"user_id"`
+	ProLevel int32     `json:"pro_level"`
 }

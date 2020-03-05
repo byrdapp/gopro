@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,9 +29,6 @@ var (
 type Server struct {
 	HTTPListenServer *http.Server
 	router           *mux.Router
-	// HTTPRedirectServer *http.Server
-	// certM  *autocert.Manager
-	// handlermux http.Handler
 }
 
 // NewServer - Creates a new server with HTTP2 & HTTPS
@@ -41,13 +39,6 @@ func NewServer() *Server {
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
 	})
-
-	// https://medium.com/weareservian/automagical-https-with-docker-and-go-4953fdaf83d2
-	// m := autocert.Manager{
-	// 	Prompt:     autocert.AcceptTOS,
-	// 	HostPolicy: autocert.HostWhitelist(host),
-	// 	Cache:      autocert.DirCache("certs"),
-	// }
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
@@ -66,30 +57,21 @@ func NewServer() *Server {
 		Handler: c.Handler(r),
 	}
 
-	// Create server for redirecting HTTP to HTTPS
-	// httpSrv := &http.Server{
-	// 	Addr:           ":http",
-	// 	ReadTimeout:    httpsSrv.ReadTimeout,
-	// 	WriteTimeout:   httpsSrv.WriteTimeout,
-	// 	IdleTimeout:    httpsSrv.IdleTimeout,
-	// 	MaxHeaderBytes: 1 << 20,
-	// 	Handler:        mux,
-	// 	// Handler:        m.HTTPHandler(nil),
-	// }
-
 	return &Server{
 		HTTPListenServer: httpsSrv,
 		router:           r,
-		// HttpRedirectServer: httpSrv,
-		// CertM:              &m,
 	}
 }
 
 func (s *Server) InitDB() error {
 
+	conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
+	if err != nil {
+		return err
+	}
+
 	fbsrv, err := firebase.NewFB()
 	if err != nil {
-		log.Fatalf("Error starting firebase: %s", err)
 		return err
 	}
 	fb = fbsrv
