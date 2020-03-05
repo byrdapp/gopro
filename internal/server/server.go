@@ -87,12 +87,8 @@ func NewServer() *Server {
 }
 
 func (s *Server) InitDB() error {
-	pqsrv, err := postgres.NewPQ()
-	if err != nil {
-		log.Fatalf("POSTGRESQL err: %s", err)
-		return err
-	}
-	pq = pqsrv
+
+	postgres.New(db DBTX)
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {
