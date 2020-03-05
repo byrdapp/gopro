@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 
 	"database/sql"
 
 	"github.com/joho/godotenv"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/storage"
-	firebase "github.com/blixenkrone/byrd-pro-api/internal/storage/firebase"
-	postgres "github.com/blixenkrone/byrd-pro-api/internal/storage/postgres"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
+	firebase "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/firebase"
+	postgres "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
 )
 
 var log = logger.NewLogger()

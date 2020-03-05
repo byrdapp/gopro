@@ -7,10 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/storage"
-	aws "github.com/blixenkrone/byrd-pro-api/internal/storage/aws"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
+	aws "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/aws"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/conversion"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/conversion"
 
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/slack"
-	"github.com/blixenkrone/byrd-pro-api/internal/storage"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/slack"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
 )
 
 // RequestBody is the received Client req for mail

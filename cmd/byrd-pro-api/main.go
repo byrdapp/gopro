@@ -6,8 +6,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/server"
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/server"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 )
 
 var (

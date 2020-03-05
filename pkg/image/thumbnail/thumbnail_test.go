@@ -10,8 +10,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/storage/aws"
-	"github.com/blixenkrone/byrd-pro-api/pkg/file"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/aws"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/file"
 )
 
 func TestImageDecoding(t *testing.T) {

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,9 +13,9 @@ import (
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/storage"
-	firebase "github.com/blixenkrone/byrd-pro-api/internal/storage/firebase"
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
+	firebase "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/firebase"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 )
 
 var (
@@ -65,10 +64,12 @@ func NewServer() *Server {
 
 func (s *Server) InitDB() error {
 
-	conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
-	if err != nil {
-		return err
-	}
+	// conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
+	// if err != nil {
+	// 	return err
+	// }
+
+	// db := postgres.New(conn)
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {

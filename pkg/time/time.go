@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 )
 
 const (
