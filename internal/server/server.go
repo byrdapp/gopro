@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,14 +16,17 @@ import (
 
 	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
 	firebase "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/firebase"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
 	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 )
 
 var (
 	log = logger.NewLogger()
-	pq  storage.PQService
+	pq  *postgres.Queries
 	fb  storage.FBService
 )
+
+// ! TODO: Same approach with FB db as postgres
 
 // Server is used in main.go
 type Server struct {
@@ -63,13 +67,12 @@ func NewServer() *Server {
 }
 
 func (s *Server) InitDB() error {
-
-	// conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
-	// if err != nil {
-	// 	return err
-	// }
-
-	// db := postgres.New(conn)
+	conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
+	if err != nil {
+		return err
+	}
+	db := postgres.New(conn)
+	pq = db
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {
@@ -93,7 +96,11 @@ func (s *Server) WaitForShutdown() {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	defer pq.Close()
+	defer func() {
+		if err := pq.Close(); err != nil {
+			log.Error(err)
+		}
+	}()
 	// Block until we receive our signal.
 	<-interruptChan
 

@@ -35,6 +35,7 @@ var StatusText = map[HttpStatusCode]string{
 	StatusBadTokenHeader: ErrBadTokenHeader.Error(),
 }
 
+// writes client or returns json encoding error
 func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
 	msg, ok := code.StatusText()

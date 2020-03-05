@@ -2,18 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
-
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
-
-	"database/sql"
 
 	"github.com/joho/godotenv"
 
 	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
 	firebase "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/firebase"
-	postgres "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
+	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
 )
 
 var log = logger.NewLogger()
@@ -56,11 +54,8 @@ func getProfilesFromFB() ([]*storage.FirebaseProfile, error) {
 	return prfs, nil
 }
 
-func insertProfilesSQL(sqldb storage.PQService, profiles []*storage.FirebaseProfile) error {
+func insertProfilesSQL(profiles []*storage.FirebaseProfile) error {
 	var wg sync.WaitGroup
-	if err := sqldb.Ping(); err != nil {
-		log.Fatal(err)
-	}
 	// ctx := context.Background()
 	for _, p := range profiles {
 		wg.Add(1)

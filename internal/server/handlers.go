@@ -13,11 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 
 	"github.com/blixenkrone/byrd/byrd-pro-api/internal/mail"
 	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
+	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
 	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/conversion"
 	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/image/thumbnail"
 	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/media"
@@ -335,9 +337,12 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "application/json")
 		params := mux.Vars(r)
-		proUID := params["uid"]
-
-		bookings, err := pq.GetBookingsByUID(r.Context(), proUID)
+		userId, err := uuid.FromBytes([]byte(params["uid"]))
+		if err != nil {
+			WriteClient(w, http.StatusBadRequest)
+			return
+		}
+		bookings, err := pq.GetBookingsByMediaUID(r.Context(), userId)
 		if err != nil {
 			WriteClient(w, http.StatusBadRequest)
 			return
@@ -372,11 +377,12 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		b, err := pq.CreateBooking(r.Context(), uid, req)
-		if err != nil {
-			WriteClient(w, http.StatusBadRequest)
-			return
-		}
+		// b, err := pq.CreateBooking(r.Context(), uid, req)
+		// if err != nil {
+		// 	WriteClient(w, http.StatusBadRequest)
+		// 	return
+		// }
+		var b postgres.Booking
 		if err := json.NewEncoder(w).Encode(b); err != nil {
 			WriteClient(w, http.StatusInternalServerError)
 			return
@@ -406,10 +412,10 @@ var updateBooking = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := pq.UpdateBooking(r.Context(), &b); err != nil {
-			WriteClient(w, http.StatusInternalServerError)
-			return
-		}
+		// if err := pq.UpdateBooking(r.Context(), &b); err != nil {
+		// 	WriteClient(w, http.StatusInternalServerError)
+		// 	return
+		// }
 
 		if err := json.NewEncoder(w).Encode(&b); err != nil {
 			WriteClient(w, http.StatusInternalServerError)

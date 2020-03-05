@@ -43,5 +43,5 @@ func (s *Server) InitRoutes() {
 	s.router.HandleFunc("/booking/task/{proUID}", isAuth(createBooking)).Methods("POST")
 	s.router.HandleFunc("/booking/task/{bookingID}", isAuth(updateBooking)).Methods("PUT")
 	s.router.HandleFunc("/booking/task/{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
-	s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
+	// s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 }
