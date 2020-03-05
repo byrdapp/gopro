@@ -2,10 +2,6 @@ serve_local_dev:
 	clear \
 	&& go run cmd/gopro/main.go -local -production=false
 
-serve_local_dev_no_db:
-	clear \
-	&& go run cmd/gopro/main.go -local -production=false -db_active=false
-
 watch_serve_local:
 	clear \
 	&& spy go run cmd/gopro/main.go -local -production=false

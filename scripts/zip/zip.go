@@ -1,4 +1,4 @@
-package main
+package zip
 
 import (
 	"archive/zip"
@@ -43,11 +43,11 @@ func writeZip(zipName string, file string) error {
 }
 
 func AddFileToZip(zipWriter *zip.Writer, filename string) error {
-
 	fileToZip, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
+
 	defer fileToZip.Close()
 
 	// Get the file information

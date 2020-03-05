@@ -1,17 +1,15 @@
+.DS_Store
 .idea
 .vscode
 config
 assets
 certs
-letsencrypt
 *.csv
 main
 vendor
-.DS_Store
 .env
 .env-prod
 .dockerignore
-*.sql
 *.http
 *.rsa
 *.pub
@@ -20,7 +18,6 @@ vendor
 *.mp4
 *.png
 *.txt
-
-*_test.go
 *.zip
 *.xml
+pkg/media/video/debug.test

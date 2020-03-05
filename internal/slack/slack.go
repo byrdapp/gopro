@@ -2,15 +2,14 @@ package slack
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
-	models "github.com/blixenkrone/gopro/models"
 	"github.com/blixenkrone/gopro/pkg/logger"
-
 	"github.com/nlopes/slack"
 )
 
@@ -18,12 +17,46 @@ var (
 	log = logger.NewLogger()
 )
 
+type SlackHookMsg struct {
+	Msg      string
+	ImageURL string
+}
+
+func Hook(msg, imgurl string) *SlackHookMsg {
+	return &SlackHookMsg{
+		Msg:      msg,
+		ImageURL: imgurl,
+	}
+}
+
+func (qs *SlackHookMsg) Panic() {
+	log.Infof("sent slack panic msg: %s", qs)
+	attachment := slack.Attachment{
+		Color:      "bad",
+		Title:      "<!here> Pro API server paniced!",
+		ImageURL:   qs.ImageURL,
+		Fallback:   qs.Msg,
+		AuthorName: "BUG",
+		Text:       qs.Msg,
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	msg := slack.WebhookMessage{
+		Attachments: []slack.Attachment{attachment},
+		Channel:     "server_errors",
+	}
+	if err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), &msg); err != nil {
+		log.Errorf("error sending slack notification: %s", err)
+		return
+	}
+}
+
 // TipRequest from FE JSON req.
 type TipRequest struct {
-	Story      *models.StoryProps   `json:"story,omitempty"`
-	Medias     []string             `json:"medias"`
-	Assignment *models.Assignment   `json:"assignment"`
-	Profile    *models.ProfileProps `json:"profile"`
+
+	// Story      *models.StoryProps   `json:"story,omitempty"`
+	// Medias     []string             `json:"medias"`
+	// Assignment *models.Assignment   `json:"assignment"`
+	// Profile    *models.ProfileProps `json:"profile"`
 }
 
 // PostSlackMsg receives slack msg in body
@@ -47,10 +80,10 @@ func PostSlackMsg(w http.ResponseWriter, r *http.Request) {
 
 func postTip(tip *TipRequest) error {
 	slackMsg := &SlackMsg{
-		Text: "A new pro-tip has been made from: " + tip.Profile.DisplayName +
-			"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
-		Title:     "Story: " + tip.Story.StoryHeadline,
-		TitleLink: "https://app.byrd.news/" + tip.Story.StoryID,
+		// Text: "A new pro-tip has been made from: " + tip.DisplayName +
+		// 	"\nThe following medias has been tipped: " + strings.Join(tip.Medias, ", "),
+		// Title:     "Story: " + tip.StoryHeadline,
+		// TitleLink: "https://app.byrd.news/" + tip.StoryID,
 	}
 	err := slackMsg.Success()
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"firebase.google.com/go/auth"
 )
 
-// PQService is storage service interface that exports CRUD data from CLIENT -> API -> postgres db via http
 type PQService interface {
 	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
@@ -29,6 +28,7 @@ type FBService interface {
 	UpdateData(uid string, prop string, value string) error
 	GetWithdrawals(ctx context.Context) ([]*Withdrawals, error)
 	GetProfile(ctx context.Context, uid string) (*FirebaseProfile, error)
+	GetProfileByToken(ctx context.Context, clientToken string) (*FirebaseProfile, error)
 	GetProfileByEmail(ctx context.Context, email string) (*auth.UserRecord, error)
 	GetProfiles(ctx context.Context) ([]*FirebaseProfile, error)
 	GetAuth() ([]*auth.ExportedUserRecord, error)
@@ -39,6 +39,19 @@ type FBService interface {
 	IsProfessional(ctx context.Context, uid string) (bool, error)
 	VerifyToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
+
+// type Service interface {
+// 	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
+// 	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
+// 	UpdateBooking(ctx context.Context, b *Booking) error
+// 	DeleteBooking(ctx context.Context, bookingID string) error
+// 	GetBookingsAdmin(ctx context.Context) ([]*AdminBookings, error)
+// 	GetProfile(ctx context.Context, id string) (*Professional, error)
+// 	Close() error
+// 	Ping() error
+// 	HandleRowError(error) error
+// 	CancelRowsError(*sql.Rows) error
+// }
 
 // Professional user class
 type Professional struct {
@@ -79,6 +92,7 @@ type FirebaseProfile struct {
 	FirstName           string `json:"firstName,omitempty"`
 	LastName            string `json:"lastName,omitempty"`
 	Address             string `json:"address,omitempty"`
+	Country             string `json:"country,omitempty"`
 	Email               string `json:"email,omitempty"`
 	IsMedia             bool   `json:"isMedia,omitempty"`
 	IsProfessional      bool   `json:"isProfessional,omitempty"`

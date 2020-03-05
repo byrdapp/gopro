@@ -1,4 +1,4 @@
-name: Byrd pro API CI/CD workflow
+name: Byrd pro
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     name: test code
     env:
-      GO_VERSION: 1.13
+      GO_VERSION: 1.14
 
     steps:
       - name: Check out master branch
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13 # The Go version to download (if necessary) and use.
+          go-version: 1.14 # The Go version to download (if necessary) and use.
         id: go
 
       - name: Go vet
@@ -37,7 +37,6 @@ jobs:
     name: build code
     needs: setup
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out master branch
         uses: actions/checkout@master
@@ -54,19 +53,6 @@ jobs:
         run: |
           docker push byrdapp/pro-app:dev
           docker push byrdapp/pro-app:prod
-
-  # deploy:
-  #   name: deploy code
-  #   runs-on: ubuntu-latest
-  #   needs: [build, test]
-  #   steps:
-  #     - continue-on-error: false
-  #     - name: Docker Swarm Deploy
-  #       uses: sagebind/docker-swarm-deploy-action@1.0.0
-  #       with:
-  #         args: docker stack deploy -c docker-compose.yml --with-registry-auth
-        # env:
-        # DOCKER_SSH_PUBLIC_KEY:
 
   slack:
     name: Notify on slack

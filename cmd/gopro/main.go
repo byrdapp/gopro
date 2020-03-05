@@ -10,28 +10,31 @@ import (
 	"github.com/blixenkrone/gopro/pkg/logger"
 )
 
-// ssl        = flag.Bool("ssl", false, "To set ssl or not?")
 var (
 	local      = flag.Bool("local", false, "Do you want to run go run *.go with .env local file?")
-	production = flag.Bool("production", false, "Is it production?")
+	production = flag.Bool("production", false, "Is it production")
+	mute       = flag.Bool("mute", false, "Mute public notificatons but not logging")
 	log        = logger.NewLogger()
 )
 
 func init() {
-	// type go run *.go -local
 	flag.Parse()
 
 	if *local && !*production {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
 		}
+		if *mute {
+			os.Setenv("PANIC_NOTIFICATIONS", "false")
+		}
 		log.Infof("Running locally with %s env", os.Getenv("ENV"))
 	}
 }
 
 func main() {
-
 	s := server.NewServer()
+
+	s.InitRoutes()
 
 	if err := s.UseHTTP2(); err != nil {
 		log.Warnf("Error with HTTP2 %s", err)
@@ -41,13 +44,12 @@ func main() {
 		log.Fatalf("Error initializing DB %s", err)
 	}
 
-	s.HttpListenServer.Addr = ":3000"
-	log.Infof("Serving on host w. address %s", s.HttpListenServer.Addr)
+	s.HTTPListenServer.Addr = ":3000"
+	log.Infof("Serving on host w. address %s", s.HTTPListenServer.Addr)
 	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
-	if err := s.HttpListenServer.ListenAndServe(); err != nil {
+	if err := s.HTTPListenServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-
 	// * runs until os.SIGTERM happens
 	s.WaitForShutdown()
 }

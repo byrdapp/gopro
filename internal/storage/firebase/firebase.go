@@ -26,7 +26,7 @@ var log = logger.NewLogger()
 type Firebase struct {
 	Client  *db.Client
 	Auth    *auth.Client
-	Context context.Context // context.Backgroun() - use r.Context()
+	Context context.Context // context.Background() - use r.Context()
 }
 
 // ! Get profile params to switch profile type (reg, media, pro)
@@ -49,7 +49,7 @@ func NewFB() (storage.FBService, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := app.Auth(ctx)
+	fbAuth, err := app.Auth(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func NewFB() (storage.FBService, error) {
 	return &Firebase{
 		Client:  client,
 		Context: ctx,
-		Auth:    auth,
+		Auth:    fbAuth,
 	}, nil
 }
 
@@ -80,7 +80,7 @@ func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 // GetTransactions - this guy
 func (db *Firebase) GetTransactions() ([]*storage.Transaction, error) {
 	p := os.Getenv("ENV") + "/transactions"
-	transaction := []*storage.Transaction{}
+	var transaction []*storage.Transaction
 	ref := db.Client.NewRef(p)
 	if err := ref.Get(db.Context, transaction); err != nil {
 		return nil, err
@@ -113,6 +113,24 @@ func (db *Firebase) GetProfile(ctx context.Context, uid string) (*storage.Fireba
 	prf := storage.FirebaseProfile{}
 	ref := db.Client.NewRef(path).Child(uid)
 	_, err := ref.GetWithETag(ctx, &prf)
+	if err != nil {
+		return nil, err
+	}
+	return &prf, nil
+}
+
+// GetProfileByToken get a single FirebaseProfile instance
+func (db *Firebase) GetProfileByToken(ctx context.Context, headerToken string) (*storage.FirebaseProfile, error) {
+	path := os.Getenv("ENV") + "/profiles"
+	prf := storage.FirebaseProfile{}
+	signedToken, err := db.VerifyToken(ctx, headerToken)
+	if err != nil {
+		return nil, err
+	}
+
+	ref := db.Client.NewRef(path).Child(signedToken.UID)
+
+	err = ref.Get(ctx, &prf)
 	if err != nil {
 		return nil, err
 	}
@@ -180,9 +198,9 @@ func (db *Firebase) CreateCustomTokenWithClaims(ctx context.Context, uid string,
 	return db.Auth.CustomTokenWithClaims(ctx, uid, claims)
 }
 
-// VerifyToken verify JWT handled by middleware.go returning the uid
-func (db *Firebase) VerifyToken(ctx context.Context, idToken string) (*auth.Token, error) {
-	t, err := db.Auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+// VerifyToken verify JWT handled by middleware.go returning the uid from the "user_token"
+func (db *Firebase) VerifyToken(ctx context.Context, clientToken string) (*auth.Token, error) {
+	t, err := db.Auth.VerifyIDTokenAndCheckRevoked(ctx, clientToken)
 	if err != nil {
 		return nil, err
 	}
