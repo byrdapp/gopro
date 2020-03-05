@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+
+	"database/sql"
 
 	"github.com/joho/godotenv"
 
-	"github.com/blixenkrone/gopro/internal/storage"
-	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
-	postgres "github.com/blixenkrone/gopro/internal/storage/postgres"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage"
+	firebase "github.com/blixenkrone/byrd-pro-api/internal/storage/firebase"
+	postgres "github.com/blixenkrone/byrd-pro-api/internal/storage/postgres"
 )
 
 var log = logger.NewLogger()
@@ -24,21 +26,20 @@ func main() {
 	}
 
 	// Init SQL db
-	sqldb, err := postgres.NewPQ()
+	db, err := sql.Open("postgres", "connstr")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
+	sqldb := postgres.New(db)
+
+	_ = sqldb
 
 	// Get the FB profiles
-	profiles, err := getProfilesFromFB()
-	if err != nil {
-		log.Errorf("Error getting profiles: %s", err)
-	}
 
-	err = insertProfilesSQL(sqldb, profiles)
-	if err != nil {
-		log.Errorf("Error inserting profiles: %s", err)
-	}
+	// err = insertProfilesSQL(sqldb, profiles)
+	// if err != nil {
+	// 	log.Errorf("Error inserting profiles: %s", err)
+	// }
 
 }
 

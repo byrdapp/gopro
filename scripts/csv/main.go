@@ -10,9 +10,9 @@ import (
 
 	"github.com/joho/godotenv"
 
-	storage "github.com/blixenkrone/gopro/internal/storage"
-	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
-	"github.com/blixenkrone/gopro/pkg/logger"
+	storage "github.com/blixenkrone/byrd-pro-api/internal/storage"
+	firebase "github.com/blixenkrone/byrd-pro-api/internal/storage/firebase"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
 )
 
 // func createCSV(record []string, index int, info interface{}) {

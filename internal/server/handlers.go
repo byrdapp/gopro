@@ -16,14 +16,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 
-	"github.com/blixenkrone/gopro/internal/mail"
-	"github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/pkg/conversion"
-	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
-	"github.com/blixenkrone/gopro/pkg/media"
-	image "github.com/blixenkrone/gopro/pkg/media/image"
-	video "github.com/blixenkrone/gopro/pkg/media/video"
-	timeutil "github.com/blixenkrone/gopro/pkg/time"
+	"github.com/blixenkrone/byrd-pro-api/internal/mail"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage"
+	"github.com/blixenkrone/byrd-pro-api/pkg/conversion"
+	"github.com/blixenkrone/byrd-pro-api/pkg/image/thumbnail"
+	"github.com/blixenkrone/byrd-pro-api/pkg/media"
+	image "github.com/blixenkrone/byrd-pro-api/pkg/media/image"
+	video "github.com/blixenkrone/byrd-pro-api/pkg/media/video"
+	timeutil "github.com/blixenkrone/byrd-pro-api/pkg/time"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/blixenkrone/gopro/internal/storage/aws"
-	"github.com/blixenkrone/gopro/pkg/media"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage/aws"
+	"github.com/blixenkrone/byrd-pro-api/pkg/media"
 )
 
 func TestImageReaderFailed(t *testing.T) {

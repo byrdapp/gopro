@@ -12,10 +12,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/gopro/pkg/file"
-	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
-	"github.com/blixenkrone/gopro/pkg/logger"
-	media "github.com/blixenkrone/gopro/pkg/media"
+	"github.com/blixenkrone/byrd-pro-api/pkg/file"
+	"github.com/blixenkrone/byrd-pro-api/pkg/image/thumbnail"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	media "github.com/blixenkrone/byrd-pro-api/pkg/media"
 )
 
 var (

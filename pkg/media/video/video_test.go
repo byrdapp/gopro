@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/blixenkrone/gopro/internal/storage/aws"
-	"github.com/blixenkrone/gopro/pkg/image/thumbnail"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage/aws"
+	"github.com/blixenkrone/byrd-pro-api/pkg/image/thumbnail"
 	"github.com/davecgh/go-spew/spew"
-	// "github.com/blixenkrone/gopro/pkg/exif/video"
+	// "github.com/blixenkrone/byrd-pro-api/pkg/exif/video"
 )
 
 func TestVideoExifBuffer(t *testing.T) {

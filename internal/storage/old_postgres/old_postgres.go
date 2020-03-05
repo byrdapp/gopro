@@ -8,8 +8,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 
-	"github.com/blixenkrone/gopro/internal/storage"
-	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
 	_ "github.com/lib/pq"
 )
 

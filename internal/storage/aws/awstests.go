@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/gopro/pkg/file"
+	"github.com/blixenkrone/byrd-pro-api/pkg/file"
 )
 
 type BucketRef string

@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
 )
 
 var log = logger.NewLogger()

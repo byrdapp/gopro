@@ -13,10 +13,9 @@ import (
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
-	"github.com/blixenkrone/gopro/internal/storage"
-	firebase "github.com/blixenkrone/gopro/internal/storage/firebase"
-	"github.com/blixenkrone/gopro/internal/storage/postgres"
-	"github.com/blixenkrone/gopro/pkg/logger"
+	"github.com/blixenkrone/byrd-pro-api/internal/storage"
+	firebase "github.com/blixenkrone/byrd-pro-api/internal/storage/firebase"
+	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
 )
 
 var (
@@ -87,8 +86,6 @@ func NewServer() *Server {
 }
 
 func (s *Server) InitDB() error {
-
-	postgres.New(db DBTX)
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {

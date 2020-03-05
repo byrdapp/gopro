@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/blixenkrone/gopro/pkg/conversion"
+	"github.com/blixenkrone/byrd-pro-api/pkg/conversion"
 )
 
 type File struct {

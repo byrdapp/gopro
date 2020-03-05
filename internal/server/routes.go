@@ -16,13 +16,13 @@ func (s *Server) InitRoutes() {
 	// * Private endpoints
 	s.router.HandleFunc("/reauthenticate", isAuth(loginGetUserAccess)).Methods("GET")
 	s.router.HandleFunc("/secure", isAuth(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service"}`)); err != nil {
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service"}`)); err != nil {
 			log.Errorln(err)
 		}
 	})).Methods("GET")
 
 	s.router.HandleFunc("/admin/secure", isAdmin(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write([]byte(`{"msg": "Secure msg from gopro service to ADMINS!"}`)); err != nil {
+		if _, err := w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service to ADMINS!"}`)); err != nil {
 			log.Errorln(err)
 		}
 	})).Methods("GET")
