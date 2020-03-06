@@ -18,14 +18,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/mail"
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/conversion"
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/image/thumbnail"
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/media"
-	image "github.com/blixenkrone/byrd/byrd-pro-api/pkg/media/image"
-	video "github.com/blixenkrone/byrd/byrd-pro-api/pkg/media/video"
+	"github.com/byrdapp/byrd-pro-api/internal/mail"
+	"github.com/byrdapp/byrd-pro-api/internal/storage"
+	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
+	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
+	"github.com/byrdapp/byrd-pro-api/pkg/image/thumbnail"
+	"github.com/byrdapp/byrd-pro-api/pkg/media"
+	image "github.com/byrdapp/byrd-pro-api/pkg/media/image"
+	video "github.com/byrdapp/byrd-pro-api/pkg/media/video"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {

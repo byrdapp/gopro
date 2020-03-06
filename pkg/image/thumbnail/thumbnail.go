@@ -9,7 +9,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/pkg/logger"
 )
 
 // TODO: format to jpeg: x-adobe-dmg && binary files

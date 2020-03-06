@@ -1,4 +1,4 @@
-module github.com/blixenkrone/byrd/byrd-pro-api
+module github.com/byrdapp/byrd-pro-api
 
 go 1.14
 
@@ -7,6 +7,7 @@ require (
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/Masterminds/squirrel v1.2.0
 	github.com/aws/aws-sdk-go v1.29.17
+	github.com/byrdapp/timestamp v0.0.0-20200306142653-183dee5d8a13
 	github.com/davecgh/go-spew v1.1.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/golang-migrate/migrate/v4 v4.9.1

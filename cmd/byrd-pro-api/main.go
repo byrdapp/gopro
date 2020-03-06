@@ -6,8 +6,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/server"
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/internal/server"
+	"github.com/byrdapp/byrd-pro-api/pkg/logger"
 )
 
 var (
@@ -19,7 +19,6 @@ var (
 
 func init() {
 	flag.Parse()
-
 	if *local && !*production {
 		if err := godotenv.Load(); err != nil {
 			panic(err)
@@ -32,6 +31,7 @@ func init() {
 }
 
 func main() {
+
 	s := server.NewServer()
 
 	s.InitRoutes()

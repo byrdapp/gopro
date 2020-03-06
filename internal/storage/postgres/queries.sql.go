@@ -6,7 +6,7 @@ package postgres
 import (
 	"context"
 
-	"github"
+	"github.com/byrdapp/timestamp/parser"
 	"github.com/google/uuid"
 )
 
@@ -30,14 +30,14 @@ INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat,
 `
 
 type CreateBookingParams struct {
-	MediaID   string    `json:"media_id"`
-	Task      string    `json:"task"`
-	Price     int64     `json:"price"`
-	Credits   int32     `json:"credits"`
-	DateStart Timestamp `json:"date_start"`
-	DateEnd   Timestamp `json:"date_end"`
-	Lat       string    `json:"lat"`
-	Lng       string    `json:"lng"`
+	MediaID   string           `json:"media_id"`
+	Task      string           `json:"task"`
+	Price     int64            `json:"price"`
+	Credits   int32            `json:"credits"`
+	DateStart parser.Timestamp `json:"date_start"`
+	DateEnd   parser.Timestamp `json:"date_end"`
+	Lat       string           `json:"lat"`
+	Lng       string           `json:"lng"`
 }
 
 func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (uuid.UUID, error) {
@@ -137,14 +137,14 @@ LIMIT 5
 `
 
 type ListBookingsByUserRow struct {
-	Task      string    `json:"task"`
-	Credits   int32     `json:"credits"`
-	Price     int64     `json:"price"`
-	CreatedAt Timestamp `json:"created_at"`
-	Accepted  bool      `json:"accepted"`
-	Completed bool      `json:"completed"`
-	ProLevel  int32     `json:"pro_level"`
-	UserID    string    `json:"user_id"`
+	Task      string           `json:"task"`
+	Credits   int32            `json:"credits"`
+	Price     int64            `json:"price"`
+	CreatedAt parser.Timestamp `json:"created_at"`
+	Accepted  bool             `json:"accepted"`
+	Completed bool             `json:"completed"`
+	ProLevel  int32            `json:"pro_level"`
+	UserID    string           `json:"user_id"`
 }
 
 func (q *Queries) ListBookingsByUser(ctx context.Context) ([]ListBookingsByUserRow, error) {

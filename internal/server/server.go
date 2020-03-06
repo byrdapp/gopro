@@ -16,10 +16,10 @@ import (
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage"
-	firebase "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/firebase"
-	"github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres"
-	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/internal/storage"
+	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
+	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
+	"github.com/byrdapp/byrd-pro-api/pkg/logger"
 )
 
 var (
