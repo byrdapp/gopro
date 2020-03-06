@@ -18,21 +18,22 @@ var ErrPanicRecover = errors.New("")
 var ErrJSONEncoding = errors.New("json marshall encoding to byte array")
 var ErrJSONDecoding = errors.New("json unmarshall decoding")
 var ErrBadTokenHeader = errors.New("no or wrong token found in header")
+var ErrBadDateRequest = errors.New("bad values or wrong date time")
 
 const (
 	_ = iota + 519
 	StatusPanic
-	// Marshall
-	StatusJSONEncode
-	// Unmarshall
-	StatusJSONDecode
+	StatusJSONEncode // Marshall
+	StatusJSONDecode // Unmarshall
 	StatusBadTokenHeader
+	StatusBadDateTime
 )
 
-var StatusText = map[HttpStatusCode]string{
-	StatusJSONEncode:     ErrJSONEncoding.Error(),
-	StatusJSONDecode:     ErrJSONDecoding.Error(),
-	StatusBadTokenHeader: ErrBadTokenHeader.Error(),
+var StatusText = map[HttpStatusCode]error{
+	StatusJSONEncode:     ErrJSONEncoding,
+	StatusJSONDecode:     ErrJSONDecoding,
+	StatusBadTokenHeader: ErrBadTokenHeader,
+	StatusBadDateTime:    ErrBadDateRequest,
 }
 
 // writes client or returns json encoding error
@@ -59,12 +60,14 @@ func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatus
 	return 0
 }
 
+// Output log if necessary
 func (code HttpStatusCode) StatusText() (string, bool) {
 	if http.StatusText(int(code)) != "" {
+		log.Warnf("http stdlib statustext code: %v", code)
 		return http.StatusText(int(code)), true
 	} else {
 		if val, ok := StatusText[code]; ok {
-			return val, ok
+			return val.Error(), ok
 		} else {
 			log.Infof("code %v - possibly nil pointer err", int(code))
 			return "unknown error occurred internally - contact Simon on Slack.", false

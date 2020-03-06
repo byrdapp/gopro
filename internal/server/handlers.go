@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
@@ -25,7 +26,6 @@ import (
 	"github.com/blixenkrone/byrd/byrd-pro-api/pkg/media"
 	image "github.com/blixenkrone/byrd/byrd-pro-api/pkg/media/image"
 	video "github.com/blixenkrone/byrd/byrd-pro-api/pkg/media/video"
-	timeutil "github.com/blixenkrone/byrd/byrd-pro-api/pkg/time"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
@@ -337,11 +337,7 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "application/json")
 		params := mux.Vars(r)
-		userId, err := uuid.FromBytes([]byte(params["uid"]))
-		if err != nil {
-			WriteClient(w, http.StatusBadRequest)
-			return
-		}
+		userId := params["uid"]
 		bookings, err := pq.GetBookingsByMediaUID(r.Context(), userId)
 		if err != nil {
 			WriteClient(w, http.StatusBadRequest)
@@ -355,41 +351,38 @@ var getBookingsByUID = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// POST /booking/{uid}
+// POST /booking/task
 var createBooking = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		var req storage.Booking
-		params := mux.Vars(r)
-		uid := params["proUID"]
-		log.Infoln(uid)
-
+		var req postgres.CreateBookingParams
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			WriteClient(w, http.StatusBadRequest)
+			WriteClient(w, http.StatusBadRequest).LogError(err)
 			return
 		}
 		defer r.Body.Close()
+		spew.Dump(req)
 
-		// * Is the date zero valued (i.e. missing or wrongly formatted)
-		tb := timeutil.NewTime(*req.DateStart, *req.DateEnd)
-		if err := tb.IsZero(); err != nil {
-			WriteClient(w, http.StatusBadRequest)
+		// ? bad date
+		if req.DateStart.IsZero() || req.DateEnd.IsZero() {
+			WriteClient(w, StatusBadDateTime)
 			return
 		}
 
-		// b, err := pq.CreateBooking(r.Context(), uid, req)
-		// if err != nil {
-		// 	WriteClient(w, http.StatusBadRequest)
-		// 	return
-		// }
-		var b postgres.Booking
-		if err := json.NewEncoder(w).Encode(b); err != nil {
+		uuid, err := pq.CreateBooking(r.Context(), req)
+		if err != nil {
+			WriteClient(w, http.StatusNotFound)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(uuid); err != nil {
 			WriteClient(w, http.StatusInternalServerError)
 			return
 		}
 	}
 
 }
+
+var acceptBooking = func(w http.ResponseWriter, r *http.Request) {}
 
 // PUT /booking/{bookingID}
 var updateBooking = func(w http.ResponseWriter, r *http.Request) {
@@ -429,63 +422,19 @@ var deleteBooking = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodDelete {
 		w.Header().Set("Content-Type", "application/json")
 		params := mux.Vars(r)
-		bookingID := params["bookingID"]
-		if err := pq.DeleteBooking(r.Context(), bookingID); err != nil {
-			WriteClient(w, http.StatusInternalServerError)
-			return
-		}
-		if err := json.NewEncoder(w).Encode(&bookingID); err != nil {
-			WriteClient(w, http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-// Gets the firebase profile, with postgres profile and booking
-var getProfileWithBookings = func(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		profiles, err := pq.GetBookingsAdmin(r.Context())
+		userUID, err := uuid.FromBytes([]byte(params["bookingID"]))
 		if err != nil {
+			WriteClient(w, http.StatusBadRequest)
+			return
+		}
+		if err := pq.DeleteBooking(r.Context(), userUID); err != nil {
 			WriteClient(w, http.StatusInternalServerError)
 			return
 		}
-		for _, p := range profiles {
-			fbprofile, err := fb.GetProfile(r.Context(), p.Professional.UserUID)
-			if err != nil {
-				WriteClient(w, http.StatusInternalServerError)
-				return
-			}
-			p.FirebaseProfile = *fbprofile
-		}
-
-		if err := json.NewEncoder(w).Encode(&profiles); err != nil {
-			WriteClient(w, http.StatusInternalServerError)
-			return
-		}
+		WriteClient(w, http.StatusOK)
+		return
 	}
 }
-
-// Response from byrd API OK/ERROR?
-// var chargeBooking = func(w http.ResponseWriter, r *http.Request) {
-// 	// TODO: get byrd api url to charge credits
-// 	url := os.Getenv("ENV") + "/wht?"
-// 	var client http.Client
-
-// 	req, err := http.NewRequest("POST", url, r.Body)
-// 	if err != nil {
-// 		return
-// 	}
-// 	res, err := client.Do(req)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	if err := json.NewEncoder(w).Encode(res); err != nil {
-// 		JSONWrite(w, "Error encoding response", http.StatusInternalServerError, w, "trace")
-// 		return
-// 	}
-// }
 
 var sendMail = func(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {

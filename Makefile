@@ -17,3 +17,7 @@ build_docker_tag:
 
 eval_dev_manager:
 	eval $(docker-machine env manager1)
+
+generate_sql:
+	cd internal/storage/sql \
+	&& sqlc generate

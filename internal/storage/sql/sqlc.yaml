@@ -5,3 +5,6 @@ packages:
     emit_json_tags: true
     schema: "schema.sql"
     queries: "queries.sql"
+overrides:
+  - go_type: "github.com/blixenkrone/byrd/byrd-pro-api/internal/storage/postgres/Timestamp"
+    db_type: "date"

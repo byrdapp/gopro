@@ -54,8 +54,6 @@ func NewFB() (storage.FBService, error) {
 		return nil, err
 	}
 
-	log.Infoln("Started Firebase admin")
-
 	return &Firebase{
 		Client:  client,
 		Context: ctx,

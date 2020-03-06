@@ -5,32 +5,44 @@ package postgres
 
 import (
 	"context"
-	"time"
 
+	"github"
 	"github.com/google/uuid"
 )
 
+const acceptBooking = `-- name: AcceptBooking :exec
+UPDATE bookings SET accepted = $2 WHERE photographer_id = $1
+`
+
+type AcceptBookingParams struct {
+	PhotographerID string `json:"photographer_id"`
+	Accepted       bool   `json:"accepted"`
+}
+
+func (q *Queries) AcceptBooking(ctx context.Context, arg AcceptBookingParams) error {
+	_, err := q.db.ExecContext(ctx, acceptBooking, arg.PhotographerID, arg.Accepted)
+	return err
+}
+
 const createBooking = `-- name: CreateBooking :one
-INSERT INTO bookings (media_id, photographer_id, task, price, credits, date_start, date_end, lat, lng)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
+INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat, lng)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
 `
 
 type CreateBookingParams struct {
-	MediaID        uuid.UUID `json:"media_id"`
-	PhotographerID uuid.UUID `json:"photographer_id"`
-	Task           string    `json:"task"`
-	Price          int64     `json:"price"`
-	Credits        int32     `json:"credits"`
-	DateStart      time.Time `json:"date_start"`
-	DateEnd        time.Time `json:"date_end"`
-	Lat            string    `json:"lat"`
-	Lng            string    `json:"lng"`
+	MediaID   string    `json:"media_id"`
+	Task      string    `json:"task"`
+	Price     int64     `json:"price"`
+	Credits   int32     `json:"credits"`
+	DateStart Timestamp `json:"date_start"`
+	DateEnd   Timestamp `json:"date_end"`
+	Lat       string    `json:"lat"`
+	Lng       string    `json:"lng"`
 }
 
 func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, createBooking,
 		arg.MediaID,
-		arg.PhotographerID,
 		arg.Task,
 		arg.Price,
 		arg.Credits,
@@ -57,7 +69,7 @@ const getBookingsByMediaUID = `-- name: GetBookingsByMediaUID :many
 SELECT id, media_id, photographer_id, task, price, credits, accepted, completed, date_start, date_end, created_at, lat, lng FROM bookings WHERE media_id = $1 ORDER BY created_at DESC
 `
 
-func (q *Queries) GetBookingsByMediaUID(ctx context.Context, mediaID uuid.UUID) ([]Booking, error) {
+func (q *Queries) GetBookingsByMediaUID(ctx context.Context, mediaID string) ([]Booking, error) {
 	rows, err := q.db.QueryContext(ctx, getBookingsByMediaUID, mediaID)
 	if err != nil {
 		return nil, err
@@ -128,14 +140,13 @@ type ListBookingsByUserRow struct {
 	Task      string    `json:"task"`
 	Credits   int32     `json:"credits"`
 	Price     int64     `json:"price"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt Timestamp `json:"created_at"`
 	Accepted  bool      `json:"accepted"`
 	Completed bool      `json:"completed"`
 	ProLevel  int32     `json:"pro_level"`
-	UserID    uuid.UUID `json:"user_id"`
+	UserID    string    `json:"user_id"`
 }
 
-// Requires admin
 func (q *Queries) ListBookingsByUser(ctx context.Context) ([]ListBookingsByUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listBookingsByUser)
 	if err != nil {

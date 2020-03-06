@@ -1,3 +1,5 @@
+
+
 -- name: UpdateBookingStatus :exec
 UPDATE bookings SET accepted = $2, completed = $3, task = $4 WHERE id = $1;
 
@@ -11,10 +13,12 @@ SELECT * FROM bookings WHERE media_id = $1 ORDER BY created_at DESC;
 SELECT * FROM profiles WHERE id = $1 LIMIT 1;
 
 -- name: CreateBooking :one
-INSERT INTO bookings (media_id, photographer_id, task, price, credits, date_start, date_end, lat, lng)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id;
+INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat, lng)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
 
--- Requires admin
+-- name: AcceptBooking :exec
+UPDATE bookings SET accepted = $2 WHERE photographer_id = $1;
+
 -- name: ListBookingsByUser :many
 SELECT
     bookings.task,

@@ -1,13 +1,13 @@
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     id uuid PRIMARY KEY NOT NULL,
-    user_id uuid NOT NULL,
+    user_id VARCHAR(40) NOT NULL,
     pro_level INTEGER NOT NULL
 );
 
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
     id uuid PRIMARY KEY NOT NULL,
-    media_id uuid NOT NULL REFERENCES profile(id),
-    photographer_id uuid NOT NULL,
+    media_id VARCHAR(40) NOT NULL REFERENCES profiles(id),
+    photographer_id VARCHAR(40) NOT NULL,
     task TEXT NOT NULL,
     price BIGINT NOT NULL CHECK (price >= 0),
     credits INTEGER NOT NULL,

@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	mux "github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
