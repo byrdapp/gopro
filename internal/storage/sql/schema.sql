@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     media_id VARCHAR(40) NOT NULL REFERENCES profiles(id),
     photographer_id VARCHAR(40) NOT NULL,
     task TEXT NOT NULL,
-    price BIGINT NOT NULL CHECK (price >= 0),
+    price INTEGER NOT NULL CHECK (price >= 0),
     credits INTEGER NOT NULL,
     accepted BOOLEAN NOT NULL DEFAULT FALSE,
     completed BOOLEAN NOT NULL DEFAULT FALSE,

@@ -362,15 +362,18 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		spew.Dump(req)
 
-		// ? bad date
-		if req.DateStart.IsZero() || req.DateEnd.IsZero() {
+		// * if bad date
+		if req.DateStart.IsZero() || req.DateEnd.IsZero() || req.DateEnd.Unix() < time.Now().Unix() {
 			WriteClient(w, StatusBadDateTime)
 			return
 		}
 
+		req.Price = req.Credits * 15
+
+		// ? minimum price cap??
 		uuid, err := pq.CreateBooking(r.Context(), req)
 		if err != nil {
-			WriteClient(w, http.StatusNotFound)
+			WriteClient(w, http.StatusForbidden).LogError(err)
 			return
 		}
 
@@ -379,7 +382,6 @@ var createBooking = func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 }
 
 var acceptBooking = func(w http.ResponseWriter, r *http.Request) {}

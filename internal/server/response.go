@@ -63,13 +63,14 @@ func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatus
 // Output log if necessary
 func (code HttpStatusCode) StatusText() (string, bool) {
 	if http.StatusText(int(code)) != "" {
-		log.Warnf("http stdlib statustext code: %v", code)
+		log.Warnf("http stdlib code: %v", code)
 		return http.StatusText(int(code)), true
 	} else {
 		if val, ok := StatusText[code]; ok {
+			log.Warnf("custom http code: %v", code)
 			return val.Error(), ok
 		} else {
-			log.Infof("code %v - possibly nil pointer err", int(code))
+			log.Warnf("code %v - possibly nil pointer err", int(code))
 			return "unknown error occurred internally - contact Simon on Slack.", false
 		}
 	}

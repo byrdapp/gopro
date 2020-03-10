@@ -12,7 +12,7 @@ type Booking struct {
 	MediaID        string           `json:"media_id"`
 	PhotographerID string           `json:"photographer_id"`
 	Task           string           `json:"task"`
-	Price          int64            `json:"price"`
+	Price          int32            `json:"price"`
 	Credits        int32            `json:"credits"`
 	Accepted       bool             `json:"accepted"`
 	Completed      bool             `json:"completed"`

@@ -12,6 +12,10 @@ SELECT * FROM bookings WHERE media_id = $1 ORDER BY created_at DESC;
 -- name: GetUser :one
 SELECT * FROM profiles WHERE id = $1 LIMIT 1;
 
+-- name: CreateProfile :one
+INSERT INTO profiles (user_id, pro_level)
+    VALUES ($1, $2) RETURNING id;
+
 -- name: CreateBooking :one
 INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat, lng)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;

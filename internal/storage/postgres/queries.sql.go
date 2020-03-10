@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/byrdapp/timestamp/parser"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 )
 
@@ -32,7 +33,7 @@ INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat,
 type CreateBookingParams struct {
 	MediaID   string           `json:"media_id"`
 	Task      string           `json:"task"`
-	Price     int64            `json:"price"`
+	Price     int32            `json:"price"`
 	Credits   int32            `json:"credits"`
 	DateStart parser.Timestamp `json:"date_start"`
 	DateEnd   parser.Timestamp `json:"date_end"`
@@ -41,6 +42,7 @@ type CreateBookingParams struct {
 }
 
 func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (uuid.UUID, error) {
+	spew.Dump(arg)
 	row := q.db.QueryRowContext(ctx, createBooking,
 		arg.MediaID,
 		arg.Task,
@@ -139,7 +141,7 @@ LIMIT 5
 type ListBookingsByUserRow struct {
 	Task      string           `json:"task"`
 	Credits   int32            `json:"credits"`
-	Price     int64            `json:"price"`
+	Price     int32            `json:"price"`
 	CreatedAt parser.Timestamp `json:"created_at"`
 	Accepted  bool             `json:"accepted"`
 	Completed bool             `json:"completed"`
