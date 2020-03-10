@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/conversion"
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
-	"github.com/blixenkrone/byrd-pro-api/pkg/media"
+	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
+	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/pkg/media"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )

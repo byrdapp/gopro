@@ -3,30 +3,28 @@
 package postgres
 
 import (
-	"database/sql"
-	"time"
-
+	"github.com/byrdapp/timestamp/parser"
 	"github.com/google/uuid"
 )
 
 type Booking struct {
-	ID             uuid.UUID `json:"id"`
-	MediaID        uuid.UUID `json:"media_id"`
-	PhotographerID uuid.UUID `json:"photographer_id"`
-	Task           string    `json:"task"`
-	Price          int64     `json:"price"`
-	Credits        int32     `json:"credits"`
-	Accepted       bool      `json:"accepted"`
-	Completed      bool      `json:"completed"`
-	DateStart      time.Time `json:"date_start"`
-	DateEnd        time.Time `json:"date_end"`
-	CreatedAt      time.Time `json:"created_at"`
-	Lat            string    `json:"lat"`
-	Lng            string    `json:"lng"`
+	ID             uuid.UUID        `json:"id"`
+	MediaID        string           `json:"media_id"`
+	PhotographerID string           `json:"photographer_id"`
+	Task           string           `json:"task"`
+	Price          int32            `json:"price"`
+	Credits        int32            `json:"credits"`
+	Accepted       bool             `json:"accepted"`
+	Completed      bool             `json:"completed"`
+	DateStart      parser.Timestamp `json:"date_start"`
+	DateEnd        parser.Timestamp `json:"date_end"`
+	CreatedAt      parser.Timestamp `json:"created_at"`
+	Lat            string           `json:"lat"`
+	Lng            string           `json:"lng"`
 }
 
 type Profile struct {
-	ID       uuid.UUID     `json:"id"`
-	UserID   uuid.UUID     `json:"user_id"`
-	ProLevel sql.NullInt32 `json:"pro_level"`
+	ID       uuid.UUID `json:"id"`
+	UserID   string    `json:"user_id"`
+	ProLevel int32     `json:"pro_level"`
 }

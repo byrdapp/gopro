@@ -8,8 +8,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/storage"
-	"github.com/blixenkrone/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/internal/storage"
+	"github.com/byrdapp/byrd-pro-api/pkg/logger"
 	_ "github.com/lib/pq"
 )
 
@@ -25,7 +25,7 @@ type Old_Postgres struct {
 
 // NewPQ Starts ORM
 // func NewPQ(s storage.Service) (*Postgres, error) {
-func NewPQ() (storage.PQService, error) {
+func NewPQ() (*sql.DB, error) {
 	connStr, ok := os.LookupEnv("POSTGRES_CONNSTR")
 	if !ok {
 		return nil, errors.New("Error opening postgress connstr from environment variable")
@@ -39,7 +39,7 @@ func NewPQ() (storage.PQService, error) {
 		return nil, err
 	}
 	log.Infoln("Started psql DB")
-	return &Old_Postgres{db}, nil
+	return db, nil
 }
 
 /** BOOKING ENDPOINTS */

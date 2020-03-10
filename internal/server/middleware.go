@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/blixenkrone/byrd-pro-api/internal/slack"
+	"github.com/byrdapp/byrd-pro-api/internal/slack"
 )
 
 const (

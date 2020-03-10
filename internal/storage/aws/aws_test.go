@@ -5,7 +5,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/blixenkrone/byrd-pro-api/pkg/file"
+	"github.com/byrdapp/byrd-pro-api/pkg/file"
 )
 
 func TestDownloadImages(t *testing.T) {

@@ -1,7 +1,10 @@
 version: "1"
 packages:
   - name: "postgres"
-    path: "postgres"
+    path: "../postgres"
     emit_json_tags: true
     schema: "schema.sql"
     queries: "queries.sql"
+overrides:
+  - go_type: "github.com/byrdapp/timestamp/parser.Timestamp"
+    db_type: "date"

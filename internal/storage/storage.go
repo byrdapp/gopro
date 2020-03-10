@@ -2,24 +2,10 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"firebase.google.com/go/auth"
 )
-
-type PQService interface {
-	GetBookingsByUID(ctx context.Context, proID string) ([]*Booking, error)
-	CreateBooking(ctx context.Context, uid string, b Booking) (string, error)
-	UpdateBooking(ctx context.Context, b *Booking) error
-	DeleteBooking(ctx context.Context, bookingID string) error
-	GetBookingsAdmin(ctx context.Context) ([]*AdminBookings, error)
-	GetProfile(ctx context.Context, id string) (*Professional, error)
-	Close() error
-	Ping() error
-	HandleRowError(error) error
-	CancelRowsError(*sql.Rows) error
-}
 
 // FBService contains firebase methods
 type FBService interface {

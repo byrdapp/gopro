@@ -28,7 +28,6 @@ func (s *Server) InitRoutes() {
 	})).Methods("GET")
 
 	s.router.HandleFunc("/logoff", signOut).Methods("POST")
-
 	s.router.HandleFunc("/mail/send", recoverFunc(isAuth(sendMail))).Methods("POST")
 	s.router.HandleFunc("/exif/image", recoverFunc(isAuth(exifImages))).Methods("POST")
 	s.router.HandleFunc("/exif/video", recoverFunc(isAuth(exifVideo))).Methods("POST")
@@ -40,8 +39,12 @@ func (s *Server) InitRoutes() {
 	s.router.HandleFunc("/profile/{id}", isAuth(getProProfile)).Methods("GET")
 
 	s.router.HandleFunc("/booking/task/{uid}", isAuth(getBookingsByUID)).Methods("GET")
-	s.router.HandleFunc("/booking/task/{proUID}", isAuth(createBooking)).Methods("POST")
+
+	s.router.HandleFunc("/booking/task", recoverFunc(isAuth(createBooking))).Methods("POST")
+	s.router.HandleFunc("/booking/accepted", isAuth(acceptBooking)).Methods("PUT") // ==> update accepted true/false
+	// s.router.HandleFunc("/booking/task/{proUID}", isAuth(createSpecficBooking)).Methods("POST")
+
 	s.router.HandleFunc("/booking/task/{bookingID}", isAuth(updateBooking)).Methods("PUT")
 	s.router.HandleFunc("/booking/task/{bookingID}", isAuth(deleteBooking)).Methods("DELETE")
-	s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
+	// s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 }

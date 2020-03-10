@@ -25,7 +25,7 @@ jobs:
         id: go
 
       - name: Go vet
-        run: go vet cmd/gopro/main.go
+        run: go vet cmd/byrd-pro-api/main.go
 
       - name: List Files
         run: ls -alrt $GITHUB_WORKSPACE
