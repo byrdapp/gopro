@@ -2,6 +2,7 @@ package media
 
 import (
 	"errors"
+	"fmt"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
@@ -26,16 +27,16 @@ type Metadata struct {
 }
 
 // adds an object to the output JSON that displays missing exif data
-func (o *Metadata) AddMissingExif(errType string, originError error) {
+func (o *Metadata) AddMissingExif(tag string, originError error) {
 	var returnErr error
 	if goexif.IsTagNotPresentError(originError) {
 		returnErr = errors.New("exif tag is not present in file")
 	}
 	if goexif.IsCriticalError(originError) {
-		returnErr = errors.New("critial error from file")
+		returnErr = fmt.Errorf("error parsing %v from file", tag)
 	}
 	if goexif.IsGPSError(originError) {
 		returnErr = errors.New("GPS decoding error")
 	}
-	o.MissingExif[errType] = returnErr.Error()
+	o.MissingExif[tag] = returnErr.Error()
 }

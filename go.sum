@@ -56,6 +56,8 @@ github.com/byrdapp/timestamp v0.0.0-20200306142653-183dee5d8a13 h1:BMcHsQrpRhtoE
 github.com/byrdapp/timestamp v0.0.0-20200306142653-183dee5d8a13/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
 github.com/byrdapp/timestamp v0.0.0-20200309144232-13613042ccbe h1:zMb/E2suNwDCuzb1h3nkL/IyGPP9ZtDpsjebvRVOHLQ=
 github.com/byrdapp/timestamp v0.0.0-20200309144232-13613042ccbe/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
+github.com/byrdapp/timestamp v0.0.0-20200309174809-ed23a618c3b1 h1:xFM62AqlgwITIfILOUhCLiMkQjhfDua/pIxRoJ3TFtw=
+github.com/byrdapp/timestamp v0.0.0-20200309174809-ed23a618c3b1/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=

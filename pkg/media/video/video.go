@@ -56,7 +56,6 @@ func ReadVideoBuffer(r io.Reader, videoFmt media.FileFormat) (*VideoBuffer, erro
 
 func (v *VideoBuffer) Metadata() *media.Metadata {
 	xErr := &media.Metadata{MissingExif: make(map[string]string)}
-
 	meta, err := v.ffprobeVideoMeta()
 	if err != nil {
 		xErr.AddMissingExif("metacmd", err)

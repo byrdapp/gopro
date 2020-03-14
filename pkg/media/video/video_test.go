@@ -2,6 +2,9 @@ package video
 
 import (
 	"bytes"
+	"flag"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage/aws"
@@ -9,6 +12,41 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	// "github.com/byrdapp/byrd-pro-api/pkg/exif/video"
 )
+
+var (
+	videoURI = flag.String("uri", "", "pass a URI to the exif decoder reading")
+)
+
+func TestLog(t *testing.T) {
+	resp, err := http.Get(*videoURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+}
+
+func TestURIVideoExifParse(t *testing.T) {
+	flag.Parse()
+	if *videoURI == "" {
+		t.FailNow()
+	}
+	t.Run("read video", func(t *testing.T) {
+		resp, err := http.Get(*videoURI)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, resp.Body); err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		// v := New(resp.Body)
+
+	})
+}
 
 func TestVideoExifBuffer(t *testing.T) {
 	if err := aws.ParseCredentials(); err != nil {

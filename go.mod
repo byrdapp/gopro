@@ -7,7 +7,7 @@ require (
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/Masterminds/squirrel v1.2.0
 	github.com/aws/aws-sdk-go v1.29.17
-	github.com/byrdapp/timestamp v0.0.0-20200309144232-13613042ccbe
+	github.com/byrdapp/timestamp v0.0.0-20200309174809-ed23a618c3b1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/golang-migrate/migrate/v4 v4.9.1
