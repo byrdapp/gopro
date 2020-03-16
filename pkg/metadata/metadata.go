@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
 	"github.com/byrdapp/byrd-pro-api/pkg/metadata/video"
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
@@ -14,8 +13,8 @@ import (
 type Metadata struct {
 	// File            file.FileGenerator
 	Date        int64             `json:"date,omitempty"`
-	Lat         float64           `json:"lat,omitempty"`
-	Lng         float64           `json:"lng,omitempty"`
+	Lat         string            `json:"lat,omitempty"`
+	Lng         string            `json:"lng,omitempty"`
 	Copyright   string            `json:"copyright,omitempty"`
 	Model       string            `json:"model,omitempty"`
 	Height      int               `json:"height,omitempty"`
@@ -35,8 +34,8 @@ func VideoMetadata(r io.Reader) (*Metadata, error) {
 
 	meta := &Metadata{
 		Date: m.CreationTime().UTC().Unix(),
-		Lat:  conversion.MustStringToFloat(m.Lat()),
-		Lng:  conversion.MustStringToFloat(m.Lng()),
+		Lat:  m.Lat(),
+		Lng:  m.Lng(),
 		// Copyright: nil,
 		Model:  m.Model(),
 		Width:  m.Width(),

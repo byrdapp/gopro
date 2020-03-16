@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type videoMetadata struct {
@@ -33,36 +35,37 @@ func (v *videoMetadata) RawMeta() (*FFMPEGMetaOutput, error) {
 	if err := json.Unmarshal(outJSON, &ffmpeg); err != nil {
 		return nil, err
 	}
+	spew.Dump(ffmpeg)
 	return &ffmpeg, nil
 }
 
 /// ffprobe output
 type FFMPEGMetaOutput struct {
 	Streams []struct {
-		CodecName string `json:"codec_name"`
-		Width     int    `json:"width"`
-		Height    int    `json:"height"`
-	} `json:"streams"`
+		CodecName string `json:"codec_name,omitempty"`
+		Width     int    `json:"width,omitempty"`
+		Height    int    `json:"height,omitempty"`
+	} `json:"streams,omitempty"`
 	Format struct {
-		Filename       string `json:"filename"`
-		NbStreams      int    `json:"nb_streams"`
-		NbPrograms     int    `json:"nb_programs"`
-		FormatName     string `json:"format_name"`
-		FormatLongName string `json:"format_long_name"`
-		StartTime      string `json:"start_time"`
-		Duration       string `json:"duration"`
-		ProbeScore     int    `json:"probe_score"`
+		Filename       string `json:"filename,omitempty"`
+		NbStreams      int    `json:"nb_streams,omitempty"`
+		NbPrograms     int    `json:"nb_programs,omitempty"`
+		FormatName     string `json:"format_name,omitempty"`
+		FormatLongName string `json:"format_long_name,omitempty"`
+		StartTime      string `json:"start_time,omitempty"`
+		Duration       string `json:"duration,omitempty"`
+		ProbeScore     int    `json:"probe_score,omitempty"`
 		Tags           struct {
-			MajorBrand       string    `json:"major_brand"`
-			MinorVersion     string    `json:"minor_version"`
-			CompatibleBrands string    `json:"compatible_brands"`
-			CreationTime     time.Time `json:"creation_time"`
-			Artwork          string    `json:"com.apple.quicktime.artwork"`
-			IsMontage        string    `json:"com.apple.quicktime.is-montage"`
-			Model            string    `json:"com.apple.quicktime.model"`
-			ISOLocation      string    `json:"com.apple.quicktime.location.ISO6709"`
-		} `json:"tags"`
-	} `json:"format"`
+			MajorBrand       string    `json:"major_brand,omitempty"`
+			MinorVersion     string    `json:"minor_version,omitempty"`
+			CompatibleBrands string    `json:"compatible_brands,omitempty"`
+			CreationTime     time.Time `json:"creation_time,omitempty"`
+			Artwork          string    `json:"com.apple.quicktime.artwork,omitempty"`
+			IsMontage        string    `json:"com.apple.quicktime.is-montage,omitempty"`
+			Model            string    `json:"com.apple.quicktime.model,omitempty"`
+			ISOLocation      string    `json:"com.apple.quicktime.location.ISO6709,omitempty"`
+		} `json:"tags,omitempty"`
+	} `json:"format,omitempty"`
 }
 
 func (fo *FFMPEGMetaOutput) SanitizeOutput() *FFMPEGMetaOutput {
@@ -73,19 +76,33 @@ func (fo *FFMPEGMetaOutput) SanitizeOutput() *FFMPEGMetaOutput {
 }
 
 func (fo *FFMPEGMetaOutput) Height() int {
-	return fo.Streams[0].Height
+	if len(fo.Streams) > 0 {
+		return fo.Streams[0].Height
+	} else {
+		return 0
+	}
 }
 func (fo *FFMPEGMetaOutput) Width() int {
-	return fo.Streams[0].Width
+	if len(fo.Streams) > 0 {
+		return fo.Streams[0].Width
+	} else {
+		return 0
+	}
 }
 func (fo *FFMPEGMetaOutput) Codec() string {
 	return fo.Streams[0].CodecName
 }
 func (fo *FFMPEGMetaOutput) Lat() string {
-	return strings.Split(fo.ISOLocation(), ",")[0]
+	if fo.ISOLocation() != "" {
+		return strings.Split(fo.ISOLocation(), ",")[0]
+	}
+	return fo.ISOLocation()
 }
 func (fo *FFMPEGMetaOutput) Lng() string {
-	return strings.Split(fo.ISOLocation(), ",")[1]
+	if fo.ISOLocation() != "" {
+		return strings.Split(fo.ISOLocation(), ",")[1]
+	}
+	return fo.ISOLocation()
 }
 func (fo *FFMPEGMetaOutput) Model() string {
 	return fo.Format.Tags.Model

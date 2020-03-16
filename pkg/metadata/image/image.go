@@ -47,12 +47,12 @@ func DecodeImageMetadata(data []byte) (*metadata.Metadata, error) {
 		xErr.AddMissingExif("decode", err)
 		return nil, errors.New("error decoding image for meta data")
 	}
-	lat, err := x.calcGeoCoordinate(goexif.GPSLatitude)
+	_, err = x.calcGeoCoordinate(goexif.GPSLatitude)
 	if err != nil {
 		err = errors.Cause(err)
 		xErr.AddMissingExif("lat", err)
 	}
-	lng, err := x.calcGeoCoordinate(goexif.GPSLongitude)
+	_, err = x.calcGeoCoordinate(goexif.GPSLongitude)
 	if err != nil {
 		err = errors.Cause(err)
 		xErr.AddMissingExif("lng", err)
@@ -84,8 +84,8 @@ func DecodeImageMetadata(data []byte) (*metadata.Metadata, error) {
 	}
 
 	return &metadata.Metadata{
-		Lat:         lat,
-		Lng:         lng,
+		// Lat:         lat,
+		// Lng:         lng,
 		Date:        date,
 		Model:       model,
 		Width:       dimensions[goexif.PixelXDimension],
