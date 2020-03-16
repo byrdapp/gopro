@@ -5,40 +5,26 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
 
-var (
-	VideoFormatSuffix = []string{"mp4", "mov", "quicktime", "x-m4v", "m4v", "jpeg"}
-	fromSecondMark    = "00:00:01.000"
-	toSecondMark      = "00:00:01.100"
-)
-
-func SupportedSuffix(fileName string) bool {
-	fileSuffix := strings.Split(fileName, "/")[1]
-	for _, suffix := range VideoFormatSuffix {
-		if fileSuffix == suffix {
-			return true
-		}
-	}
-	return false
-}
-
-type VideoReader interface {
+type videoMetadata struct {
 	io.Reader
 }
 
-func RawMeta(r VideoReader) (*FFMPEGMetaOutput, error) {
+func New(r io.Reader) *videoMetadata {
+	return &videoMetadata{r}
+}
+
+func (v *videoMetadata) RawMeta() (*FFMPEGMetaOutput, error) {
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
 		return nil, errors.New("ffprobe no bin in $PATH")
 	}
 	cmd := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "pipe:")
-	cmd.Stdin = r
+	cmd.Stdin = v.Reader
 	outJSON, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
@@ -50,15 +36,13 @@ func RawMeta(r VideoReader) (*FFMPEGMetaOutput, error) {
 	return &ffmpeg, nil
 }
 
-func (fo *FFMPEGMetaOutput) SanitizeOutput() *FFMPEGMetaOutput {
-	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "+", "", 1)
-	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "+", ",", 1)
-	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "/", "", -1)
-	return fo
-}
-
-// ffprobe output
+/// ffprobe output
 type FFMPEGMetaOutput struct {
+	Streams []struct {
+		CodecName string `json:"codec_name"`
+		Width     int    `json:"width"`
+		Height    int    `json:"height"`
+	} `json:"streams"`
 	Format struct {
 		Filename       string `json:"filename"`
 		NbStreams      int    `json:"nb_streams"`
@@ -69,67 +53,57 @@ type FFMPEGMetaOutput struct {
 		Duration       string `json:"duration"`
 		ProbeScore     int    `json:"probe_score"`
 		Tags           struct {
-			MajorBrand                 string    `json:"major_brand"`
-			MinorVersion               string    `json:"minor_version"`
-			CompatibleBrands           string    `json:"compatible_brands"`
-			CreationTime               time.Time `json:"creation_time"`
-			ComAppleQuicktimeArtwork   string    `json:"com.apple.quicktime.artwork"`
-			ComAppleQuicktimeIsMontage string    `json:"com.apple.quicktime.is-montage"`
-			ISOLocation                string    `json:"com.apple.quicktime.location.ISO6709"`
+			MajorBrand       string    `json:"major_brand"`
+			MinorVersion     string    `json:"minor_version"`
+			CompatibleBrands string    `json:"compatible_brands"`
+			CreationTime     time.Time `json:"creation_time"`
+			Artwork          string    `json:"com.apple.quicktime.artwork"`
+			IsMontage        string    `json:"com.apple.quicktime.is-montage"`
+			Model            string    `json:"com.apple.quicktime.model"`
+			ISOLocation      string    `json:"com.apple.quicktime.location.ISO6709"`
 		} `json:"tags"`
 	} `json:"format"`
 }
 
-type FFMPEGThumbnail []byte
-
-func Thumbnail(r VideoReader, x, y int) (FFMPEGThumbnail, error) {
-	ffmpeg, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		return nil, errors.New("ffmpeg no bin in $PATH")
-	}
-	f, err := ioutil.TempFile(os.TempDir(), "video-*")
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		f.Close()
-		os.Remove(f.Name())
-	}()
-	// -v quiet -i ./in.mp4 -ss 00:00:01.000 -vframes 1 -s 300x300 out.jpg
-	cmd := exec.Command(ffmpeg, "-i", "pipe:", "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:")
-	fmt.Println(cmd.String())
-	cmd.Stdin = r
-	return cmd.CombinedOutput()
+func (fo *FFMPEGMetaOutput) SanitizeOutput() *FFMPEGMetaOutput {
+	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "+", "", 1)
+	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "+", ",", 1)
+	fo.Format.Tags.ISOLocation = strings.Replace(fo.Format.Tags.ISOLocation, "/", "", -1)
+	return fo
 }
 
-func CollectedOutput(r VideoReader) (interface{}, error) {
-	ffmpeg, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		return nil, errors.New("ffmpeg no bin in $PATH")
-	}
-	cmd1 := exec.Command(ffmpeg, "-v", "error", "-i", "pipe:", "-ss", "00:00:01.00", "-vframes", "1", "-s", "300x300", "pipe:")
-	ffprobe, err := exec.LookPath("ffprobe")
-	if err != nil {
-		return nil, errors.New("ffprobe no bin in $PATH")
-	}
-	cmd2 := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "pipe:0")
-	cmd1Stdin, _ := cmd1.StdinPipe()
-	cmd2Stdin, _ := cmd2.StdinPipe()
-	mw := io.MultiWriter(cmd1Stdin, cmd2Stdin)
-	io.Copy(mw, r)
-	return nil, nil
+func (fo *FFMPEGMetaOutput) Height() int {
+	return fo.Streams[0].Height
+}
+func (fo *FFMPEGMetaOutput) Width() int {
+	return fo.Streams[0].Width
+}
+func (fo *FFMPEGMetaOutput) Codec() string {
+	return fo.Streams[0].CodecName
+}
+func (fo *FFMPEGMetaOutput) Lat() string {
+	return strings.Split(fo.ISOLocation(), ",")[0]
+}
+func (fo *FFMPEGMetaOutput) Lng() string {
+	return strings.Split(fo.ISOLocation(), ",")[1]
+}
+func (fo *FFMPEGMetaOutput) Model() string {
+	return fo.Format.Tags.Model
+}
+func (fo *FFMPEGMetaOutput) ISOLocation() string {
+	return fo.Format.Tags.ISOLocation
+}
+func (fo *FFMPEGMetaOutput) CreationTime() time.Time {
+	return fo.Format.Tags.CreationTime
+}
+func (fo *FFMPEGMetaOutput) EndTime() string {
+	return fo.Format.Duration
+}
+func (fo *FFMPEGMetaOutput) StartTime() string {
+	return fo.Format.StartTime
 }
 
-func removeFile(f *os.File) error {
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Remove(f.Name()); err != nil {
-		return err
-	}
-	return nil
-}
-
+// ! not in use
 func parseLocation(t time.Time) (time.Time, error) {
 	tl, err := time.LoadLocation("Europe/Copenhagen")
 	if err != nil {

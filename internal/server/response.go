@@ -38,7 +38,7 @@ var StatusText = map[HttpStatusCode]error{
 }
 
 // writes client or returns json encoding error
-func (s *server) WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
+func (s *server) writeClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
 	msg, ok := code.StatusText()
 	if !ok {

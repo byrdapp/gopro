@@ -33,9 +33,9 @@ type imgExifData struct {
 // DecodeImageMetadata returns the struct *Output containing img data.
 // This will include the errors from missing/broken exif will follow.
 // If an error is != nil, its a panic
-func DecodeImageMetadata(data []byte) (*media.Metadata, error) {
+func DecodeImageMetadata(data []byte) (*metadata.Metadata, error) {
 	r := bytes.NewReader(data)
-	xErr := &media.Metadata{MissingExif: make(map[string]string)}
+	xErr := &metadata.Metadata{MissingExif: make(map[string]string)}
 
 	x, err := loadExifData(r)
 	if err != nil {
@@ -83,16 +83,16 @@ func DecodeImageMetadata(data []byte) (*media.Metadata, error) {
 		xErr.AddMissingExif("fileSize", err)
 	}
 
-	return &media.Metadata{
-		Lat:             lat,
-		Lng:             lng,
-		Date:            date,
-		Model:           model,
-		PixelXDimension: dimensions[goexif.PixelXDimension],
-		PixelYDimension: dimensions[goexif.PixelYDimension],
-		Copyright:       author,
-		MediaSize:       size,
-		MissingExif:     xErr.MissingExif,
+	return &metadata.Metadata{
+		Lat:         lat,
+		Lng:         lng,
+		Date:        date,
+		Model:       model,
+		Width:       dimensions[goexif.PixelXDimension],
+		Height:      dimensions[goexif.PixelYDimension],
+		Copyright:   author,
+		MediaSize:   size,
+		MissingExif: xErr.MissingExif,
 		// ? do this MediaFormat:     mediaFmt,
 	}, nil
 }

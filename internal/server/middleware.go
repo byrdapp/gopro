@@ -17,7 +17,7 @@ func (s *server) recoverFunc(next http.Handler) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				s.WriteClient(w, http.StatusInternalServerError).LogError(err.(error))
+				s.writeClient(w, http.StatusInternalServerError).LogError(err.(error))
 
 				var recoverReason string
 				switch recovered := err.(type) {
@@ -52,13 +52,13 @@ func (s *server) isAdmin(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		headerToken := r.Header.Get(userToken)
 		if headerToken == "" {
-			s.WriteClient(w, StatusBadTokenHeader)
+			s.writeClient(w, StatusBadTokenHeader)
 			return
 		}
 
 		token, err := s.fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			s.WriteClient(w, StatusBadTokenHeader)
+			s.writeClient(w, StatusBadTokenHeader)
 			return
 		}
 
@@ -67,7 +67,7 @@ func (s *server) isAdmin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		err = errors.New("No admin rights found:")
-		s.WriteClient(w, http.StatusBadRequest).LogError(err)
+		s.writeClient(w, http.StatusBadRequest).LogError(err)
 	}
 }
 
@@ -78,12 +78,12 @@ func (s *server) isAuth(next http.HandlerFunc) http.HandlerFunc {
 		headerToken := r.Header.Get(userToken)
 		// ? verify here, that the user is a pro user
 		if headerToken == "" {
-			s.WriteClient(w, StatusBadTokenHeader)
+			s.writeClient(w, StatusBadTokenHeader)
 			return
 		}
 		token, err := s.fb.VerifyToken(r.Context(), headerToken)
 		if err != nil {
-			s.WriteClient(w, StatusBadTokenHeader)
+			s.writeClient(w, StatusBadTokenHeader)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
@@ -94,7 +94,7 @@ func (s *server) isAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if !isPro {
-			s.WriteClient(w, http.StatusUnauthorized)
+			s.writeClient(w, http.StatusUnauthorized)
 			http.RedirectHandler("/login", http.StatusFound)
 			return
 		}
