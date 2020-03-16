@@ -42,14 +42,7 @@ func main() {
 	if err := srv.UseHTTP2(); err != nil {
 		log.Warnf("Error with HTTP2 %s", err)
 	}
-
-	// if err := s.InitDB(); err != nil {
-	// 	log.Fatalf("Error initializing DB %s", err)
-	// }
-	// srv.HTTPListenServer.Addr = ":3000"
-
 	srv.Infof("Serving on host w. address :3000")
-	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

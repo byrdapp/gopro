@@ -1,119 +1,35 @@
 package video
 
 import (
-	"bytes"
-	"flag"
-	"io"
-	"net/http"
+	"errors"
+	"os"
+	"os/exec"
 	"testing"
 
-	"github.com/byrdapp/byrd-pro-api/internal/storage/aws"
-	"github.com/byrdapp/byrd-pro-api/pkg/image/thumbnail"
 	"github.com/davecgh/go-spew/spew"
-	// "github.com/byrdapp/byrd-pro-api/pkg/exif/video"
 )
 
-var (
-	videoURI = flag.String("uri", "", "pass a URI to the exif decoder reading")
-)
+type video struct{}
 
-func TestLog(t *testing.T) {
-	resp, err := http.Get(*videoURI)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+func TestEncoder(t *testing.T) {
+	t.Run("encode", func(t *testing.T) {
+		var v video
+		f, _ := os.Open("../in.mp4")
 
-}
-
-func TestURIVideoExifParse(t *testing.T) {
-	flag.Parse()
-	if *videoURI == "" {
-		t.FailNow()
-	}
-	t.Run("read video", func(t *testing.T) {
-		resp, err := http.Get(*videoURI)
+		meta, err := v.RawMetaString(f.Name())
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, resp.Body); err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-
-		// v := New(resp.Body)
-
+		spew.Dump(meta)
 	})
 }
 
-func TestVideoExifBuffer(t *testing.T) {
-	if err := aws.ParseCredentials(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	m, err := aws.GetTestMaterial("videos", "mov_small.mov")
+func (v *video) RawMetaString(path string) ([]byte, error) {
+	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
-		t.Error(err)
-		return
+		return nil, errors.New("ffmpeg no bin in $PATH")
 	}
-	rd := bytes.NewReader(m.Bytes())
-	video, err := ReadVideoBuffer(rd, "mov")
-	if err != nil {
-		t.Error(err)
-		panic(err)
-	}
-
-	thumb, err := video.ffmpegThumbnail(thumbnail.DefaultWidth, thumbnail.DefaultHeight)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	img, err := thumbnail.New(thumb)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	pthumb, err := img.EncodeThumbnail()
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	spew.Dump(pthumb.Bytes()[1:2])
-
-	defer func() {
-		if err := video.Close(video.file); err != nil {
-			log.Error(err)
-		}
-		if err := video.RemoveFile(video.file); err != nil {
-			log.Error(err)
-		}
-	}()
-}
-
-func TestVideoExifTmpFile(t *testing.T) {
-	if err := aws.ParseCredentials(); err != nil {
-		t.Error(err)
-		return
-	}
-	m, err := aws.GetTestMaterial("videos", "mov.mov")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	r := bytes.NewReader(m.Bytes())
-	v, err := ReadVideoBuffer(r, "mov")
-	if err != nil {
-		t.Error(err)
-		panic(err)
-	}
-	b, err := v.ffmpegThumbnail(400, 200)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	spew.Dump(b)
+	// cmd = exec.Command(ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-hide_banner", r)
+	cmd := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", path)
+	return cmd.Output()
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
 	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
-	"github.com/byrdapp/byrd-pro-api/pkg/image/thumbnail"
 	media "github.com/byrdapp/byrd-pro-api/pkg/metadata"
 	image "github.com/byrdapp/byrd-pro-api/pkg/metadata/image"
 	video "github.com/byrdapp/byrd-pro-api/pkg/metadata/video"
@@ -222,18 +221,18 @@ func (s *server) exifImages() http.HandlerFunc {
 					// JSON response struct
 					var data Metadata
 					if withPreview {
-						img, err := thumbnail.New(buf.Bytes())
-						if err != nil {
-							s.Warnf("%v", err)
-							data.Preview.Error = err.Error()
-						}
-						thumb, err := img.EncodeThumbnail()
-						if err != nil {
-							s.Errorf("%v", err)
-							s.WriteClient(w, http.StatusBadRequest)
-							return
-						}
-						data.Preview.Source = thumb.Bytes()
+						// img, err := thumbnail.New(buf.Bytes())
+						// if err != nil {
+						// 	s.Warnf("%v", err)
+						// 	data.Preview.Error = err.Error()
+						// }
+						// thumb, err := img.EncodeThumbnail()
+						// if err != nil {
+						// 	s.Errorf("%v", err)
+						// 	s.WriteClient(w, http.StatusBadRequest)
+						// 	return
+						// }
+						// data.Preview.Source = thumb.Bytes()
 					}
 
 					// Read EXIF data
@@ -257,8 +256,8 @@ func (s *server) exifImages() http.HandlerFunc {
 
 func (s *server) exifVideoV2() http.HandlerFunc {
 	type response struct {
-		Meta      *encoder.FFMPEGMetaOutput `json:"meta,omitempty"`
-		Thumbnail encoder.FFMPEGThumbnail   `json:"thumbnail"`
+		Meta      *video.FFMPEGMetaOutput `json:"meta,omitempty"`
+		Thumbnail video.FFMPEGThumbnail   `json:"thumbnail"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -267,7 +266,6 @@ func (s *server) exifVideoV2() http.HandlerFunc {
 
 // /exif/video
 func (s *server) exifVideo() http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			w.Header().Set("Content-Type", "application/json")
