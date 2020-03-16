@@ -22,9 +22,9 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
 	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
 	"github.com/byrdapp/byrd-pro-api/pkg/image/thumbnail"
-	"github.com/byrdapp/byrd-pro-api/pkg/media"
-	image "github.com/byrdapp/byrd-pro-api/pkg/media/image"
-	video "github.com/byrdapp/byrd-pro-api/pkg/media/video"
+	media "github.com/byrdapp/byrd-pro-api/pkg/metadata"
+	image "github.com/byrdapp/byrd-pro-api/pkg/metadata/image"
+	video "github.com/byrdapp/byrd-pro-api/pkg/metadata/video"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
@@ -255,8 +255,19 @@ func (s *server) exifImages() http.HandlerFunc {
 	}
 }
 
+func (s *server) exifVideoV2() http.HandlerFunc {
+	type response struct {
+		Meta      *encoder.FFMPEGMetaOutput `json:"meta,omitempty"`
+		Thumbnail encoder.FFMPEGThumbnail   `json:"thumbnail"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+
+	}
+}
+
 // /exif/video
 func (s *server) exifVideo() http.HandlerFunc {
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			w.Header().Set("Content-Type", "application/json")
@@ -285,33 +296,25 @@ func (s *server) exifVideo() http.HandlerFunc {
 				s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
 				return
 			}
-			headerMediaType := strings.Split(filetype[0], "video/")[1]
-			fmt, err := media.Format(headerMediaType).Video()
-			if err != nil {
-				s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
-				return
-			}
-			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-
-			video, err := video.ReadVideoBuffer(file, fmt)
-			if err != nil {
-				s.WriteClient(w, http.StatusNotAcceptable)
-				return
-			}
-			defer r.Body.Close()
-
 			var res Metadata
+			// headerMediaType := strings.Split(filetype[0], "video/")[1]
+			// fmt, err := media.Format(headerMediaType).Video()
+			// if err != nil {
+			// 	s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
+			// 	return
+			// }
+			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
 			if withPreview {
-				t, err := video.Thumbnail()
+				t, err := video.Thumbnail(r.Body, 300, 300)
 				if err != nil {
 					s.Warnf("%v", err)
 					res.Preview.Error = err.Error()
 				}
-				res.Preview.Source = t.Bytes()
+				res.Preview.Source = t
 			}
 
-			out := video.Metadata()
-			res.Exif.Output = out
+			// out := video.Metadata()
+			// res.Exif.Output = out
 
 			if err := json.NewEncoder(w).Encode(&res); err != nil {
 				s.WriteClient(w, http.StatusInternalServerError)

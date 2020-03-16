@@ -11,7 +11,7 @@ import (
 
 	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
 	"github.com/byrdapp/byrd-pro-api/pkg/logger"
-	"github.com/byrdapp/byrd-pro-api/pkg/media"
+	"github.com/byrdapp/byrd-pro-api/pkg/metadata"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )
