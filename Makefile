@@ -1,8 +1,8 @@
-serve_local_dev:
+serve:
 	clear \
 	&& go run cmd/byrd-pro-api/main.go -local -production=false
 
-watch_serve_local:
+watch:
 	clear \
 	&& spy go run cmd/byrd-pro-api/main.go -local -production=false
 

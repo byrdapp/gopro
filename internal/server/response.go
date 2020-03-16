@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"errors"
@@ -37,7 +38,7 @@ var StatusText = map[HttpStatusCode]error{
 }
 
 // writes client or returns json encoding error
-func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
+func (s *server) WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
 	msg, ok := code.StatusText()
 	if !ok {
@@ -45,7 +46,7 @@ func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatus
 			Code: http.StatusInternalServerError,
 			Msg:  "statuswriter failed output",
 		}); err != nil {
-			log.Error(err)
+			s.Errorf("%v", err)
 		}
 		return
 	}
@@ -63,21 +64,21 @@ func WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatus
 // Output log if necessary
 func (code HttpStatusCode) StatusText() (string, bool) {
 	if http.StatusText(int(code)) != "" {
-		log.Warnf("http stdlib code: %v", code)
+		// s.Warnf("http stdlib code: %v", code)
 		return http.StatusText(int(code)), true
 	} else {
 		if val, ok := StatusText[code]; ok {
-			log.Warnf("custom http code: %v", code)
+			// s.Warnf("custom http code: %v", code)
 			return val.Error(), ok
 		} else {
-			log.Warnf("code %v - possibly nil pointer err", int(code))
+			// s.Warnf("code %v - possibly nil pointer err", int(code))
 			return "unknown error occurred internally - contact Simon on Slack.", false
 		}
 	}
 }
 
 func (code HttpStatusCode) LogError(err error) {
-	log.Error(err)
+	log.Printf("%v", err)
 	msg, ok := code.StatusText()
-	log.Errorf("err val: %+v \n ClientMsg: %s (statuscode anticipated and defined in API?: %v)", err, msg, ok)
+	log.Printf("err val: %+v \n ClientMsg: %s (statuscode anticipated and defined in API?: %v)", err, msg, ok)
 }
