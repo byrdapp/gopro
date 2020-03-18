@@ -14,8 +14,7 @@ func TestLatLng(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		spew.Dump(m.Lat)
-		spew.Dump(m.Lng)
+		spew.Dump(m)
 	})
 }
 

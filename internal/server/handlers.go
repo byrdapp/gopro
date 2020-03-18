@@ -180,12 +180,17 @@ type preview struct {
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
 // endpoint: exif/${type=image/video}/?preview:bool
 func (s *server) exifImages() http.HandlerFunc {
+	type response struct {
+		Meta *metadata.Metadata `json:"meta,omitempty"`
+		// Size      float64                   `json:"size,omitempty"`
+		Thumbnail thumbnail.ImageThumbnail `json:"thumbnail,omitempty"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 		if r.Method == http.MethodPost {
 			var withPreview bool
 			// w.Header().Set("Content-Type", "multipart/form-data")
-			_, cancel := context.WithTimeout(r.Context(), time.Second*10)
+			_, cancel := context.WithTimeout(r.Context(), time.Second*30)
 			defer cancel()
 			// Parse media type to get type of media
 			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
@@ -193,61 +198,58 @@ func (s *server) exifImages() http.HandlerFunc {
 				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
-			if strings.HasPrefix(mediaType, "multipart/") {
-				withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-				mr := multipart.NewReader(r.Body, params["boundary"])
-				defer r.Body.Close()
-				var res []*Metadata
+			if !strings.HasPrefix(mediaType, "multipart/") {
+				s.writeClient(w, StatusNotMultipart)
+				return
+			}
 
-				for {
-					// (*os.File) for next file
-					part, err := mr.NextPart()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						s.writeClient(w, http.StatusNotAcceptable)
-						return
-					}
+			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			defer r.Body.Close()
+			var res []*response
 
-					var buf bytes.Buffer
-					_, err = io.Copy(&buf, part)
-					if err != nil {
-						s.writeClient(w, http.StatusNotAcceptable)
+			for {
+				// (*os.File) for next file
+				part, err := mr.NextPart()
+				if err != nil {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
 					}
-
-					// JSON response struct
-					var data Metadata
-					if withPreview {
-						// img, err := thumbnail.New(buf.Bytes())
-						// if err != nil {
-						// 	s.Warnf("%v", err)
-						// 	data.Preview.Error = err.Error()
-						// }
-						// thumb, err := img.EncodeThumbnail()
-						// if err != nil {
-						// 	s.Errorf("%v", err)
-						// 	s.WriteClient(w, http.StatusBadRequest)
-						// 	return
-						// }
-						// data.Preview.Source = thumb.Bytes()
-					}
-
-					// Read EXIF data
-					// parsedExif, err := image.DecodeImageMetadata(buf.Bytes())
-					// if err != nil {
-					// 	s.Errorf("parsed exif error: %v", err)
-					// 	data.Exif.Error = err.Error()
-					// }
-					// data.Exif.Output = parsedExif
-					res = append(res, &data)
-				}
-
-				if err := json.NewEncoder(w).Encode(res); err != nil {
-					s.writeClient(w, StatusJSONEncode)
+					s.writeClient(w, http.StatusNoContent)
 					return
 				}
+
+				var data response
+				var buf bytes.Buffer
+				tr := io.TeeReader(part, &buf)
+				defer part.Close()
+
+				// Read EXIF data
+				if !metadata.SupportedImageSuffix(part.FileName()) {
+					s.writeClient(w, http.StatusUnsupportedMediaType)
+					return
+				}
+				m, err := metadata.DecodeImageMetadata(tr)
+				if err != nil {
+					s.Errorf("parsed exif error: %v", err)
+				}
+				data.Meta = m
+
+				if withPreview {
+					t := thumbnail.New(&buf)
+					thumb, err := t.ImageThumbnail(300, 300)
+					if err != nil {
+						s.Warnf("thumbnail failed: %v", err)
+					}
+					data.Thumbnail = thumb
+				}
+
+				res = append(res, &data)
+			}
+
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				s.writeClient(w, StatusJSONEncode)
+				return
 			}
 		}
 	}
@@ -257,7 +259,7 @@ func (s *server) exifVideo() http.HandlerFunc {
 	type response struct {
 		Meta      *metadata.Metadata        `json:"meta,omitempty"`
 		Size      float64                   `json:"size,omitempty"`
-		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail"`
+		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
@@ -282,75 +284,25 @@ func (s *server) exifVideo() http.HandlerFunc {
 		var buf bytes.Buffer
 		tr := io.TeeReader(r.Body, &buf)
 		defer r.Body.Close()
-		res.Size = conversion.FileSizeBytesToFloat(len(buf.Bytes()))
+
 		meta, err := metadata.VideoMetadata(tr)
 		if err != nil {
 			s.writeClient(w, http.StatusBadRequest)
 			return
 		}
 		res.Meta = meta
+		// res.Size = conversion.FileSizeBytesToFloat(len(buf.Bytes()))
+
+		t := thumbnail.New(&buf)
+		ffmpegThumb, err := t.VideoThumbnail(300, 300)
+		if err != nil {
+			s.Warnf("thumbnail failed: %v", err)
+		}
+		res.Thumbnail = ffmpegThumb
+
 		if err := json.NewEncoder(w).Encode(&res); err != nil {
 			s.writeClient(w, StatusJSONEncode)
 			return
-		}
-
-	}
-}
-
-// /exif/video
-func (s *server) exifVideoOld() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "application/json")
-			var withPreview bool
-			mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if err != nil {
-				s.writeClient(w, http.StatusUnsupportedMediaType)
-				return
-			}
-
-			// Wrong request body
-			if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
-				s.writeClient(w, http.StatusUnsupportedMediaType)
-				return
-			}
-
-			file, fheader, err := r.FormFile("file")
-			if err != nil {
-				s.writeClient(w, http.StatusForbidden)
-				return
-			}
-			defer file.Close()
-
-			filetype, ok := fheader.Header["Content-Type"]
-			if !ok || len(filetype) == 0 {
-				s.writeClient(w, http.StatusUnsupportedMediaType).LogError(err)
-				return
-			}
-			var res Metadata
-			// headerMediaType := strings.Split(filetype[0], "video/")[1]
-			// fmt, err := media.Format(headerMediaType).Video()
-			// if err != nil {
-			// 	s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
-			// 	return
-			// }
-			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-			if withPreview {
-				// t, err := video.Thumbnail(r.Body, 300, 300)
-				// if err != nil {
-				// 	s.Warnf("%v", err)
-				// 	res.Preview.Error = err.Error()
-				// }
-				// res.Preview.Source = t
-			}
-
-			// out := video.Metadata()
-			// res.Exif.Output = out
-
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				s.writeClient(w, http.StatusInternalServerError)
-				return
-			}
 		}
 	}
 }

@@ -30,7 +30,6 @@ func Hook(msg, imgurl string) *SlackHookMsg {
 }
 
 func (qs *SlackHookMsg) Panic() {
-	log.Infof("sent slack panic msg: %s", qs)
 	attachment := slack.Attachment{
 		Color:      "bad",
 		Title:      "<!here> Pro API server paniced!",
@@ -45,8 +44,7 @@ func (qs *SlackHookMsg) Panic() {
 		Channel:     "server_errors",
 	}
 	if err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), &msg); err != nil {
-		log.Errorf("error sending slack notification: %s", err)
-		return
+		log.Warn(err)
 	}
 }
 
@@ -122,7 +120,6 @@ func (s *SlackMsg) Success() error {
 
 	err := slack.PostWebhook(os.Getenv("SLACK_WEBHOOK"), msg)
 	if err != nil {
-		log.Errorln(err)
 		return err
 	}
 	return nil

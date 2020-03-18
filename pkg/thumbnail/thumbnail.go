@@ -1,12 +1,15 @@
 package thumbnail
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+
+	"github.com/disintegration/imaging"
 )
 
 const (
@@ -24,7 +27,7 @@ func New(r io.Reader) *thumbnail {
 
 type FFMPEGThumbnail []byte
 
-func (t *thumbnail) Thumbnail(x, y int) (FFMPEGThumbnail, error) {
+func (t *thumbnail) VideoThumbnail(x, y int) (FFMPEGThumbnail, error) {
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return nil, errors.New("ffmpeg no bin in $PATH")
@@ -42,6 +45,24 @@ func (t *thumbnail) Thumbnail(x, y int) (FFMPEGThumbnail, error) {
 	fmt.Println(cmd.String())
 	cmd.Stdin = t.r
 	return cmd.CombinedOutput()
+}
+
+type ImageThumbnail []byte
+
+func (t *thumbnail) ImageThumbnail(x, y int) (ImageThumbnail, error) {
+	opt := imaging.AutoOrientation(true)
+	rc := ioutil.NopCloser(t.r)
+	img, err := imaging.Decode(rc, opt)
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	img = imaging.Resize(img, x, y, imaging.Lanczos)
+	var buf bytes.Buffer
+	if err := imaging.Encode(&buf, img, imaging.JPEG, imaging.JPEGQuality(60)); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func removeFile(f *os.File) error {

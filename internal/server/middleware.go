@@ -3,8 +3,10 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/byrdapp/byrd-pro-api/internal/slack"
 )
@@ -13,7 +15,15 @@ const (
 	userToken = "user_token"
 )
 
-func (s *server) recoverFunc(next http.Handler) http.HandlerFunc {
+func (s *server) loggerMw(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		log.Printf("<< %s %s %v\n", r.Method, r.URL.Path, time.Since(start))
+	})
+}
+
+func (s *server) recoverFunc(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {

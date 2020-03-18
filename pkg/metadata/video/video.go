@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type videoMetadata struct {
@@ -25,7 +23,9 @@ func (v *videoMetadata) RawMeta() (*FFMPEGMetaOutput, error) {
 	if err != nil {
 		return nil, errors.New("ffprobe no bin in $PATH")
 	}
-	cmd := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "pipe:")
+
+	cmd := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "-show_entries", "stream=height,width,codec_name,size", "pipe:")
+	fmt.Println(cmd.String())
 	cmd.Stdin = v.Reader
 	outJSON, err := cmd.CombinedOutput()
 	if err != nil {
@@ -35,7 +35,6 @@ func (v *videoMetadata) RawMeta() (*FFMPEGMetaOutput, error) {
 	if err := json.Unmarshal(outJSON, &ffmpeg); err != nil {
 		return nil, err
 	}
-	spew.Dump(ffmpeg)
 	return &ffmpeg, nil
 }
 
@@ -82,40 +81,51 @@ func (fo *FFMPEGMetaOutput) Height() int {
 		return 0
 	}
 }
+
 func (fo *FFMPEGMetaOutput) Width() int {
 	if len(fo.Streams) > 0 {
 		return fo.Streams[0].Width
-	} else {
-		return 0
 	}
+	return 0
 }
+
 func (fo *FFMPEGMetaOutput) Codec() string {
 	return fo.Streams[0].CodecName
 }
+
 func (fo *FFMPEGMetaOutput) Lat() string {
 	if fo.ISOLocation() != "" {
 		return strings.Split(fo.ISOLocation(), ",")[0]
 	}
 	return fo.ISOLocation()
 }
+
 func (fo *FFMPEGMetaOutput) Lng() string {
 	if fo.ISOLocation() != "" {
 		return strings.Split(fo.ISOLocation(), ",")[1]
 	}
 	return fo.ISOLocation()
 }
-func (fo *FFMPEGMetaOutput) Model() string {
-	return fo.Format.Tags.Model
+
+func (fo *FFMPEGMetaOutput) Model() (string, error) {
+	if fo.Format.Tags.Model != "" {
+		return fo.Format.Tags.Model, nil
+	}
+	return "", errors.New("missing model from output")
 }
+
 func (fo *FFMPEGMetaOutput) ISOLocation() string {
 	return fo.Format.Tags.ISOLocation
 }
+
 func (fo *FFMPEGMetaOutput) CreationTime() time.Time {
 	return fo.Format.Tags.CreationTime
 }
+
 func (fo *FFMPEGMetaOutput) EndTime() string {
 	return fo.Format.Duration
 }
+
 func (fo *FFMPEGMetaOutput) StartTime() string {
 	return fo.Format.StartTime
 }

@@ -26,7 +26,7 @@ type S3TestMaterial struct {
 	testPathType string
 	session      *session.Session
 	fileName     string
-	byteValue    []byte
+	Buf          *aws.WriteAtBuffer
 }
 
 func ParseCredentials() error {
@@ -67,10 +67,6 @@ func GetTestMaterial(path BucketRef, fileName string) (*S3TestMaterial, error) {
 		pathType,
 		sess,
 		fileName,
-		buf.Bytes(),
+		&buf,
 	}, nil
-}
-
-func (s3test *S3TestMaterial) Bytes() []byte {
-	return s3test.byteValue
 }

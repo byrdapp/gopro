@@ -1,13 +1,14 @@
 package image
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage/aws"
-	media "github.com/byrdapp/byrd-pro-api/pkg/metadata"
+	"github.com/byrdapp/byrd-pro-api/pkg/metadata"
 )
 
 func TestImageReaderFailed(t *testing.T) {
@@ -22,7 +23,7 @@ func TestImageReaderSuccess(t *testing.T) {
 	if err := aws.ParseCredentials(); err != nil {
 		t.Fatal(err)
 	}
-	var output []*media.Metadata
+	var output []*metadata.Metadata
 	for i := 1; i < 5; i++ {
 		fileName := fmt.Sprintf("%v.jpg", i)
 		t.Run("success exif", func(t *testing.T) {
@@ -31,31 +32,17 @@ func TestImageReaderSuccess(t *testing.T) {
 				t.Error(err)
 			}
 			log.Info("got bytes")
-			parsedExif, err := DecodeImageMetadata(mat.Bytes())
+			r := bytes.NewReader(mat.Buf.Bytes())
+			_, err = ImageMetadata(r)
 			if err != nil {
-				if !equalError(t, err, EOFError) {
+				if !equalError(t, err, metadata.EOFError.Error()) {
 					t.Fatal(err)
 				}
 			}
 			log.Info("parsed exif")
-			output = append(output, parsedExif)
-		})
-	}
-	for i := 0; i < 5; i++ {
-		t.Run("fail exif for fail.jpg", func(t *testing.T) {
-			mat, err := aws.GetTestMaterial(aws.ImageBucketReference, "fail.jpg")
-			if err != nil {
-				if !equalError(t, err, EOFError) {
-					t.Fatal(err)
-				}
-			}
-			parsedExif, err := DecodeImageMetadata(mat.Bytes())
-			if err != nil {
-				if !equalError(t, err, EOFError) {
-					t.Fatal(err)
-				}
-			}
-			output = append(output, parsedExif)
+			o := &metadata.Metadata{}
+
+			output = append(output, o)
 		})
 	}
 }

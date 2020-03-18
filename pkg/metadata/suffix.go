@@ -1,6 +1,8 @@
 package metadata
 
-import "strings"
+import (
+	"strings"
+)
 
 var (
 	VideoFormatSuffix = []string{"mp4", "mov", "quicktime", "x-m4v", "m4v"}
@@ -17,10 +19,13 @@ func SupportedVideoSuffix(fileName string) bool {
 	return false
 }
 func SupportedImageSuffix(fileName string) bool {
-	fileSuffix := strings.Split(fileName, "/")[1]
-	for _, suffix := range VideoFormatSuffix {
-		if fileSuffix == suffix {
-			return true
+	split := strings.Split(fileName, ".")
+	if len(split) > 0 {
+		fileSuffix := split[len(split)-1]
+		for _, suffix := range ImageFormatSuffix {
+			if fileSuffix == suffix {
+				return true
+			}
 		}
 	}
 	return false
