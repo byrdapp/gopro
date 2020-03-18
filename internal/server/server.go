@@ -18,7 +18,7 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
-	loggerpkg "github.com/byrdapp/byrd-pro-api/pkg/logger"
+	loggerpkg "github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
 type logger interface {

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 	"github.com/nlopes/slack"
 )
 

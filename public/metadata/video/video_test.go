@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
 	"github.com/davecgh/go-spew/spew"
 )
 

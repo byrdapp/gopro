@@ -3,7 +3,7 @@ package utils
 import (
 	"os"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
 var log = logger.NewLogger()

@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/byrdapp/byrd-pro-api/internal/server"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
 var (

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage/aws"
-	"github.com/byrdapp/byrd-pro-api/pkg/metadata"
+	"github.com/byrdapp/byrd-pro-api/public/metadata"
 )
 
 func TestImageReaderFailed(t *testing.T) {

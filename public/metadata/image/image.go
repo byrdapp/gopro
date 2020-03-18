@@ -6,8 +6,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 
 	goexif "github.com/rwcarlsen/goexif/exif"
 )

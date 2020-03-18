@@ -10,7 +10,7 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	aws "github.com/byrdapp/byrd-pro-api/internal/storage/aws"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"

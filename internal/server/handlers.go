@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -20,9 +19,9 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/mail"
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
-	"github.com/byrdapp/byrd-pro-api/pkg/metadata"
-	"github.com/byrdapp/byrd-pro-api/pkg/thumbnail"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/metadata"
+	"github.com/byrdapp/byrd-pro-api/public/thumbnail"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
@@ -186,14 +185,13 @@ func (s *server) exifImages() http.HandlerFunc {
 		Thumbnail thumbnail.ImageThumbnail `json:"thumbnail,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 		if r.Method == http.MethodPost {
 			var withPreview bool
 			// w.Header().Set("Content-Type", "multipart/form-data")
 			_, cancel := context.WithTimeout(r.Context(), time.Second*30)
 			defer cancel()
 			// Parse media type to get type of media
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			if err != nil {
 				s.writeClient(w, http.StatusBadRequest)
 				return
@@ -204,12 +202,15 @@ func (s *server) exifImages() http.HandlerFunc {
 			}
 
 			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-			mr := multipart.NewReader(r.Body, params["boundary"])
-			defer r.Body.Close()
 			var res []*response
 
+			mr, err := r.MultipartReader()
+			if err != nil {
+				panic(err)
+			}
+			// for _, fh := range r.MultipartForm.File["filename"] {
+			// part, err := fh.Open()
 			for {
-				// (*os.File) for next file
 				part, err := mr.NextPart()
 				if err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
@@ -218,25 +219,22 @@ func (s *server) exifImages() http.HandlerFunc {
 					s.writeClient(w, http.StatusNoContent)
 					return
 				}
-
 				var data response
-				var buf bytes.Buffer
-				tr := io.TeeReader(part, &buf)
-				defer part.Close()
-
 				// Read EXIF data
 				if !metadata.SupportedImageSuffix(part.FileName()) {
 					s.writeClient(w, http.StatusUnsupportedMediaType)
 					return
 				}
-				m, err := metadata.DecodeImageMetadata(tr)
+				m, err := metadata.DecodeImageMetadata(part)
 				if err != nil {
-					s.Errorf("parsed exif error: %v", err)
+					s.Errorf("parsed exif error: %v on file: %v", err, part.FileName())
 				}
+				defer part.Close()
+
 				data.Meta = m
 
 				if withPreview {
-					t := thumbnail.New(&buf)
+					t := thumbnail.New(part)
 					thumb, err := t.ImageThumbnail(300, 300)
 					if err != nil {
 						s.Warnf("thumbnail failed: %v", err)

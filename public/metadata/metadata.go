@@ -4,9 +4,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
-	"github.com/byrdapp/byrd-pro-api/pkg/metadata/image"
-	"github.com/byrdapp/byrd-pro-api/pkg/metadata/video"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/metadata/image"
+	"github.com/byrdapp/byrd-pro-api/public/metadata/video"
 )
 
 var (

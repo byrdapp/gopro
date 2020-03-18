@@ -15,10 +15,10 @@ vendor
 *.pub
 *.jpg
 *.jpeg
-pkg/metadata/video/media
+public/metadata/video/media
 *.mp4
 *.png
 *.txt
 *.zip
 *.xml
-pkg/media/video/debug.test
+public/media/video/debug.test

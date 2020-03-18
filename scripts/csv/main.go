@@ -12,7 +12,7 @@ import (
 
 	storage "github.com/byrdapp/byrd-pro-api/internal/storage"
 	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
 // func createCSV(record []string, index int, info interface{}) {
