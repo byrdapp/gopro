@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/byrdapp/byrd-pro-api/internal/server"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
 var (
@@ -32,24 +32,20 @@ func init() {
 
 func main() {
 
-	s := server.NewServer()
+	srv, err := server.NewServer()
+	if err != nil {
+		panic(err)
+	}
 
-	s.InitRoutes()
+	srv.Routes()
 
-	if err := s.UseHTTP2(); err != nil {
+	if err := srv.UseHTTP2(); err != nil {
 		log.Warnf("Error with HTTP2 %s", err)
 	}
-
-	if err := s.InitDB(); err != nil {
-		log.Fatalf("Error initializing DB %s", err)
-	}
-
-	s.HTTPListenServer.Addr = ":3000"
-	log.Infof("Serving on host w. address %s", s.HTTPListenServer.Addr)
-	// if err := s.httpListenServer.ListenAndServeTLS("./certs/insecure_cert.pem", "./certs/insecure_key.pem"); err != nil {
-	if err := s.HTTPListenServer.ListenAndServe(); err != nil {
+	srv.Infof("Serving on host w. address :3000")
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 	// * runs until os.SIGTERM happens
-	s.WaitForShutdown()
+	srv.WaitForShutdown()
 }

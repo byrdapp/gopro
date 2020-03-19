@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
 
 	"github.com/sendgrid/sendgrid-go"
 	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
