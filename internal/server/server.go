@@ -110,8 +110,7 @@ func (s *server) Routes() {
 
 	s.router.HandleFunc("/logoff", signOut).Methods("POST")
 	s.router.HandleFunc("/exif/image", s.isAuth(s.exifImages())).Methods("POST")
-	s.router.HandleFunc("/exif/video", s.isAuth(s.exifImages())).Methods("POST")
-	// s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
+	s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
 
 	s.router.HandleFunc("/profiles", s.isAuth(s.getProfiles())).Methods("GET")
 	s.router.HandleFunc("/profile/{id}", s.isAuth(s.getProfileByID())).Methods("GET")
