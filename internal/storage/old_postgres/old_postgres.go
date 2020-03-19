@@ -9,7 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 	_ "github.com/lib/pq"
 )
 

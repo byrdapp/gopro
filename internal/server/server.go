@@ -10,30 +10,16 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/lib/pq"
-	"github.com/sirupsen/logrus"
-
 	mux "github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
+	loggerpkg "github.com/byrdapp/byrd-pro-api/public/logger"
 )
-
-var (
-// log = logger.NewLogger()
-// pq  *postgres.Queries
-// fb storage.FBService
-)
-
-// type server struct {
-// 	srv    *http.Server
-// 	router *mux.Router
-// 	db     *database
-// 	logger
-// }
 
 type logger interface {
 	Warnf(format string, args ...interface{})
@@ -56,19 +42,21 @@ type server struct {
 // NewServer - Creates a new server with HTTP2 & HTTPS
 func NewServer() (*server, error) {
 	r := mux.NewRouter()
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
-		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
-	})
+	// c := cors.New(cors.Options{
+	// 	AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
+	// 	AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
+	// 	AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
+	// })
+
+	c := cors.AllowAll()
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
-		Addr:              ":3000",
+		// MaxHeaderBytes:    1 << 20,
+		Addr: ":3000",
 		TLSConfig: &tls.Config{
 			PreferServerCipherSuites: true,
 			CurvePreferences: []tls.CurveID{
@@ -90,17 +78,21 @@ func NewServer() (*server, error) {
 		return nil, err
 	}
 
+	// NewLogger -
+	logger := loggerpkg.NewLogger()
+
 	return &server{
 		srv:    httpsSrv,
 		router: r,
 		pq:     pq,
 		fb:     fbsrv,
-		logger: logrus.New(),
+		logger: logger,
 	}, nil
 }
 
 func (s *server) Routes() {
-	// s.router.Use(s.recoverFunc)
+	s.router.Use(s.recoverFunc, s.loggerMw)
+
 	s.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooEarly)
 	}).Methods("GET")
@@ -117,9 +109,9 @@ func (s *server) Routes() {
 	})).Methods("GET")
 
 	s.router.HandleFunc("/logoff", signOut).Methods("POST")
-	s.router.HandleFunc("/mail/send", s.isAuth(s.sendMail())).Methods("POST")
 	s.router.HandleFunc("/exif/image", s.isAuth(s.exifImages())).Methods("POST")
-	s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
+	s.router.HandleFunc("/exif/video", s.isAuth(s.exifImages())).Methods("POST")
+	// s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
 
 	s.router.HandleFunc("/profiles", s.isAuth(s.getProfiles())).Methods("GET")
 	s.router.HandleFunc("/profile/{id}", s.isAuth(s.getProfileByID())).Methods("GET")
@@ -135,6 +127,7 @@ func (s *server) Routes() {
 
 	s.router.HandleFunc("/booking/task/{bookingID}", s.isAuth(s.updateBooking())).Methods("PUT")
 	s.router.HandleFunc("/booking/task/{bookingID}", s.isAuth(s.deleteBooking())).Methods("DELETE")
+	s.router.HandleFunc("/mail/send", s.isAuth(s.sendMail())).Methods("POST")
 	// s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
 }
 
