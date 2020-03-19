@@ -16,8 +16,10 @@ vendor
 *.jpg
 *.jpeg
 *.mp4
+*.m4v
+*.mov
 *.png
 *.txt
 *.zip
 *.xml
-pkg/media/video/debug.test
+public/media/video/debug.test
