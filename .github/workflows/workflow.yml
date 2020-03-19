@@ -71,5 +71,5 @@ jobs:
           SLACK_CHANNEL: "#deployments"
           SLACK_COLOR: "#517122"
           SLACK_ICON: https://avatars0.githubusercontent.com/u/7809248?s=400&v=4
-          SLACK_TITLE: "New pro app ready to be swarmed!"
-          SLACK_MESSAGE: "This will be awesome!"
+          SLACK_TITLE: "This will be awesome!"
+          SLACK_MESSAGE: "New pro api ready to be swarmed!"
