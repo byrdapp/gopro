@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
 )
 
 type File struct {

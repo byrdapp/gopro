@@ -52,10 +52,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932/go.mod h1:NOuUCSz6Q9T7+igc/hlvDOUdtWKryOrtFyIVABv/p7k=
 github.com/bkaradzic/go-lz4 v1.0.0/go.mod h1:0YdlkowM3VswSROI7qDxhRvJ3sLhlFrRRwjwegp5jy4=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
-github.com/byrdapp/timestamp v0.0.0-20200306142653-183dee5d8a13 h1:BMcHsQrpRhtoE0lDXit4rwHekoYcjMW35Jm3yMvtZNw=
-github.com/byrdapp/timestamp v0.0.0-20200306142653-183dee5d8a13/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
-github.com/byrdapp/timestamp v0.0.0-20200309144232-13613042ccbe h1:zMb/E2suNwDCuzb1h3nkL/IyGPP9ZtDpsjebvRVOHLQ=
-github.com/byrdapp/timestamp v0.0.0-20200309144232-13613042ccbe/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
+github.com/byrdapp/timestamp v0.0.0-20200310151258-4659b57333bd h1:DPcXHIlHPEbwaVmPgwxBpyDbkgidPUXQcNyXj+rxR8o=
+github.com/byrdapp/timestamp v0.0.0-20200310151258-4659b57333bd/go.mod h1:3Xc+CzSMzwSXfcw/CSlFJM5HJi8afSCBliYQaYmzc1s=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=

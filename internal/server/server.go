@@ -10,48 +10,53 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	mux "github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 	"golang.org/x/net/http2"
 
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
-	"github.com/byrdapp/byrd-pro-api/pkg/logger"
+	loggerpkg "github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
-var (
-	log = logger.NewLogger()
-	pq  *postgres.Queries
-	fb  storage.FBService
-)
+type logger interface {
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+}
 
 // ! TODO: Same approach with FB db as postgres
 
-// Server is used in main.go
-type Server struct {
-	HTTPListenServer *http.Server
-	router           *mux.Router
+// server is used in main.go
+type server struct {
+	srv    *http.Server
+	router *mux.Router
+	pq     *postgres.Queries
+	fb     storage.FBService
+	logger
 }
 
 // NewServer - Creates a new server with HTTP2 & HTTPS
-func NewServer() *Server {
+func NewServer() (*server, error) {
 	r := mux.NewRouter()
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
-		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
-	})
+	// c := cors.New(cors.Options{
+	// 	AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
+	// 	AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
+	// 	AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
+	// })
+
+	c := cors.AllowAll()
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
-		Addr:              ":https",
+		// MaxHeaderBytes:    1 << 20,
+		Addr: ":3000",
 		TLSConfig: &tls.Config{
 			PreferServerCipherSuites: true,
 			CurvePreferences: []tls.CurveID{
@@ -62,45 +67,86 @@ func NewServer() *Server {
 		Handler: c.Handler(r),
 	}
 
-	return &Server{
-		HTTPListenServer: httpsSrv,
-		router:           r,
-	}
-}
-
-func (s *Server) InitDB() error {
 	conn, err := sql.Open("postgres", os.Getenv("POSTGRES_CONNSTR"))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	db := postgres.New(conn)
-	pq = db
+	pq := postgres.New(conn)
 
 	fbsrv, err := firebase.NewFB()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fb = fbsrv
-	return nil
+
+	// NewLogger -
+	logger := loggerpkg.NewLogger()
+
+	return &server{
+		srv:    httpsSrv,
+		router: r,
+		pq:     pq,
+		fb:     fbsrv,
+		logger: logger,
+	}, nil
 }
 
-func (s *Server) UseHTTP2() error {
+func (s *server) Routes() {
+	s.router.Use(s.recoverFunc, s.loggerMw)
+
+	s.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooEarly)
+	}).Methods("GET")
+	s.router.HandleFunc("/login", s.loginGetUserAccess()).Methods("POST")
+
+	// * Private endpoints
+	s.router.HandleFunc("/reauthenticate", s.isAuth(s.loginGetUserAccess())).Methods("GET")
+	s.router.HandleFunc("/secure", s.isAuth(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service"}`))
+	})).Methods("GET")
+
+	s.router.HandleFunc("/admin/secure", s.isAdmin(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service to ADMINS!"}`))
+	})).Methods("GET")
+
+	s.router.HandleFunc("/logoff", signOut).Methods("POST")
+	s.router.HandleFunc("/exif/image", s.isAuth(s.exifImages())).Methods("POST")
+	s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
+
+	s.router.HandleFunc("/profiles", s.isAuth(s.getProfiles())).Methods("GET")
+	s.router.HandleFunc("/profile/{id}", s.isAuth(s.getProfileByID())).Methods("GET")
+
+	s.router.HandleFunc("/auth/profile/token", s.isAuth(s.decodeTokenGetProfile())).Methods("GET")
+	s.router.HandleFunc("/profile/{id}", s.isAuth(s.getProProfile())).Methods("GET")
+
+	s.router.HandleFunc("/booking/task/{uid}", s.isAuth(s.getBookingsByUID())).Methods("GET")
+
+	s.router.HandleFunc("/booking/task", s.isAuth(s.createBooking())).Methods("POST")
+	s.router.HandleFunc("/booking/accepted", s.isAuth(s.acceptBooking())).Methods("PUT") // ==> update accepted true/false
+	// s.router.HandleFunc("/booking/task/{proUID}", s.isAuth(createSpecficBooking)).Methods("POST")
+
+	s.router.HandleFunc("/booking/task/{bookingID}", s.isAuth(s.updateBooking())).Methods("PUT")
+	s.router.HandleFunc("/booking/task/{bookingID}", s.isAuth(s.deleteBooking())).Methods("DELETE")
+	s.router.HandleFunc("/mail/send", s.isAuth(s.sendMail())).Methods("POST")
+	// s.router.HandleFunc("/booking/task" /** isAdmin() middleware? */, isAuth(getProfileWithBookings)).Methods("GET")
+}
+
+func (s *server) UseHTTP2() error {
 	http2Srv := http2.Server{}
-	err := http2.ConfigureServer(s.HTTPListenServer, &http2Srv)
+	err := http2.ConfigureServer(s.srv, &http2Srv)
 	if err != nil {
 		return err
 	}
-	log.Infoln("Using HTTP/2.0")
+	s.Infof("Using HTTP/2.0")
 	return nil
 }
 
-func (s *Server) WaitForShutdown() {
+func (s *server) WaitForShutdown() {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	defer func() {
-		if err := pq.Close(); err != nil {
-			log.Error(err)
+		if err := s.pq.Close(); err != nil {
+			s.Errorf("%v", err)
 		}
 	}()
 	// Block until we receive our signal.
@@ -109,7 +155,11 @@ func (s *Server) WaitForShutdown() {
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	log.Fatal(s.HTTPListenServer.Shutdown(ctx))
-	log.Println("Shutting down")
+	s.Fatalf("%v", s.srv.Shutdown(ctx))
+	s.Infof("Shutting down")
 	os.Exit(0)
+}
+
+func (s *server) ListenAndServe() error {
+	return s.srv.ListenAndServe()
 }
