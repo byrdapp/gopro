@@ -29,6 +29,14 @@ func FileSizeBytesToFloat(byteSize int) float64 {
 	return math.Floor(size*100) / 100 // no magic number
 }
 
+func MustStringToFloat(s string) float64 {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return f
+}
+
 func UnixNanoToMillis(t time.Time) int64 {
 	return t.UTC().UnixNano() / int64(time.Millisecond)
 }

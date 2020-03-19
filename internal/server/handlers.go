@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -20,11 +20,9 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/mail"
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
-	"github.com/byrdapp/byrd-pro-api/pkg/conversion"
-	"github.com/byrdapp/byrd-pro-api/pkg/image/thumbnail"
-	"github.com/byrdapp/byrd-pro-api/pkg/media"
-	image "github.com/byrdapp/byrd-pro-api/pkg/media/image"
-	video "github.com/byrdapp/byrd-pro-api/pkg/media/video"
+	"github.com/byrdapp/byrd-pro-api/public/conversion"
+	"github.com/byrdapp/byrd-pro-api/public/metadata"
+	"github.com/byrdapp/byrd-pro-api/public/thumbnail"
 )
 
 var signOut = func(w http.ResponseWriter, r *http.Request) {
@@ -58,24 +56,24 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 			var err error
 			var creds Credentials
 			if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-				s.WriteClient(w, StatusJSONDecode)
+				s.writeClient(w, StatusJSONDecode)
 				return
 			}
 			defer r.Body.Close()
 			if creds.Password == "" || creds.Email == "" {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 
 			usr, err := s.fb.GetProfileByEmail(r.Context(), creds.Email)
 			if err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 
 			isPro, err := s.fb.IsProfessional(r.Context(), usr.UID)
 			if !isPro || err != nil {
-				s.WriteClient(w, http.StatusForbidden)
+				s.writeClient(w, http.StatusForbidden)
 				return
 			}
 
@@ -83,7 +81,7 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 			// claims := make(map[string]interface{})
 			isAdmin, err := s.fb.IsAdminUID(r.Context(), usr.UID)
 			if err != nil {
-				s.WriteClient(w, http.StatusNotFound)
+				s.writeClient(w, http.StatusNotFound)
 				return
 			}
 			credsRes := credsResponse{
@@ -92,7 +90,7 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 			}
 
 			if err := json.NewEncoder(w).Encode(&credsRes); err != nil {
-				s.WriteClient(w, StatusJSONEncode)
+				s.writeClient(w, StatusJSONEncode)
 				return
 			}
 		}
@@ -106,22 +104,22 @@ func (s *server) decodeTokenGetProfile() http.HandlerFunc {
 			var err error
 			clientToken := r.Header.Get(userToken)
 			if clientToken == "" {
-				s.WriteClient(w, StatusBadTokenHeader)
+				s.writeClient(w, StatusBadTokenHeader)
 				return
 			}
 			fbtoken, err := s.fb.VerifyToken(r.Context(), clientToken)
 			if err != nil {
-				s.WriteClient(w, StatusBadTokenHeader)
+				s.writeClient(w, StatusBadTokenHeader)
 				return
 			}
 			profile, err := s.fb.GetProfile(r.Context(), fbtoken.UID)
 			if err != nil {
-				s.WriteClient(w, http.StatusNotFound)
+				s.writeClient(w, http.StatusNotFound)
 				return
 			}
 
 			if err := json.NewEncoder(w).Encode(profile); err != nil {
-				s.WriteClient(w, StatusJSONEncode)
+				s.writeClient(w, StatusJSONEncode)
 				return
 			}
 		}
@@ -152,29 +150,13 @@ func (s *server) getProfiles() http.HandlerFunc {
 		r.Header.Set("content-type", "application/json")
 		medias, err := s.fb.GetProfiles(r.Context())
 		if err != nil {
-			s.WriteClient(w, http.StatusInternalServerError)
+			s.writeClient(w, http.StatusInternalServerError)
 			return
 		}
 		if err := json.NewEncoder(w).Encode(medias); err != nil {
-			s.WriteClient(w, StatusJSONEncode)
+			s.writeClient(w, StatusJSONEncode)
 		}
 	}
-}
-
-// response struct - dont use data as pointers, refer writer to the Metadata pointer when allocated.
-type Metadata struct {
-	Preview preview    `json:"preview,omitempty"`
-	Exif    exifOutput `json:"exif,omitempty"`
-}
-
-type exifOutput struct {
-	Output *media.Metadata `json:"output,omitempty"`
-	Error  string          `json:"error,omitempty"`
-}
-
-type preview struct {
-	Source []byte `json:"source,omitempty"`
-	Error  string `json:"error,omitempty"`
 }
 
 // getExif receives body with img files
@@ -182,141 +164,148 @@ type preview struct {
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
 // endpoint: exif/${type=image/video}/?preview:bool
 func (s *server) exifImages() http.HandlerFunc {
+	type response struct {
+		Meta      *metadata.Metadata       `json:"meta,omitempty"`
+		Thumbnail thumbnail.ImageThumbnail `json:"thumbnail,omitempty"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// r.Body = http.MaxBytesReader(w, r.Body, 32<<20+512)
 		if r.Method == http.MethodPost {
 			var withPreview bool
 			// w.Header().Set("Content-Type", "multipart/form-data")
-			_, cancel := context.WithTimeout(r.Context(), time.Second*10)
+			_, cancel := context.WithTimeout(r.Context(), time.Second*30)
 			defer cancel()
 			// Parse media type to get type of media
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			if err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
-			if strings.HasPrefix(mediaType, "multipart/") {
-				withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
-				mr := multipart.NewReader(r.Body, params["boundary"])
-				defer r.Body.Close()
-				var res []*Metadata
+			if !strings.HasPrefix(mediaType, "multipart/") {
+				s.writeClient(w, StatusNotMultipart)
+				return
+			}
 
-				for {
-					// (*os.File) for next file
-					part, err := mr.NextPart()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						s.WriteClient(w, http.StatusNotAcceptable)
-						return
-					}
+			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
+			var res []*response
 
-					var buf bytes.Buffer
-					_, err = io.Copy(&buf, part)
-					if err != nil {
-						s.WriteClient(w, http.StatusNotAcceptable)
+			mr, err := r.MultipartReader()
+			if err != nil {
+				// panic(err)
+			}
+			defer r.Body.Close()
+			for {
+				part, err := mr.NextRawPart()
+				if err != nil {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
 					}
-
-					// JSON response struct
-					var data Metadata
-					if withPreview {
-						img, err := thumbnail.New(buf.Bytes())
-						if err != nil {
-							s.Warnf("%v", err)
-							data.Preview.Error = err.Error()
-						}
-						thumb, err := img.EncodeThumbnail()
-						if err != nil {
-							s.Errorf("%v", err)
-							s.WriteClient(w, http.StatusBadRequest)
-							return
-						}
-						data.Preview.Source = thumb.Bytes()
-					}
-
-					// Read EXIF data
-					parsedExif, err := image.DecodeImageMetadata(buf.Bytes())
-					if err != nil {
-						s.Errorf("parsed exif error: %v", err)
-						data.Exif.Error = err.Error()
-					}
-					data.Exif.Output = parsedExif
-					res = append(res, &data)
-				}
-
-				if err := json.NewEncoder(w).Encode(res); err != nil {
-					s.WriteClient(w, StatusJSONEncode)
+					s.writeClient(w, http.StatusBadRequest)
 					return
 				}
+				fileName := strings.ToLower(part.FileName())
+				var data response
+				if !metadata.SupportedImageSuffix(fileName) {
+					s.writeClient(w, http.StatusUnsupportedMediaType)
+					return
+				}
+
+				b, err := ioutil.ReadAll(part)
+				if err != nil {
+
+				}
+				defer part.Close()
+
+				br := bytes.NewReader(b)
+				m, err := metadata.DecodeImageMetadata(br)
+				if err != nil {
+					s.Errorf("parsed exif error: %v on file: %v", err, fileName)
+				}
+				data.Meta = m
+
+				if withPreview {
+					if _, err := br.Seek(0, 0); err != nil {
+						data.Thumbnail = nil
+						continue
+					}
+					t := thumbnail.New(br)
+					thumb, err := t.ImageThumbnail(300, 300)
+					if err != nil {
+						s.Warnf("thumbnail failed: %v", err)
+					}
+					data.Thumbnail = thumb
+				}
+				res = append(res, &data)
+			}
+
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				s.writeClient(w, StatusJSONEncode)
+				return
 			}
 		}
 	}
 }
 
-// /exif/video
 func (s *server) exifVideo() http.HandlerFunc {
+	type response struct {
+		Meta      *metadata.Metadata        `json:"meta,omitempty"`
+		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail,omitempty"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "application/json")
-			var withPreview bool
-			mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if err != nil {
-				s.WriteClient(w, http.StatusUnsupportedMediaType)
-				return
-			}
+		_, cancel := context.WithTimeout(r.Context(), time.Second*30)
+		defer cancel()
+		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			s.writeClient(w, http.StatusBadRequest)
+			return
+		}
 
-			// Wrong request body
-			if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
-				s.WriteClient(w, http.StatusUnsupportedMediaType)
-				return
-			}
+		// Wrong request header from filetype
+		if !strings.HasPrefix(mediaType, "video/") {
+			s.writeClient(w, http.StatusBadRequest)
+			return
+		}
 
-			file, fheader, err := r.FormFile("file")
-			if err != nil {
-				s.WriteClient(w, http.StatusForbidden)
-				return
-			}
-			defer file.Close()
+		supported := metadata.SupportedVideoSuffix(mediaType)
+		if !supported {
+			s.writeClient(w, http.StatusUnsupportedMediaType)
+			return
+		}
+		defer r.Body.Close()
 
-			filetype, ok := fheader.Header["Content-Type"]
-			if !ok || len(filetype) == 0 {
-				s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
-				return
-			}
-			headerMediaType := strings.Split(filetype[0], "video/")[1]
-			fmt, err := media.Format(headerMediaType).Video()
-			if err != nil {
-				s.WriteClient(w, http.StatusUnsupportedMediaType).LogError(err)
-				return
-			}
-			withPreview = strings.EqualFold(r.URL.Query().Get("preview"), "true")
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			s.writeClient(w, http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+		rd := bytes.NewReader(b)
 
-			video, err := video.ReadVideoBuffer(file, fmt)
-			if err != nil {
-				s.WriteClient(w, http.StatusNotAcceptable)
-				return
-			}
-			defer r.Body.Close()
+		var res response
 
-			var res Metadata
-			if withPreview {
-				t, err := video.Thumbnail()
+		meta, err := metadata.VideoMetadata(rd)
+		if err != nil {
+			s.writeClient(w, http.StatusBadRequest)
+			return
+		}
+		res.Meta = meta
+		// res.Size = conversion.FileSizeBytesToFloat(len(buf.Bytes()))
+
+		if strings.EqualFold(r.URL.Query().Get("preview"), "true") {
+			if _, err := rd.Seek(0, 0); err != nil {
+				s.Warnf("seek error internally: %v", err)
+			} else {
+				t := thumbnail.New(rd)
+				ffmpegThumb, err := t.VideoThumbnail(300, 300)
 				if err != nil {
-					s.Warnf("%v", err)
-					res.Preview.Error = err.Error()
+					s.Warnf("thumbnail failed: %v", err)
 				}
-				res.Preview.Source = t.Bytes()
+				res.Thumbnail = ffmpegThumb
 			}
+		}
 
-			out := video.Metadata()
-			res.Exif.Output = out
-
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				s.WriteClient(w, http.StatusInternalServerError)
-				return
-			}
+		if err := json.NewEncoder(w).Encode(&res); err != nil {
+			s.writeClient(w, StatusJSONEncode)
+			return
 		}
 	}
 }
@@ -331,11 +320,11 @@ func (s *server) getProProfile() http.HandlerFunc {
 		params := mux.Vars(r)
 		pro, err := s.fb.GetProfile(r.Context(), params["id"])
 		if err != nil {
-			s.WriteClient(w, http.StatusNotFound)
+			s.writeClient(w, http.StatusNotFound)
 			return
 		}
 		if err := json.NewEncoder(w).Encode(pro); err != nil {
-			s.WriteClient(w, StatusJSONEncode)
+			s.writeClient(w, StatusJSONEncode)
 			return
 		}
 	}
@@ -354,12 +343,12 @@ func (s *server) getBookingsByUID() http.HandlerFunc {
 			userId := params["uid"]
 			bookings, err := s.pq.GetBookingsByMediaUID(r.Context(), userId)
 			if err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 
 			if err := json.NewEncoder(w).Encode(bookings); err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 		}
@@ -372,7 +361,7 @@ func (s *server) createBooking() http.HandlerFunc {
 		if r.Method == http.MethodPost {
 			var req postgres.CreateBookingParams
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				s.WriteClient(w, http.StatusBadRequest).LogError(err)
+				s.writeClient(w, http.StatusBadRequest).LogError(err)
 				return
 			}
 			defer r.Body.Close()
@@ -380,7 +369,7 @@ func (s *server) createBooking() http.HandlerFunc {
 
 			// * if bad date
 			if req.DateStart.IsZero() || req.DateEnd.IsZero() || req.DateEnd.Unix() < time.Now().Unix() {
-				s.WriteClient(w, StatusBadDateTime)
+				s.writeClient(w, StatusBadDateTime)
 				return
 			}
 
@@ -389,12 +378,12 @@ func (s *server) createBooking() http.HandlerFunc {
 			// ? minimum price cap??
 			uuid, err := s.pq.CreateBooking(r.Context(), req)
 			if err != nil {
-				s.WriteClient(w, http.StatusForbidden).LogError(err)
+				s.writeClient(w, http.StatusForbidden).LogError(err)
 				return
 			}
 
 			if err := json.NewEncoder(w).Encode(uuid); err != nil {
-				s.WriteClient(w, http.StatusInternalServerError)
+				s.writeClient(w, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -415,7 +404,7 @@ func (s *server) updateBooking() http.HandlerFunc {
 			params := mux.Vars(r)
 			bookingID, ok := params["bookingID"]
 			if !ok {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 
@@ -423,7 +412,7 @@ func (s *server) updateBooking() http.HandlerFunc {
 			b.Task = r.FormValue("task")
 			b.IsActive, err = conversion.ParseBool(r.FormValue("isActive"))
 			if err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 
@@ -433,7 +422,7 @@ func (s *server) updateBooking() http.HandlerFunc {
 			// }
 
 			if err := json.NewEncoder(w).Encode(&b); err != nil {
-				s.WriteClient(w, http.StatusInternalServerError)
+				s.writeClient(w, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -448,14 +437,14 @@ func (s *server) deleteBooking() http.HandlerFunc {
 			params := mux.Vars(r)
 			userUID, err := uuid.FromBytes([]byte(params["bookingID"]))
 			if err != nil {
-				s.WriteClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 			if err := s.pq.DeleteBooking(r.Context(), userUID); err != nil {
-				s.WriteClient(w, http.StatusInternalServerError)
+				s.writeClient(w, http.StatusInternalServerError)
 				return
 			}
-			s.WriteClient(w, http.StatusOK)
+			s.writeClient(w, http.StatusOK)
 			return
 		}
 	}

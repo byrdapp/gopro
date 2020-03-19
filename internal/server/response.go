@@ -20,6 +20,7 @@ var ErrJSONEncoding = errors.New("json marshall encoding to byte array")
 var ErrJSONDecoding = errors.New("json unmarshall decoding")
 var ErrBadTokenHeader = errors.New("no or wrong token found in header")
 var ErrBadDateRequest = errors.New("bad values or wrong date time")
+var ErrNotMultiplart = errors.New("request must be a multipart/form-data upload")
 
 const (
 	_ = iota + 519
@@ -28,6 +29,7 @@ const (
 	StatusJSONDecode // Unmarshall
 	StatusBadTokenHeader
 	StatusBadDateTime
+	StatusNotMultipart
 )
 
 var StatusText = map[HttpStatusCode]error{
@@ -35,10 +37,11 @@ var StatusText = map[HttpStatusCode]error{
 	StatusJSONDecode:     ErrJSONDecoding,
 	StatusBadTokenHeader: ErrBadTokenHeader,
 	StatusBadDateTime:    ErrBadDateRequest,
+	StatusNotMultipart:   ErrNotMultiplart,
 }
 
 // writes client or returns json encoding error
-func (s *server) WriteClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
+func (s *server) writeClient(w http.ResponseWriter, code HttpStatusCode) (jsonerr HttpStatusCode) {
 	enc := json.NewEncoder(w)
 	msg, ok := code.StatusText()
 	if !ok {

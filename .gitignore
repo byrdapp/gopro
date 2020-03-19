@@ -15,6 +15,7 @@ vendor
 *.pub
 *.jpg
 *.jpeg
+public/metadata/video/media
 *.mp4
 *.m4v
 *.mov
