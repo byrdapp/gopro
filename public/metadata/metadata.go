@@ -79,7 +79,7 @@ func DecodeImageMetadata(r io.Reader) (*Metadata, error) {
 	}
 	lat, lng, err := m.Geo()
 	if err != nil {
-		nilKeys = append(nilKeys, "lat")
+		nilKeys = append(nilKeys, "geo")
 	}
 	date, err := m.DateMillisUnix()
 	if err != nil {

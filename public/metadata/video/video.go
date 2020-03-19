@@ -25,7 +25,6 @@ func (v *videoMetadata) RawMeta() (*FFMPEGMetaOutput, error) {
 	}
 
 	cmd := exec.Command(ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "-show_entries", "stream=height,width,codec_name,size", "pipe:")
-	fmt.Println(cmd.String())
 	cmd.Stdin = v.Reader
 	outJSON, err := cmd.CombinedOutput()
 	if err != nil {

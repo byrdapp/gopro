@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"mime"
 	"net/http"
 	"os"
@@ -158,30 +159,13 @@ func (s *server) getProfiles() http.HandlerFunc {
 	}
 }
 
-// response struct - dont use data as pointers, refer writer to the Metadata pointer when allocated.
-type Metadata struct {
-	Preview preview    `json:"preview,omitempty"`
-	Exif    exifOutput `json:"exif,omitempty"`
-}
-
-type exifOutput struct {
-	Output *metadata.Metadata `json:"output,omitempty"`
-	Error  string             `json:"error,omitempty"`
-}
-
-type preview struct {
-	Source []byte `json:"source,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
 // getExif receives body with img files
 // it attempts to fetch EXIF data from each image
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
 // endpoint: exif/${type=image/video}/?preview:bool
 func (s *server) exifImages() http.HandlerFunc {
 	type response struct {
-		Meta *metadata.Metadata `json:"meta,omitempty"`
-		// Size      float64                   `json:"size,omitempty"`
+		Meta      *metadata.Metadata       `json:"meta,omitempty"`
 		Thumbnail thumbnail.ImageThumbnail `json:"thumbnail,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -206,42 +190,50 @@ func (s *server) exifImages() http.HandlerFunc {
 
 			mr, err := r.MultipartReader()
 			if err != nil {
-				panic(err)
+				// panic(err)
 			}
-			// for _, fh := range r.MultipartForm.File["filename"] {
-			// part, err := fh.Open()
+			defer r.Body.Close()
 			for {
-				part, err := mr.NextPart()
+				part, err := mr.NextRawPart()
 				if err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
 					}
-					s.writeClient(w, http.StatusNoContent)
+					s.writeClient(w, http.StatusBadRequest)
 					return
 				}
+				fileName := strings.ToLower(part.FileName())
 				var data response
-				// Read EXIF data
-				if !metadata.SupportedImageSuffix(part.FileName()) {
+				if !metadata.SupportedImageSuffix(fileName) {
 					s.writeClient(w, http.StatusUnsupportedMediaType)
 					return
 				}
-				m, err := metadata.DecodeImageMetadata(part)
+
+				b, err := ioutil.ReadAll(part)
 				if err != nil {
-					s.Errorf("parsed exif error: %v on file: %v", err, part.FileName())
+
 				}
 				defer part.Close()
 
+				br := bytes.NewReader(b)
+				m, err := metadata.DecodeImageMetadata(br)
+				if err != nil {
+					s.Errorf("parsed exif error: %v on file: %v", err, fileName)
+				}
 				data.Meta = m
 
 				if withPreview {
-					t := thumbnail.New(part)
+					if _, err := br.Seek(0, 0); err != nil {
+						data.Thumbnail = nil
+						continue
+					}
+					t := thumbnail.New(br)
 					thumb, err := t.ImageThumbnail(300, 300)
 					if err != nil {
 						s.Warnf("thumbnail failed: %v", err)
 					}
 					data.Thumbnail = thumb
 				}
-
 				res = append(res, &data)
 			}
 
@@ -256,19 +248,20 @@ func (s *server) exifImages() http.HandlerFunc {
 func (s *server) exifVideo() http.HandlerFunc {
 	type response struct {
 		Meta      *metadata.Metadata        `json:"meta,omitempty"`
-		Size      float64                   `json:"size,omitempty"`
 		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, cancel := context.WithTimeout(r.Context(), time.Second*30)
+		defer cancel()
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			s.writeClient(w, http.StatusUnsupportedMediaType)
+			s.writeClient(w, http.StatusBadRequest)
 			return
 		}
 
 		// Wrong request header from filetype
-		if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
-			s.writeClient(w, http.StatusUnsupportedMediaType)
+		if !strings.HasPrefix(mediaType, "video/") {
+			s.writeClient(w, http.StatusBadRequest)
 			return
 		}
 
@@ -277,13 +270,19 @@ func (s *server) exifVideo() http.HandlerFunc {
 			s.writeClient(w, http.StatusUnsupportedMediaType)
 			return
 		}
-
-		var res response
-		var buf bytes.Buffer
-		tr := io.TeeReader(r.Body, &buf)
 		defer r.Body.Close()
 
-		meta, err := metadata.VideoMetadata(tr)
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			s.writeClient(w, http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+		rd := bytes.NewReader(b)
+
+		var res response
+
+		meta, err := metadata.VideoMetadata(rd)
 		if err != nil {
 			s.writeClient(w, http.StatusBadRequest)
 			return
@@ -291,12 +290,18 @@ func (s *server) exifVideo() http.HandlerFunc {
 		res.Meta = meta
 		// res.Size = conversion.FileSizeBytesToFloat(len(buf.Bytes()))
 
-		t := thumbnail.New(&buf)
-		ffmpegThumb, err := t.VideoThumbnail(300, 300)
-		if err != nil {
-			s.Warnf("thumbnail failed: %v", err)
+		if strings.EqualFold(r.URL.Query().Get("preview"), "true") {
+			if _, err := rd.Seek(0, 0); err != nil {
+				s.Warnf("seek error internally: %v", err)
+			} else {
+				t := thumbnail.New(rd)
+				ffmpegThumb, err := t.VideoThumbnail(300, 300)
+				if err != nil {
+					s.Warnf("thumbnail failed: %v", err)
+				}
+				res.Thumbnail = ffmpegThumb
+			}
 		}
-		res.Thumbnail = ffmpegThumb
 
 		if err := json.NewEncoder(w).Encode(&res); err != nil {
 			s.writeClient(w, StatusJSONEncode)
