@@ -29,7 +29,7 @@ type Metadata struct {
 	// MediaFormat     string  `json:"mediaFormat,omitempty"`
 }
 
-func VideoMetadata(r io.Reader) (*Metadata, error) {
+func DecodeVideo(r io.Reader) (*Metadata, error) {
 	v := video.New(r)
 	m, err := v.RawMeta()
 	if err != nil {
@@ -65,7 +65,7 @@ func VideoMetadata(r io.Reader) (*Metadata, error) {
 // DecodeImageMetadata returns the struct *Output containing img data.
 // This will include the errors from missing/broken exif will follow.
 // If an error is != nil, its a panic
-func DecodeImageMetadata(r io.Reader) (*Metadata, error) {
+func DecodeImage(r io.Reader) (*Metadata, error) {
 	// r := bytes.NewReader(data)
 	// xErr := &metadata.Metadata{MissingExif: make(map[string]string)}
 	var nilKeys []string

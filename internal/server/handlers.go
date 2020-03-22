@@ -56,7 +56,7 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 			var err error
 			var creds Credentials
 			if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-				s.writeClient(w, StatusJSONDecode)
+				s.writeClient(w, http.StatusBadRequest)
 				return
 			}
 			defer r.Body.Close()
@@ -67,7 +67,7 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 
 			usr, err := s.fb.GetProfileByEmail(r.Context(), creds.Email)
 			if err != nil {
-				s.writeClient(w, http.StatusBadRequest)
+				s.writeClient(w, http.StatusNotFound)
 				return
 			}
 
@@ -81,7 +81,7 @@ func (s *server) loginGetUserAccess() http.HandlerFunc {
 			// claims := make(map[string]interface{})
 			isAdmin, err := s.fb.IsAdminUID(r.Context(), usr.UID)
 			if err != nil {
-				s.writeClient(w, http.StatusNotFound)
+				s.writeClient(w, http.StatusForbidden)
 				return
 			}
 			credsRes := credsResponse{
@@ -216,7 +216,7 @@ func (s *server) exifImages() http.HandlerFunc {
 				defer part.Close()
 
 				br := bytes.NewReader(b)
-				m, err := metadata.DecodeImageMetadata(br)
+				m, err := metadata.DecodeImage(br)
 				if err != nil {
 					s.Errorf("parsed exif error: %v on file: %v", err, fileName)
 				}
@@ -282,7 +282,7 @@ func (s *server) exifVideo() http.HandlerFunc {
 
 		var res response
 
-		meta, err := metadata.VideoMetadata(rd)
+		meta, err := metadata.DecodeVideo(rd)
 		if err != nil {
 			s.writeClient(w, http.StatusBadRequest)
 			return

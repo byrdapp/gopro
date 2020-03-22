@@ -18,10 +18,10 @@ import (
 	"github.com/byrdapp/byrd-pro-api/internal/storage"
 	firebase "github.com/byrdapp/byrd-pro-api/internal/storage/firebase"
 	"github.com/byrdapp/byrd-pro-api/internal/storage/postgres"
-	loggerpkg "github.com/byrdapp/byrd-pro-api/public/logger"
+	"github.com/byrdapp/byrd-pro-api/public/logger"
 )
 
-type logger interface {
+type loggerService interface {
 	Warnf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
@@ -36,19 +36,17 @@ type server struct {
 	router *mux.Router
 	pq     *postgres.Queries
 	fb     storage.FBService
-	logger
+	loggerService
 }
 
 // NewServer - Creates a new server with HTTP2 & HTTPS
 func NewServer() (*server, error) {
 	r := mux.NewRouter()
-	// c := cors.New(cors.Options{
-	// 	AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
-	// 	AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-	// 	AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
-	// })
-
-	c := cors.AllowAll()
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
+		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
+	})
 
 	httpsSrv := &http.Server{
 		ReadTimeout:       5 * time.Second,
@@ -78,15 +76,12 @@ func NewServer() (*server, error) {
 		return nil, err
 	}
 
-	// NewLogger -
-	logger := loggerpkg.NewLogger()
-
 	return &server{
-		srv:    httpsSrv,
-		router: r,
-		pq:     pq,
-		fb:     fbsrv,
-		logger: logger,
+		srv:           httpsSrv,
+		router:        r,
+		pq:            pq,
+		fb:            fbsrv,
+		loggerService: logger.NewLogger(),
 	}, nil
 }
 
