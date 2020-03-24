@@ -6,8 +6,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/byrdapp/timestamp/parser"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/byrdapp/timestamp/timeparser"
 	"github.com/google/uuid"
 )
 
@@ -31,18 +30,17 @@ INSERT INTO bookings (media_id, task, price, credits, date_start, date_end, lat,
 `
 
 type CreateBookingParams struct {
-	MediaID   string           `json:"media_id"`
-	Task      string           `json:"task"`
-	Price     int32            `json:"price"`
-	Credits   int32            `json:"credits"`
-	DateStart parser.Timestamp `json:"date_start"`
-	DateEnd   parser.Timestamp `json:"date_end"`
-	Lat       string           `json:"lat"`
-	Lng       string           `json:"lng"`
+	MediaID   string               `json:"media_id"`
+	Task      string               `json:"task"`
+	Price     int32                `json:"price"`
+	Credits   int32                `json:"credits"`
+	DateStart timeparser.Timestamp `json:"date_start"`
+	DateEnd   timeparser.Timestamp `json:"date_end"`
+	Lat       string               `json:"lat"`
+	Lng       string               `json:"lng"`
 }
 
 func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (uuid.UUID, error) {
-	spew.Dump(arg)
 	row := q.db.QueryRowContext(ctx, createBooking,
 		arg.MediaID,
 		arg.Task,
@@ -53,6 +51,23 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (u
 		arg.Lat,
 		arg.Lng,
 	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createProfile = `-- name: CreateProfile :one
+INSERT INTO profiles (user_id, pro_level)
+    VALUES ($1, $2) RETURNING id
+`
+
+type CreateProfileParams struct {
+	UserID   string `json:"user_id"`
+	ProLevel int32  `json:"pro_level"`
+}
+
+func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, createProfile, arg.UserID, arg.ProLevel)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -139,14 +154,14 @@ LIMIT 5
 `
 
 type ListBookingsByUserRow struct {
-	Task      string           `json:"task"`
-	Credits   int32            `json:"credits"`
-	Price     int32            `json:"price"`
-	CreatedAt parser.Timestamp `json:"created_at"`
-	Accepted  bool             `json:"accepted"`
-	Completed bool             `json:"completed"`
-	ProLevel  int32            `json:"pro_level"`
-	UserID    string           `json:"user_id"`
+	Task      string               `json:"task"`
+	Credits   int32                `json:"credits"`
+	Price     int32                `json:"price"`
+	CreatedAt timeparser.Timestamp `json:"created_at"`
+	Accepted  bool                 `json:"accepted"`
+	Completed bool                 `json:"completed"`
+	ProLevel  int32                `json:"pro_level"`
+	UserID    string               `json:"user_id"`
 }
 
 func (q *Queries) ListBookingsByUser(ctx context.Context) ([]ListBookingsByUserRow, error) {

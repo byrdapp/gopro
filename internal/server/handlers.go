@@ -248,6 +248,7 @@ func (s *server) exifImages() http.HandlerFunc {
 
 func (s *server) exifVideo() http.HandlerFunc {
 	const thumbXSize, thumbYSize = 160, 120
+
 	type response struct {
 		Meta      *metadata.Metadata        `json:"meta,omitempty"`
 		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail,omitempty"`
@@ -291,6 +292,7 @@ func (s *server) exifVideo() http.HandlerFunc {
 		// res.Size = conversion.FileSizeBytesToFloat(len(buf.Bytes()))
 
 		if strings.EqualFold(r.URL.Query().Get("preview"), "true") {
+			// seek back in the file bytes to read it again for thumbnail
 			if _, err := rd.Seek(0, 0); err != nil {
 				s.Warnf("seek error internally: %v", err)
 			} else {

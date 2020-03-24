@@ -45,12 +45,13 @@ func DecodeVideo(r io.Reader) (*Metadata, error) {
 		nilKeys = append(nilKeys, "model")
 	}
 
-	if m.CreationTime().UTC().IsZero() || m.CreationTime().UTC().Unix() < 0 {
+	dateMillis := m.CreationTimeMillisUTC()
+	if dateMillis.IsZero() || dateMillis.Unix() < 0 {
 		nilKeys = append(nilKeys, "date")
 	}
 
 	meta = Metadata{
-		Date: m.CreationTime().UTC().Unix(),
+		Date: dateMillis.Unix(),
 		Lat:  conversion.MustStringToFloat(m.Lat()),
 		Lng:  conversion.MustStringToFloat(m.Lng()),
 		// Copyright: nil,
