@@ -164,6 +164,7 @@ func (s *server) getProfiles() http.HandlerFunc {
 // if no exif data, the error message will be added to the response without breaking out of the loop until EOF.
 // endpoint: exif/${type=image/video}/?preview:bool
 func (s *server) exifImages() http.HandlerFunc {
+	const thumbXSize, thumbYSize = 160, 120
 	type response struct {
 		Meta      *metadata.Metadata       `json:"meta,omitempty"`
 		Thumbnail thumbnail.ImageThumbnail `json:"thumbnail,omitempty"`
@@ -228,7 +229,7 @@ func (s *server) exifImages() http.HandlerFunc {
 						continue
 					}
 					t := thumbnail.New(br)
-					thumb, err := t.ImageThumbnail(300, 300)
+					thumb, err := t.ImageThumbnail(thumbXSize, thumbYSize)
 					if err != nil {
 						s.Warnf("thumbnail failed: %v", err)
 					}
@@ -246,6 +247,7 @@ func (s *server) exifImages() http.HandlerFunc {
 }
 
 func (s *server) exifVideo() http.HandlerFunc {
+	const thumbXSize, thumbYSize = 160, 120
 	type response struct {
 		Meta      *metadata.Metadata        `json:"meta,omitempty"`
 		Thumbnail thumbnail.FFMPEGThumbnail `json:"thumbnail,omitempty"`
@@ -255,12 +257,12 @@ func (s *server) exifVideo() http.HandlerFunc {
 		defer cancel()
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil {
-			s.writeClient(w, http.StatusBadRequest)
+			s.writeClient(w, StatusNotMultipart)
 			return
 		}
 
 		// Wrong request header from filetype
-		if !strings.HasPrefix(mediaType, "video/") {
+		if !strings.HasPrefix(mediaType, "multipart/") && !strings.HasPrefix(mediaType, "video/") {
 			s.writeClient(w, http.StatusBadRequest)
 			return
 		}
@@ -270,8 +272,6 @@ func (s *server) exifVideo() http.HandlerFunc {
 			s.writeClient(w, http.StatusUnsupportedMediaType)
 			return
 		}
-		defer r.Body.Close()
-
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			s.writeClient(w, http.StatusBadRequest)
@@ -295,7 +295,7 @@ func (s *server) exifVideo() http.HandlerFunc {
 				s.Warnf("seek error internally: %v", err)
 			} else {
 				t := thumbnail.New(rd)
-				ffmpegThumb, err := t.VideoThumbnail(300, 300)
+				ffmpegThumb, err := t.VideoThumbnail(thumbXSize, thumbYSize)
 				if err != nil {
 					s.Warnf("thumbnail failed: %v", err)
 				}

@@ -45,7 +45,7 @@ func NewServer() (*server, error) {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://localhost:4200", "http://localhost:4201", "http://localhost", "https://pro.development.byrd.news", "https://pro.dev.byrd.news", "https://pro.byrd.news"},
 		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "user_token"},
+		AllowedHeaders: []string{"Content-Type", "Accept", "Content-Length", "X-Requested-By", "User-Agent", "user_token"},
 	})
 
 	httpsSrv := &http.Server{
@@ -104,8 +104,8 @@ func (s *server) Routes() {
 	})).Methods("GET")
 
 	s.router.HandleFunc("/logoff", signOut).Methods("POST")
-	s.router.HandleFunc("/exif/image", s.isAuth(s.exifImages())).Methods("POST")
-	s.router.HandleFunc("/exif/video", s.isAuth(s.exifVideo())).Methods("POST")
+	s.router.HandleFunc("/meta/image", s.isAuth(s.exifImages())).Methods("POST")
+	s.router.HandleFunc("/meta/video", s.isAuth(s.exifVideo())).Methods("POST")
 
 	s.router.HandleFunc("/profiles", s.isAuth(s.getProfiles())).Methods("GET")
 	s.router.HandleFunc("/profile/{id}", s.isAuth(s.getProfileByID())).Methods("GET")
