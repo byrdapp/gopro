@@ -46,7 +46,7 @@ func DecodeVideo(r io.Reader) (*Metadata, error) {
 	}
 
 	dateMillis := m.CreationTimeMillisUTC()
-	if dateMillis.IsZero() || dateMillis.Unix() < 0 {
+	if dateMillis.IsZero() || dateMillis.Unix() <= 0 {
 		nilKeys = append(nilKeys, "date")
 	}
 

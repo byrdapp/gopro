@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type videoMetadata struct {
@@ -124,10 +122,8 @@ func (fo *FFMPEGMetaOutput) CreationTime() time.Time {
 }
 
 func (fo *FFMPEGMetaOutput) CreationTimeMillisUTC() time.Time {
-	date := fo.Format.Tags.CreationTime.UTC()
-	date = date.Round(time.Millisecond)
-	spew.Dump(date.Unix())
-	return date
+	val := fo.Format.Tags.CreationTime.UTC()
+	return time.Unix(val.UnixNano()/int64(time.Millisecond), 0)
 }
 
 func (fo *FFMPEGMetaOutput) EndTime() string {
