@@ -24,3 +24,4 @@ public/metadata/video/media
 *.zip
 *.xml
 public/media/video/debug.test
+production.env
