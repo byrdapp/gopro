@@ -94,14 +94,22 @@ func (fo *FFMPEGMetaOutput) Codec() string {
 
 func (fo *FFMPEGMetaOutput) Lat() string {
 	if fo.ISOLocation() != "" {
-		return strings.Split(fo.ISOLocation(), ",")[0]
+		if strings.ContainsAny(fo.ISOLocation(), ",") {
+			if val := strings.Split(fo.ISOLocation(), ","); len(val) > 0 {
+				return val[0]
+			}
+		}
 	}
 	return fo.ISOLocation()
 }
 
 func (fo *FFMPEGMetaOutput) Lng() string {
 	if fo.ISOLocation() != "" {
-		return strings.Split(fo.ISOLocation(), ",")[1]
+		if strings.ContainsAny(fo.ISOLocation(), ",") {
+			if val := strings.Split(fo.ISOLocation(), ","); len(val) > 0 {
+				return val[1]
+			}
+		}
 	}
 	return fo.ISOLocation()
 }
@@ -119,6 +127,11 @@ func (fo *FFMPEGMetaOutput) ISOLocation() string {
 
 func (fo *FFMPEGMetaOutput) CreationTime() time.Time {
 	return fo.Format.Tags.CreationTime
+}
+
+func (fo *FFMPEGMetaOutput) CreationTimeMillisUTC() time.Time {
+	val := fo.Format.Tags.CreationTime.UTC()
+	return time.Unix(val.UnixNano()/int64(time.Millisecond), 0)
 }
 
 func (fo *FFMPEGMetaOutput) EndTime() string {

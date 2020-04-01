@@ -6,5 +6,5 @@ packages:
     schema: "schema.sql"
     queries: "queries.sql"
 overrides:
-  - go_type: "github.com/byrdapp/timestamp/parser.Timestamp"
+  - go_type: "github.com/byrdapp/timestamp/timeparser.Timestamp"
     db_type: "date"

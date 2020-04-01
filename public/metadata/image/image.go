@@ -113,18 +113,3 @@ func (e *imgExifData) Dimensions() (width int, height int, err error) {
 	}
 	return dim[0], dim[1], nil
 }
-
-// get file size
-// func (e *imgExifData) getFileSize(r io.Reader) (float64, error) {
-// 	b, err := ioutil.ReadAll(r)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	var buf bytes.Buffer
-// 	n, err := buf.Write(b)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	size := conversion.FileSizeBytesToFloat(n)
-// 	return size, nil
-// }

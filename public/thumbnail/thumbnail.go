@@ -41,7 +41,7 @@ func (t *thumbnail) VideoThumbnail(x, y int) (FFMPEGThumbnail, error) {
 		os.Remove(f.Name())
 	}()
 	// -v quiet -i ./in.mp4 -ss 00:00:01.000 -vframes 1 -s 300x300 out.jpg
-	cmd := exec.Command(ffmpeg, "-i", "pipe:", "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:")
+	cmd := exec.Command(ffmpeg, "-v", "quiet", "-i", "pipe:", "-ss", fromSecondMark, "-to", toSecondMark, "-vframes", "1", "-s", fmt.Sprintf("%vx%v", x, y), "-f", "singlejpeg", "pipe:")
 	cmd.Stdin = t.r
 	return cmd.CombinedOutput()
 }

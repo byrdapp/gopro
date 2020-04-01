@@ -10,7 +10,7 @@ import (
 func TestLatLng(t *testing.T) {
 	t.Run("metadata", func(t *testing.T) {
 		f, _ := os.Open("./video/media/in.mp4")
-		m, err := VideoMetadata(f)
+		m, err := DecodeVideo(f)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -21,7 +21,7 @@ func TestLatLng(t *testing.T) {
 func TestMetadata(t *testing.T) {
 	t.Run("metadata", func(t *testing.T) {
 		f, _ := os.Open("./video/media/in.mp4")
-		meta, err := VideoMetadata(f)
+		meta, err := DecodeVideo(f)
 		if err != nil {
 			t.Fatal(err)
 		}
