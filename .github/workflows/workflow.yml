@@ -1,4 +1,4 @@
-name: Byrd pro
+name: Byrd pro api
 on:
   push:
     branches:
@@ -46,13 +46,13 @@ jobs:
 
       - name: Build the Docker image
         run: |
-          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:dev .
-          docker build --rm -f "Dockerfile" -t byrdapp/pro-app:prod .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-api:dev .
+          docker build --rm -f "Dockerfile" -t byrdapp/pro-api:prod .
 
       - name: Push the Docker image to the registry
         run: |
-          docker push byrdapp/pro-app:dev
-          docker push byrdapp/pro-app:prod
+          docker push byrdapp/pro-api:dev
+          docker push byrdapp/pro-api:prod
 
   slack:
     name: Notify on slack
@@ -71,5 +71,5 @@ jobs:
           SLACK_CHANNEL: "#deployments"
           SLACK_COLOR: "#517122"
           SLACK_ICON: https://avatars0.githubusercontent.com/u/7809248?s=400&v=4
-          SLACK_TITLE: "This will be awesome!"
-          SLACK_MESSAGE: "New pro api ready to be swarmed!"
+          SLACK_TITLE: "New pro api ready to be swarmed!"
+          SLACK_MESSAGE: "This will be awesome!"
