@@ -18,6 +18,7 @@ func SupportedVideoSuffix(fileName string) bool {
 	}
 	return false
 }
+
 func SupportedImageSuffix(fileName string) bool {
 	split := strings.Split(fileName, ".")
 	if len(split) > 0 {

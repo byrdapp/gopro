@@ -1,4 +1,4 @@
-package storage
+package firebase
 
 import (
 	"context"
@@ -62,7 +62,7 @@ func NewFB() (storage.FBService, error) {
 }
 
 // UpdateData userID is the uid to change FirebaseProfile to. Prop and value is a map.
-func (db *Firebase) UpdateData(uid string, prop string, value string) error {
+func (db *Firebase) PutProfileData(uid string, prop string, value string) error {
 	data := make(map[string]interface{})
 	data[prop] = value
 	path := os.Getenv("ENV") + "/profiles/" + uid
@@ -72,6 +72,22 @@ func (db *Firebase) UpdateData(uid string, prop string, value string) error {
 		return err
 	}
 	fmt.Printf("Successfully updated FirebaseProfile with %s\n", data[prop])
+	return nil
+}
+
+// UpdateData userID is the uid to change FirebaseProfile to. Prop and value is a map.
+func (db *Firebase) PutStoryData(storyId string, key string, value interface{}) error {
+	path := fmt.Sprintf("%v/stories/%v", os.Getenv("ENV"), storyId)
+	ref := db.Client.NewRef(path)
+	data := make(map[string]interface{})
+	data[key] = value
+	if _, ok := data[key]; !ok {
+		return errors.New("missing key:value in mape")
+	}
+	err := ref.Update(db.Context, data)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

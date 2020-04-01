@@ -8,7 +8,7 @@ certs
 main
 vendor
 .env
-.env-prod
+*.env
 .dockerignore
 *.http
 *.rsa
