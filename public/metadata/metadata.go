@@ -98,10 +98,6 @@ func DecodeImage(r io.Reader) (*Metadata, error) {
 	if err != nil {
 		nilKeys = append(nilKeys, "dimension")
 	}
-	// ! if err != nil {
-	// 	size, err := m.getFileSize(r)
-	nilKeys = append(nilKeys, "size")
-	// }
 
 	return &Metadata{
 		Lat:       lat,
@@ -111,24 +107,6 @@ func DecodeImage(r io.Reader) (*Metadata, error) {
 		Width:     w,
 		Height:    h,
 		Copyright: copyright,
-		// MediaSize: size,
-		NilKeys: nilKeys,
-		// ? do this MediaFormat:     mediaFmt,
+		NilKeys:   nilKeys,
 	}, nil
 }
-
-// // adds an object to the output JSON that displays missing exif data
-// func (o *Metadata) AddMissingExif(tag string, originError error) {
-// 	var returnErr error
-// 	if goexif.IsTagNotPresentError(originError) {
-// 		returnErr = errors.New("exif tag is not present in file")
-// 	}
-// 	if goexif.IsCriticalError(originError) {
-// 		returnErr = fmt.Errorf("error parsing %v from file", tag)
-// 	}
-// 	if goexif.IsGPSError(originError) {
-// 		returnErr = errors.New("GPS decoding error")
-// 	}
-// 	_ = returnErr
-// 	//!  o.MissingExif[tag] = returnErr.Error()
-// }

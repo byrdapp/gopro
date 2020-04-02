@@ -18,21 +18,17 @@ func main() {
 		panic(err)
 	}
 	storyId := []string{
-		"-M05kMmz1y9Akej-_sQT",
-		"-M05hhOJs3a4c-ecovbQ",
-		"-LyixE0XBjlaPtvdIZZo",
-		"-LoLVuxA43sEnzYOaIw8",
-		"-LoiRQahmp98whji76vG",
-		"-Lii2VmLIU2fD5zcDTRy",
-		"-LihzSRNsavH2N_MJyuz",
-		"-LhMgjwZleyJFMgf7dKq",
-		"-LT2u16oPJnlKSfjvY2V",
-		"-LT2sq1xWDK8z8FLUPEC",
-		"-LSyta7jk2x7rZ6-LUIM",
-		"-LTr-anTCguGtdZd9f7Q",
-		"-LTr0N-mhcQipW3zqY44",
-		"-Ly3k2MDShGG1l9ZJJAB",
-		"-Ly3gatePv6j0Ovsru2K"}
+		"-M3Gh0heU45IXJ22lDtb",
+		"-M3GjKpTl1Vg0KheDq1Q",
+		"-M3GnHUt8hpgAGvwHfxV",
+		"-M3H3uMTswT2NJuko5gS",
+		"-M3HJ9CroiJ_ISLagr3_",
+		"-M3HLQdpjNYI-bC3e1S7",
+		"-M3HOKJwhwNilZvYtybT",
+		"-M3HS9EaXgfdeygf6Kfn",
+		"-M3HS9EaXgfdeygf6Kfn",
+		"-M3HUMPG84hawlUHG-vV",
+	}
 	for _, id := range storyId {
 		if err := fb.PutStoryData(id, "isFake", true); err != nil {
 			panic(err)
@@ -47,12 +43,10 @@ func initCreds(env string) {
 		if err := godotenv.Load(".env"); err != nil {
 			panic(err)
 		}
-		break
 	case "production":
 		if err := godotenv.Load("production.env"); err != nil {
 			panic(err)
 		}
-		break
 	default:
 		panic("no evironment set")
 	}

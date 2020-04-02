@@ -16,9 +16,18 @@ var (
 	log = logger.NewLogger()
 )
 
+type GeoPointReference rune
+
+const (
+	N GeoPointReference = 'N'
+	S GeoPointReference = 'S'
+	E GeoPointReference = 'E'
+	W GeoPointReference = 'W'
+)
+
 // tiff.Tag struct return values as number(i.e. 0 == int)
 const (
-	exifIntVal = iota
+	exifIntVal int = iota
 )
 
 type imgExifData struct {
@@ -46,11 +55,13 @@ func (e *imgExifData) Unlock() {
 func (e *imgExifData) Geo() (lat float64, lng float64, err error) {
 	var out []float64
 	gpsarr := []goexif.FieldName{goexif.GPSLatitude, goexif.GPSLongitude}
+	gpsRef := []goexif.FieldName{goexif.GPSLatitudeRef, goexif.GPSLongitudeRef}
+
 	ratValues := map[string]int{"deg": 0, "min": 1, "sec": 2}
 	fValues := make(map[string]float64, len(ratValues))
 
-	for _, GPSref := range gpsarr {
-		geoFieldName := goexif.FieldName(GPSref)
+	for i, geoType := range gpsarr {
+		geoFieldName := goexif.FieldName(geoType)
 		tag, err := e.x.Get(geoFieldName)
 		if err != nil {
 			return 0, 0, err
@@ -66,6 +77,18 @@ func (e *imgExifData) Geo() (lat float64, lng float64, err error) {
 			e.Unlock()
 		}
 		res := fValues["deg"] + (fValues["min"] / 60) + (fValues["sec"] / 3600)
+		degreeRef, err := e.x.Get(gpsRef[i])
+		if err != nil {
+			break
+		}
+		// if geo location has a S || W > set nagative (-) in front
+		switch GeoPointReference(degreeRef.Val[0]) {
+		case S, W:
+			res = -res
+		default:
+			break
+		}
+
 		out = append(out, res)
 	}
 	return out[0], out[1], nil
