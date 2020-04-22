@@ -96,11 +96,11 @@ func (s *server) Routes() {
 	// * Private endpoints
 	s.router.HandleFunc("/reauthenticate", s.isAuth(s.loginGetUserAccess())).Methods("GET")
 	s.router.HandleFunc("/secure", s.isAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service"}`))
+		_, _ = w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service"}`))
 	})).Methods("GET")
 
 	s.router.HandleFunc("/admin/secure", s.isAdmin(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service to ADMINS!"}`))
+		_, _ = w.Write([]byte(`{"msg": "Secure msg from byrd-pro-api service to ADMINS!"}`))
 	})).Methods("GET")
 
 	s.router.HandleFunc("/logoff", signOut).Methods("POST")

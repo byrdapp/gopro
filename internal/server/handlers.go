@@ -191,7 +191,8 @@ func (s *server) exifImages() http.HandlerFunc {
 
 			mr, err := r.MultipartReader()
 			if err != nil {
-				// panic(err)
+				s.writeClient(w, http.StatusBadRequest)
+				return
 			}
 			defer r.Body.Close()
 			for {
@@ -212,7 +213,8 @@ func (s *server) exifImages() http.HandlerFunc {
 
 				b, err := ioutil.ReadAll(part)
 				if err != nil {
-
+					s.writeClient(w, http.StatusBadRequest)
+					return
 				}
 				defer part.Close()
 
